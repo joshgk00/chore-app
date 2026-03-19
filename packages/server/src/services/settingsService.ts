@@ -30,6 +30,18 @@ export function bootstrapSettings(db: Database.Database, config: AppConfig): voi
   console.log("Settings bootstrapped.");
 }
 
+export function getAllSettings(db: Database.Database): Record<string, string> {
+  const rows = db.prepare("SELECT key, value FROM settings").all() as Array<{
+    key: string;
+    value: string;
+  }>;
+  const result: Record<string, string> = {};
+  for (const row of rows) {
+    result[row.key] = row.value;
+  }
+  return result;
+}
+
 export function getSetting(db: Database.Database, key: string): string | undefined {
   const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key) as
     | { value: string }

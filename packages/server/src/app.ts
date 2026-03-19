@@ -6,6 +6,7 @@ import type Database from "better-sqlite3";
 import { NotFoundError } from "./lib/errors.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { createAuthRoutes } from "./routes/auth.js";
+import { createAdminRoutes } from "./routes/admin.js";
 import { adminAuth } from "./middleware/adminAuth.js";
 import type { AppConfig } from "./config.js";
 
@@ -31,19 +32,7 @@ export function createApp(db: Database.Database, config: AppConfig) {
 
   // Admin routes (protected)
   app.use("/api/admin", adminAuth(db));
-
-  // Placeholder admin settings route (will be expanded later)
-  app.get("/api/admin/settings", (_req, res) => {
-    const settings = db.prepare("SELECT key, value FROM settings").all() as Array<{
-      key: string;
-      value: string;
-    }>;
-    const settingsMap: Record<string, string> = {};
-    for (const row of settings) {
-      settingsMap[row.key] = row.value;
-    }
-    res.json({ data: settingsMap });
-  });
+  app.use("/api/admin", createAdminRoutes(db));
 
   // API 404 handler
   app.all("/api/*", (_req, _res, next) => {
