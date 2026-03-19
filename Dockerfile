@@ -1,5 +1,5 @@
 # Stage 1: Install dependencies
-FROM node:22-alpine AS deps
+FROM node:24-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
 COPY packages/shared/package.json ./packages/shared/
@@ -16,7 +16,7 @@ RUN npm run build --workspace=packages/client
 RUN npm run build --workspace=packages/server
 
 # Stage 3: Production runtime
-FROM node:22-alpine AS runtime
+FROM node:24-alpine AS runtime
 RUN apk add --no-cache tini
 WORKDIR /app
 
