@@ -70,9 +70,17 @@ export function createAuthRoutes(db: Database.Database, config: AppConfig) {
   });
 
   // POST /api/auth/lock
-  router.post("/lock", (_req, res) => {
-    res.clearCookie(SESSION_COOKIE_NAME, { path: "/api" });
-    res.json({ data: { locked: true } });
+  router.post("/lock", (req, res, next) => {
+    try {
+      const token = req.cookies[SESSION_COOKIE_NAME];
+      if (token) {
+        destroySession(db, token);
+      }
+      res.clearCookie(SESSION_COOKIE_NAME, { path: "/api" });
+      res.json({ data: { locked: true } });
+    } catch (err) {
+      next(err);
+    }
   });
 
   // POST /api/auth/logout

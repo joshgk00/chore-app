@@ -16,12 +16,19 @@ export function loadConfig(): AppConfig {
     );
   }
 
+  const initialAdminPin = process.env.INITIAL_ADMIN_PIN || "123456";
+  if (!process.env.INITIAL_ADMIN_PIN) {
+    console.warn(
+      "WARNING: INITIAL_ADMIN_PIN not set — using default PIN. Set this env var in production.",
+    );
+  }
+
   return {
     port: parseInt(process.env.PORT || "3000", 10),
     publicOrigin,
     dataDir: process.env.DATA_DIR || "./data",
     timezone: process.env.TZ || "America/New_York",
-    initialAdminPin: process.env.INITIAL_ADMIN_PIN || "123456",
+    initialAdminPin,
     activityRetentionDays: parseInt(process.env.ACTIVITY_RETENTION_DAYS_DEFAULT || "365", 10),
     ppqApiKey: process.env.PPQ_API_KEY,
   };

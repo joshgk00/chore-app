@@ -26,7 +26,7 @@ export function initVapidKeys(dataDir: string, publicOrigin: string): VapidKeys 
       publicKey: generated.publicKey,
       privateKey: generated.privateKey,
     };
-    fs.writeFileSync(keysPath, JSON.stringify(vapidKeys, null, 2));
+    fs.writeFileSync(keysPath, JSON.stringify(vapidKeys, null, 2), { mode: 0o600 });
   }
 
   webpush.setVapidDetails(publicOrigin, vapidKeys.publicKey, vapidKeys.privateKey);

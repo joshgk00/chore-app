@@ -48,8 +48,8 @@ describe('authService', () => {
   it('validateSession returns null for expired session', () => {
     const db = createTestDb();
     const { token, tokenHash } = createSession(db);
-    // Manually expire the session
-    db.prepare('UPDATE admin_sessions SET expires_at = datetime(?) WHERE token_hash = ?').run(
+    // Manually expire the session — store ISO string directly to preserve timezone
+    db.prepare('UPDATE admin_sessions SET expires_at = ? WHERE token_hash = ?').run(
       new Date(Date.now() - 60_000).toISOString(),
       tokenHash,
     );
