@@ -5,7 +5,7 @@ describe('Migration runner', () => {
   it('applies all migrations on a fresh database', () => {
     const db = createTestDb();
     const tables = db
-      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '_%'")
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '\\_%' ESCAPE '\\'")
       .all() as Array<{ name: string }>;
     const tableNames = tables.map((t) => t.name).sort();
 

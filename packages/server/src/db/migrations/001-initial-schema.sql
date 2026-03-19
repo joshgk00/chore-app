@@ -7,6 +7,24 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT NOT NULL
 );
 
+-- Assets (defined early since referenced by routines, checklist_items, rewards)
+CREATE TABLE IF NOT EXISTS assets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  source TEXT NOT NULL CHECK (source IN ('upload', 'ai_generated')),
+  reusable INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'processing' CHECK (status IN ('processing', 'ready', 'failed')),
+  original_filename TEXT,
+  stored_filename TEXT,
+  mime_type TEXT,
+  size_bytes INTEGER,
+  width INTEGER,
+  height INTEGER,
+  prompt TEXT,
+  model TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  archived_at TEXT
+);
+
 -- Routines
 CREATE TABLE IF NOT EXISTS routines (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,24 +90,6 @@ CREATE TABLE IF NOT EXISTS rewards (
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-  archived_at TEXT
-);
-
--- Assets
-CREATE TABLE IF NOT EXISTS assets (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  source TEXT NOT NULL CHECK (source IN ('upload', 'ai_generated')),
-  reusable INTEGER NOT NULL DEFAULT 0,
-  status TEXT NOT NULL DEFAULT 'processing' CHECK (status IN ('processing', 'ready', 'failed')),
-  original_filename TEXT,
-  stored_filename TEXT,
-  mime_type TEXT,
-  size_bytes INTEGER,
-  width INTEGER,
-  height INTEGER,
-  prompt TEXT,
-  model TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
   archived_at TEXT
 );
 
