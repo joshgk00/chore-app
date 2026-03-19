@@ -3,15 +3,28 @@ import type { ApiSuccess, ApiError } from "@chore-app/shared";
 type ApiResult<T> = { ok: true; data: T } | { ok: false; error: ApiError["error"] };
 
 async function request<T>(url: string, options?: RequestInit): Promise<ApiResult<T>> {
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+      },
+    });
+  } catch {
+    return { ok: false, error: { code: "NETWORK_ERROR", message: "Unable to reach the server" } };
+  }
 
-  const body = await res.json();
+  let body: unknown;
+  try {
+    body = await res.json();
+  } catch {
+    return {
+      ok: false,
+      error: { code: "PARSE_ERROR", message: "Received an invalid response from the server" },
+    };
+  }
 
   if (!res.ok) {
     const errorBody = body as ApiError;
