@@ -12,7 +12,13 @@ const adminLinks = [
 export default function AdminLayout() {
   return (
     <div className="min-h-screen bg-gray-100">
-      <nav className="border-b border-gray-200 bg-white shadow-sm">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-indigo-600 focus:px-4 focus:py-2 focus:text-white"
+      >
+        Skip to main content
+      </a>
+      <nav aria-label="Admin navigation" className="border-b border-gray-200 bg-white shadow-sm">
         <div className="mx-auto max-w-5xl px-4">
           <div className="flex h-14 items-center gap-6 overflow-x-auto">
             <span className="shrink-0 font-bold text-indigo-600">Admin</span>
@@ -35,7 +41,7 @@ export default function AdminLayout() {
           </div>
         </div>
       </nav>
-      <main className="mx-auto max-w-5xl p-4">
+      <main id="main-content" className="mx-auto max-w-5xl p-4">
         <Outlet />
       </main>
     </div>

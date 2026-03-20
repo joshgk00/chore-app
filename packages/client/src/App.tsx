@@ -18,10 +18,18 @@ const queryClient = new QueryClient({
   },
 });
 
-function ChildLayout() {
+function AppShell() {
   return (
     <div className="pb-16">
-      <Outlet />
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-indigo-600 focus:px-4 focus:py-2 focus:text-white"
+      >
+        Skip to main content
+      </a>
+      <main id="main-content">
+        <Outlet />
+      </main>
       <BottomNav />
     </div>
   );
@@ -44,8 +52,8 @@ export default function App() {
           {/* Redirect root to today */}
           <Route path="/" element={<Navigate to="/today" replace />} />
 
-          {/* Child routes with bottom nav */}
-          <Route element={<ChildLayout />}>
+          {/* Child-facing routes with bottom nav */}
+          <Route element={<AppShell />}>
             <Route path="/today" element={<Today />} />
             <Route path="/routines" element={<Routines />} />
             <Route path="/rewards" element={<Rewards />} />

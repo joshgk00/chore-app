@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, useRef, useEffect, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../../api/client.js";
 
@@ -7,6 +7,11 @@ export default function PinEntry() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const pinRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    pinRef.current?.focus();
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -26,6 +31,7 @@ export default function PinEntry() {
         setError("Invalid PIN. Please try again.");
       }
       setPin("");
+      pinRef.current?.focus();
     }
   }
 
@@ -39,6 +45,7 @@ export default function PinEntry() {
               Enter PIN
             </label>
             <input
+              ref={pinRef}
               id="pin"
               type="password"
               inputMode="numeric"
@@ -46,6 +53,8 @@ export default function PinEntry() {
               value={pin}
               onChange={(e) => setPin(e.target.value)}
               placeholder="Enter your PIN"
+              aria-describedby={error ? "pin-error" : undefined}
+              aria-invalid={!!error}
               className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-3 text-center text-lg tracking-widest shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               minLength={6}
               required
@@ -53,7 +62,7 @@ export default function PinEntry() {
             />
           </div>
           {error && (
-            <p className="text-center text-sm text-red-600" role="alert">
+            <p id="pin-error" className="text-center text-sm text-red-600" role="alert">
               {error}
             </p>
           )}

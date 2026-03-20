@@ -13,7 +13,7 @@ export default function AdminGuard() {
 
   if (status === "loading") {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center" aria-live="polite" role="status">
         <p className="text-gray-500">Checking session...</p>
       </div>
     );
