@@ -64,7 +64,11 @@ export function initVapidKeys(dataDir: string, publicOrigin: string): VapidKeys 
     vapidKeys = generateAndSaveKeys(keysPath);
   }
 
-  webpush.setVapidDetails(publicOrigin, vapidKeys.publicKey, vapidKeys.privateKey);
+  // web-push requires https: or mailto: for the VAPID subject
+  const vapidSubject = publicOrigin.startsWith("https://")
+    ? publicOrigin
+    : `mailto:vapid@${new URL(publicOrigin).hostname || "localhost"}`;
+  webpush.setVapidDetails(vapidSubject, vapidKeys.publicKey, vapidKeys.privateKey);
 
   return vapidKeys;
 }

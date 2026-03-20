@@ -40,7 +40,22 @@ jobs:
             -e PUBLIC_ORIGIN=http://localhost:3000 \
             -e INITIAL_ADMIN_PIN=123456 \
             chore-app
-          sleep 5
-          curl --fail http://localhost:3000/api/health
-          docker stop chore-test
-          docker rm chore-test
+
+          # Retry health check up to 15 seconds
+          for i in $(seq 1 15); do
+            if curl -sf http://localhost:3000/api/health > /dev/null 2>&1; then
+              echo "Health check passed on attempt $i"
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo "Health check failed after 15 attempts. Container logs:"
+          docker logs chore-test
+          exit 1
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop chore-test 2>/dev/null || true
+          docker rm chore-test 2>/dev/null || true
