@@ -1,17 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
-import { createTestDb } from '../db-helpers.js';
+import { createTestDb, createTestConfig } from '../db-helpers.js';
 import { createApp } from '../../src/app.js';
-import type { AppConfig } from '../../src/config.js';
 
-const testConfig: AppConfig = {
-  port: 3000,
-  publicOrigin: 'http://localhost:3000',
-  dataDir: './data',
-  timezone: 'America/New_York',
-  initialAdminPin: '123456',
-  activityRetentionDays: 365,
-};
+const testConfig = createTestConfig();
 
 describe('health routes', () => {
   it('GET /api/health returns 200 with status ok', async () => {

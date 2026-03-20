@@ -7,60 +7,75 @@ function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
-export function verifyPin(db: Database.Database, pin: string): boolean {
-  const row = db.prepare("SELECT value FROM settings WHERE key = 'admin_pin_hash'").get() as
-    | { value: string }
-    | undefined;
-  if (!row) return false;
-  return verifyCryptoPin(pin, row.value);
+export interface AuthService {
+  verifyPin(pin: string): Promise<boolean>;
+  createSession(): { token: string; tokenHash: string };
+  validateSession(token: string): { id: number; tokenHash: string } | null;
+  destroySession(token: string): void;
+  destroyAllSessions(): void;
 }
 
-export function createSession(db: Database.Database): { token: string; tokenHash: string } {
-  const token = crypto.randomBytes(32).toString("hex");
-  const tokenHash = hashToken(token);
-  const expiresAt = new Date(Date.now() + SESSION_DURATION_MINUTES * 60 * 1000).toISOString();
-
-  db.prepare("INSERT INTO admin_sessions (token_hash, expires_at) VALUES (?, ?)").run(
-    tokenHash,
-    expiresAt,
+export function createAuthService(db: Database.Database): AuthService {
+  const selectPinStmt = db.prepare("SELECT value FROM settings WHERE key = 'admin_pin_hash'");
+  const insertSessionStmt = db.prepare(
+    "INSERT INTO admin_sessions (token_hash, expires_at) VALUES (?, ?)",
   );
+  const selectSessionStmt = db.prepare(
+    "SELECT id, token_hash, expires_at FROM admin_sessions WHERE token_hash = ?",
+  );
+  const deleteSessionByIdStmt = db.prepare("DELETE FROM admin_sessions WHERE id = ?");
+  const updateSessionStmt = db.prepare(
+    "UPDATE admin_sessions SET last_seen_at = datetime(?), expires_at = ? WHERE id = ?",
+  );
+  const deleteSessionByHashStmt = db.prepare(
+    "DELETE FROM admin_sessions WHERE token_hash = ?",
+  );
+  const deleteAllSessionsStmt = db.prepare("DELETE FROM admin_sessions");
 
-  return { token, tokenHash };
-}
-
-export function validateSession(
-  db: Database.Database,
-  token: string,
-): { id: number; tokenHash: string } | null {
-  const tokenHash = hashToken(token);
-
-  const session = db
-    .prepare("SELECT id, token_hash, expires_at FROM admin_sessions WHERE token_hash = ?")
-    .get(tokenHash) as { id: number; token_hash: string; expires_at: string } | undefined;
-
-  if (!session) return null;
-
-  // Check expiry
-  if (new Date(session.expires_at) < new Date()) {
-    // Clean up expired session
-    db.prepare("DELETE FROM admin_sessions WHERE id = ?").run(session.id);
-    return null;
+  async function verifyPin(pin: string): Promise<boolean> {
+    const row = selectPinStmt.get() as { value: string } | undefined;
+    if (!row) return false;
+    return verifyCryptoPin(pin, row.value);
   }
 
-  // Sliding window: extend expiry on each valid access
-  const newExpiry = new Date(Date.now() + SESSION_DURATION_MINUTES * 60 * 1000).toISOString();
-  db.prepare(
-    "UPDATE admin_sessions SET last_seen_at = datetime(?), expires_at = ? WHERE id = ?",
-  ).run(new Date().toISOString(), newExpiry, session.id);
+  function createSession(): { token: string; tokenHash: string } {
+    const token = crypto.randomBytes(32).toString("hex");
+    const tokenHash = hashToken(token);
+    const expiresAt = new Date(Date.now() + SESSION_DURATION_MINUTES * 60 * 1000).toISOString();
 
-  return { id: session.id, tokenHash: session.token_hash };
-}
+    insertSessionStmt.run(tokenHash, expiresAt);
 
-export function destroySession(db: Database.Database, token: string): void {
-  const tokenHash = hashToken(token);
-  db.prepare("DELETE FROM admin_sessions WHERE token_hash = ?").run(tokenHash);
-}
+    return { token, tokenHash };
+  }
 
-export function destroyAllSessions(db: Database.Database): void {
-  db.prepare("DELETE FROM admin_sessions").run();
+  function validateSession(token: string): { id: number; tokenHash: string } | null {
+    const tokenHash = hashToken(token);
+
+    const session = selectSessionStmt.get(tokenHash) as
+      | { id: number; token_hash: string; expires_at: string }
+      | undefined;
+
+    if (!session) return null;
+
+    if (new Date(session.expires_at) < new Date()) {
+      deleteSessionByIdStmt.run(session.id);
+      return null;
+    }
+
+    const newExpiry = new Date(Date.now() + SESSION_DURATION_MINUTES * 60 * 1000).toISOString();
+    updateSessionStmt.run(new Date().toISOString(), newExpiry, session.id);
+
+    return { id: session.id, tokenHash: session.token_hash };
+  }
+
+  function destroySession(token: string): void {
+    const tokenHash = hashToken(token);
+    deleteSessionByHashStmt.run(tokenHash);
+  }
+
+  function destroyAllSessions(): void {
+    deleteAllSessionsStmt.run();
+  }
+
+  return { verifyPin, createSession, validateSession, destroySession, destroyAllSessions };
 }

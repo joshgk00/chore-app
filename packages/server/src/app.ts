@@ -8,6 +8,8 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import { createAuthRoutes } from "./routes/auth.js";
 import { createAdminRoutes } from "./routes/admin.js";
 import { adminAuth } from "./middleware/adminAuth.js";
+import { createAuthService } from "./services/authService.js";
+import { createSettingsService } from "./services/settingsService.js";
 import type { AppConfig } from "./config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -18,32 +20,28 @@ export function createApp(db: Database.Database, config: AppConfig) {
   // Trust proxy for Cloudflare Tunnel
   app.set("trust proxy", 1);
 
-  // Middleware
-  app.use(express.json());
+  app.use(express.json({ limit: "1mb" }));
   app.use(cookieParser());
 
-  // Health check
+  const authService = createAuthService(db);
+  const settingsService = createSettingsService(db);
+
   app.get("/api/health", (_req, res) => {
     res.json({ data: { status: "ok" } });
   });
 
-  // Auth routes
-  app.use("/api/auth", createAuthRoutes(db, config));
+  app.use("/api/auth", createAuthRoutes(authService, config));
 
-  // Admin routes (protected)
-  app.use("/api/admin", adminAuth(db));
-  app.use("/api/admin", createAdminRoutes(db));
+  app.use("/api/admin", adminAuth(authService));
+  app.use("/api/admin", createAdminRoutes(settingsService));
 
-  // API 404 handler
   app.all("/api/*", (_req, _res, next) => {
     next(new NotFoundError("API endpoint not found"));
   });
 
-  // Static file serving for client
   const clientDist = path.resolve(__dirname, "../../client/dist");
   app.use(express.static(clientDist));
 
-  // SPA fallback for non-API routes
   app.get("*", (_req, res) => {
     res.sendFile(path.join(clientDist, "index.html"));
   });

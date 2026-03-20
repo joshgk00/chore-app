@@ -5,7 +5,7 @@ export interface AppConfig {
   timezone: string;
   initialAdminPin: string;
   activityRetentionDays: number;
-  ppqApiKey?: string;
+  imageGenApiKey?: string;
 }
 
 export function loadConfig(): AppConfig {
@@ -30,6 +30,6 @@ export function loadConfig(): AppConfig {
     timezone: process.env.TZ || "America/New_York",
     initialAdminPin,
     activityRetentionDays: parseInt(process.env.ACTIVITY_RETENTION_DAYS_DEFAULT || "365", 10),
-    ppqApiKey: process.env.PPQ_API_KEY,
+    imageGenApiKey: process.env.IMAGE_GEN_API_KEY,
   };
 }

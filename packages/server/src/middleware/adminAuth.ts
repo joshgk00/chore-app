@@ -1,10 +1,9 @@
 import type { Request, Response, NextFunction } from "express";
-import type Database from "better-sqlite3";
 import { SESSION_COOKIE_NAME } from "@chore-app/shared";
 import { AuthError } from "../lib/errors.js";
-import { validateSession } from "../services/authService.js";
+import type { AuthService } from "../services/authService.js";
 
-export function adminAuth(db: Database.Database) {
+export function adminAuth(authService: AuthService) {
   return (req: Request, _res: Response, next: NextFunction) => {
     try {
       const token = req.cookies[SESSION_COOKIE_NAME];
@@ -12,7 +11,7 @@ export function adminAuth(db: Database.Database) {
         throw new AuthError("Admin authentication required");
       }
 
-      const session = validateSession(db, token);
+      const session = authService.validateSession(token);
       if (!session) {
         throw new AuthError("Invalid or expired session");
       }

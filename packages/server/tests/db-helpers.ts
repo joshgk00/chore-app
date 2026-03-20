@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { hashPin } from '../src/lib/crypto.js';
+import type { AppConfig } from '../src/config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const migrationsDir = path.join(__dirname, '..', 'src', 'db', 'migrations');
@@ -11,7 +12,6 @@ export function createTestDb(): Database.Database {
   const db = new Database(':memory:');
   db.pragma('foreign_keys = ON');
 
-  // Create migrations table
   db.exec(`
     CREATE TABLE IF NOT EXISTS _migrations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,7 +20,6 @@ export function createTestDb(): Database.Database {
     )
   `);
 
-  // Apply all migrations
   const files = fs
     .readdirSync(migrationsDir)
     .filter((f) => f.endsWith('.sql'))
@@ -35,9 +34,9 @@ export function createTestDb(): Database.Database {
   return db;
 }
 
-export function seedTestData(db: Database.Database): void {
+export async function seedTestData(db: Database.Database): Promise<void> {
   const insert = db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)');
-  insert.run('admin_pin_hash', hashPin('123456'));
+  insert.run('admin_pin_hash', await hashPin('123456'));
   insert.run('timezone', 'America/New_York');
   insert.run('activity_retention_days', '365');
   insert.run('morning_start', '05:00');
@@ -46,4 +45,16 @@ export function seedTestData(db: Database.Database): void {
   insert.run('afternoon_end', '18:29');
   insert.run('bedtime_start', '18:30');
   insert.run('bedtime_end', '21:30');
+}
+
+export function createTestConfig(overrides: Partial<AppConfig> = {}): AppConfig {
+  return {
+    port: 3000,
+    publicOrigin: 'http://localhost:3000',
+    dataDir: './data',
+    timezone: 'America/New_York',
+    initialAdminPin: '123456',
+    activityRetentionDays: 365,
+    ...overrides,
+  };
 }

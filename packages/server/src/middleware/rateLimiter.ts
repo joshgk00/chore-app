@@ -5,6 +5,8 @@ import {
   COOLDOWN_ESCALATION_MINUTES,
 } from "@chore-app/shared";
 
+const CLEANUP_INTERVAL_MS = 10 * 60 * 1000;
+
 interface AttemptRecord {
   attempts: number[];
   cooldownUntil: number | null;
@@ -27,6 +29,23 @@ function pruneOldAttempts(record: AttemptRecord): void {
   record.attempts = record.attempts.filter((t) => t > cutoff);
 }
 
+function purgeStaleEntries(): void {
+  const now = Date.now();
+  const windowMs = RATE_LIMIT_WINDOW_MINUTES * 60 * 1000;
+
+  for (const [ip, record] of store) {
+    const hasCooldown = record.cooldownUntil !== null && record.cooldownUntil > now;
+    const hasRecentAttempts = record.attempts.some((t) => t > now - windowMs);
+
+    if (!hasCooldown && !hasRecentAttempts) {
+      store.delete(ip);
+    }
+  }
+}
+
+const cleanupTimer = setInterval(purgeStaleEntries, CLEANUP_INTERVAL_MS);
+cleanupTimer.unref();
+
 export interface RateLimiterMiddleware {
   (req: Request, res: Response, next: NextFunction): void;
   recordFailure: (ip: string) => void;
@@ -38,7 +57,6 @@ export function createRateLimiter(): RateLimiterMiddleware {
     const ip = req.ip || "unknown";
     const record = getRecord(ip);
 
-    // Check if in cooldown
     if (record.cooldownUntil && Date.now() < record.cooldownUntil) {
       const retryAfter = Math.ceil((record.cooldownUntil - Date.now()) / 1000);
       res.set("Retry-After", String(retryAfter));
@@ -51,18 +69,14 @@ export function createRateLimiter(): RateLimiterMiddleware {
       return;
     }
 
-    // Reset cooldown if expired
     if (record.cooldownUntil && Date.now() >= record.cooldownUntil) {
       record.cooldownUntil = null;
       record.attempts = [];
     }
 
-    // Prune old attempts
     pruneOldAttempts(record);
 
-    // Check attempt count
     if (record.attempts.length >= MAX_PIN_ATTEMPTS) {
-      // Trigger cooldown with escalation
       const level = Math.min(record.cooldownLevel, COOLDOWN_ESCALATION_MINUTES.length - 1);
       const cooldownMs = COOLDOWN_ESCALATION_MINUTES[level] * 60 * 1000;
       record.cooldownUntil = Date.now() + cooldownMs;

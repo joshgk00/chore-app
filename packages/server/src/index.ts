@@ -1,52 +1,74 @@
 import { loadConfig } from "./config.js";
 import { openDatabase } from "./db/connection.js";
 import { runMigrations } from "./db/migrate.js";
-import { bootstrapSettings } from "./services/settingsService.js";
+import { createSettingsService } from "./services/settingsService.js";
 import { initVapidKeys } from "./services/pushService.js";
 import { createApp } from "./app.js";
 
-function main() {
+const SHUTDOWN_TIMEOUT_MS = 5_000;
+
+async function main() {
   console.log("Starting Chore App server...");
 
-  // 1. Load config
-  const config = loadConfig();
-  console.log(`Config loaded: port=${config.port}, origin=${config.publicOrigin}`);
+  let db: ReturnType<typeof openDatabase> | null = null;
 
-  // 2. Open database
-  const db = openDatabase(config.dataDir);
-  console.log("Database opened.");
+  try {
+    const config = loadConfig();
+    console.log(`Config loaded: port=${config.port}, origin=${config.publicOrigin}`);
 
-  // 3. Run migrations
-  runMigrations(db);
-  console.log("Migrations complete.");
+    db = openDatabase(config.dataDir);
+    console.log("Database opened.");
 
-  // 4. Bootstrap settings (first-boot seed)
-  bootstrapSettings(db, config);
+    runMigrations(db);
+    console.log("Migrations complete.");
 
-  // 5. Initialize VAPID keys
-  initVapidKeys(config.dataDir, config.publicOrigin);
-  console.log("VAPID keys initialized.");
+    const settingsService = createSettingsService(db);
+    await settingsService.bootstrapSettings(config);
 
-  // 6. Create and start app
-  const app = createApp(db, config);
+    initVapidKeys(config.dataDir, config.publicOrigin);
+    console.log("VAPID keys initialized.");
 
-  const server = app.listen(config.port, () => {
-    console.log(`Server listening on port ${config.port}`);
-    console.log(`Public origin: ${config.publicOrigin}`);
-  });
+    const app = createApp(db, config);
 
-  // Graceful shutdown
-  const shutdown = () => {
-    console.log("Shutting down...");
-    server.close(() => {
-      db.close();
-      console.log("Server stopped.");
-      process.exit(0);
+    const server = app.listen(config.port, () => {
+      console.log(`Server listening on port ${config.port}`);
+      console.log(`Public origin: ${config.publicOrigin}`);
     });
-  };
 
-  process.on("SIGTERM", shutdown);
-  process.on("SIGINT", shutdown);
+    const shutdown = () => {
+      console.log("Shutting down...");
+
+      const forceExit = setTimeout(() => {
+        console.error("Graceful shutdown timed out, forcing exit.");
+        process.exit(1);
+      }, SHUTDOWN_TIMEOUT_MS);
+      forceExit.unref();
+
+      server.close(() => {
+        db?.close();
+        console.log("Server stopped.");
+        process.exit(0);
+      });
+    };
+
+    process.on("SIGTERM", shutdown);
+    process.on("SIGINT", shutdown);
+  } catch (err) {
+    db?.close();
+    throw err;
+  }
 }
 
-main();
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled rejection:", reason);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught exception:", err);
+  process.exit(1);
+});
+
+main().catch((err) => {
+  console.error("Fatal: server failed to start", err);
+  process.exit(1);
+});
