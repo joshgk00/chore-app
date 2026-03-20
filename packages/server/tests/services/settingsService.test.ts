@@ -70,4 +70,51 @@ describe('settingsService', () => {
     expect(allSettings).toHaveProperty('admin_pin_hash');
     expect(allSettings).toHaveProperty('timezone');
   });
+
+  it('setSetting updates an existing value', async () => {
+    const db = createTestDb();
+    const service = createSettingsService(db);
+    await service.bootstrapSettings(createTestConfig());
+
+    expect(service.getSetting('timezone')).toBe('America/New_York');
+    service.setSetting('timezone', 'US/Pacific');
+    expect(service.getSetting('timezone')).toBe('US/Pacific');
+    db.close();
+  });
+
+  it('setSetting inserts a new key', async () => {
+    const db = createTestDb();
+    const service = createSettingsService(db);
+    await service.bootstrapSettings(createTestConfig());
+
+    expect(service.getSetting('custom_key')).toBeUndefined();
+    service.setSetting('custom_key', 'custom_value');
+    expect(service.getSetting('custom_key')).toBe('custom_value');
+    db.close();
+  });
+
+  it('getSetting returns undefined for non-existent key', async () => {
+    const db = createTestDb();
+    const service = createSettingsService(db);
+    await service.bootstrapSettings(createTestConfig());
+
+    expect(service.getSetting('does_not_exist')).toBeUndefined();
+    db.close();
+  });
+
+  it('getPublicSettings returns all non-sensitive keys', async () => {
+    const db = createTestDb();
+    const service = createSettingsService(db);
+    await service.bootstrapSettings(createTestConfig());
+
+    const publicSettings = service.getPublicSettings();
+    expect(publicSettings).toHaveProperty('timezone');
+    expect(publicSettings).toHaveProperty('morning_start');
+    expect(publicSettings).toHaveProperty('activity_retention_days');
+    expect(Object.keys(publicSettings).length).toBeGreaterThan(0);
+
+    for (const key of Object.keys(publicSettings)) {
+      expect(key).not.toBe('admin_pin_hash');
+    }
+  });
 });

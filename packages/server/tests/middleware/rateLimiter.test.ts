@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createRateLimiter } from '../../src/middleware/rateLimiter.js';
+import { COOLDOWN_ESCALATION_MINUTES } from '@chore-app/shared';
 import type { Request, Response } from 'express';
 
 function mockReq(ip = '127.0.0.1'): Partial<Request> {
@@ -32,6 +33,7 @@ describe('rateLimiter', () => {
 
   beforeEach(() => {
     rateLimiter = createRateLimiter();
+    rateLimiter._store.clear();
   });
 
   it('allows the first 5 requests from same IP', () => {
@@ -88,5 +90,84 @@ describe('rateLimiter', () => {
     });
 
     expect(nextCalled).toBe(true);
+  });
+
+  describe('cooldown escalation', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('escalates cooldown duration on repeated lockouts', () => {
+      const ip = '10.0.0.50';
+
+      for (let i = 0; i < 5; i++) {
+        rateLimiter.recordFailure(ip);
+      }
+      const res1 = mockRes();
+      rateLimiter(mockReq(ip) as Request, res1 as unknown as Response, () => {});
+      expect(res1.statusCode).toBe(429);
+      const firstRetryAfter = parseInt(res1.headers['Retry-After'], 10);
+      expect(firstRetryAfter).toBe(COOLDOWN_ESCALATION_MINUTES[0] * 60);
+
+      // Advance past first cooldown
+      vi.advanceTimersByTime(COOLDOWN_ESCALATION_MINUTES[0] * 60 * 1000 + 1);
+
+      // The middleware clears cooldown + attempts on the first request after expiry,
+      // so make one request first to reset state, then accumulate new failures.
+      const clearRes = mockRes();
+      rateLimiter(mockReq(ip) as Request, clearRes as unknown as Response, () => {});
+
+      for (let i = 0; i < 5; i++) {
+        rateLimiter.recordFailure(ip);
+      }
+      const res2 = mockRes();
+      rateLimiter(mockReq(ip) as Request, res2 as unknown as Response, () => {});
+      expect(res2.statusCode).toBe(429);
+      const secondRetryAfter = parseInt(res2.headers['Retry-After'], 10);
+      expect(secondRetryAfter).toBe(COOLDOWN_ESCALATION_MINUTES[1] * 60);
+    });
+
+    it('allows requests after cooldown expires', () => {
+      const ip = '10.0.0.60';
+
+      for (let i = 0; i < 5; i++) {
+        rateLimiter.recordFailure(ip);
+      }
+      const blockedRes = mockRes();
+      rateLimiter(mockReq(ip) as Request, blockedRes as unknown as Response, () => {});
+      expect(blockedRes.statusCode).toBe(429);
+
+      // Advance past the cooldown period
+      vi.advanceTimersByTime(COOLDOWN_ESCALATION_MINUTES[0] * 60 * 1000 + 1);
+
+      let nextCalled = false;
+      const allowedRes = mockRes();
+      rateLimiter(mockReq(ip) as Request, allowedRes as unknown as Response, () => {
+        nextCalled = true;
+      });
+      expect(nextCalled).toBe(true);
+    });
+
+    it('blocks requests during active cooldown', () => {
+      const ip = '10.0.0.70';
+
+      for (let i = 0; i < 5; i++) {
+        rateLimiter.recordFailure(ip);
+      }
+      const firstRes = mockRes();
+      rateLimiter(mockReq(ip) as Request, firstRes as unknown as Response, () => {});
+      expect(firstRes.statusCode).toBe(429);
+
+      // Advance only halfway through cooldown
+      vi.advanceTimersByTime((COOLDOWN_ESCALATION_MINUTES[0] * 60 * 1000) / 2);
+
+      const secondRes = mockRes();
+      rateLimiter(mockReq(ip) as Request, secondRes as unknown as Response, () => {});
+      expect(secondRes.statusCode).toBe(429);
+    });
   });
 });
