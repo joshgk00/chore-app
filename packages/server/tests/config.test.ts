@@ -1,22 +1,28 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { loadConfig } from '../src/config.js';
 
 describe('loadConfig', () => {
   const originalEnv = { ...process.env };
+  let tempCwd: string;
 
   beforeEach(() => {
     process.env = { ...originalEnv };
     vi.spyOn(console, 'warn').mockImplementation(() => {});
+    tempCwd = fs.mkdtempSync(path.join(os.tmpdir(), 'chore-app-config-'));
   });
 
   afterEach(() => {
+    fs.rmSync(tempCwd, { recursive: true, force: true });
     process.env = originalEnv;
     vi.restoreAllMocks();
   });
 
   it('throws when PUBLIC_ORIGIN is missing', () => {
     delete process.env.PUBLIC_ORIGIN;
-    expect(() => loadConfig()).toThrow('PUBLIC_ORIGIN');
+    expect(() => loadConfig(tempCwd)).toThrow('PUBLIC_ORIGIN');
   });
 
   it('returns defaults when only PUBLIC_ORIGIN is set', () => {
@@ -28,7 +34,7 @@ describe('loadConfig', () => {
     delete process.env.ACTIVITY_RETENTION_DAYS_DEFAULT;
     delete process.env.IMAGE_GEN_API_KEY;
 
-    const config = loadConfig();
+    const config = loadConfig(tempCwd);
 
     expect(config.publicOrigin).toBe('https://chores.example.com');
     expect(config.port).toBe(3000);
@@ -48,7 +54,7 @@ describe('loadConfig', () => {
     process.env.ACTIVITY_RETENTION_DAYS_DEFAULT = '30';
     process.env.IMAGE_GEN_API_KEY = 'sk-test-key-123';
 
-    const config = loadConfig();
+    const config = loadConfig(tempCwd);
 
     expect(config.publicOrigin).toBe('https://my-app.com');
     expect(config.port).toBe(8080);
@@ -63,7 +69,7 @@ describe('loadConfig', () => {
     process.env.PUBLIC_ORIGIN = 'https://chores.example.com';
     delete process.env.INITIAL_ADMIN_PIN;
 
-    loadConfig();
+    loadConfig(tempCwd);
 
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining('INITIAL_ADMIN_PIN not set'),
@@ -74,7 +80,7 @@ describe('loadConfig', () => {
     process.env.PUBLIC_ORIGIN = 'https://chores.example.com';
     process.env.INITIAL_ADMIN_PIN = '654321';
 
-    loadConfig();
+    loadConfig(tempCwd);
 
     expect(console.warn).not.toHaveBeenCalled();
   });
@@ -83,8 +89,25 @@ describe('loadConfig', () => {
     process.env.PUBLIC_ORIGIN = 'https://chores.example.com';
     process.env.IMAGE_GEN_API_KEY = 'my-api-key';
 
-    const config = loadConfig();
+    const config = loadConfig(tempCwd);
 
     expect(config.imageGenApiKey).toBe('my-api-key');
+  });
+
+  it('loads PUBLIC_ORIGIN from the nearest .env file when not exported', () => {
+    const nestedDir = path.join(tempCwd, 'packages', 'server');
+    fs.mkdirSync(nestedDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(tempCwd, '.env'),
+      'PUBLIC_ORIGIN=https://from-env-file.example\nPORT=4010\n',
+    );
+
+    delete process.env.PUBLIC_ORIGIN;
+    delete process.env.PORT;
+
+    const config = loadConfig(nestedDir);
+
+    expect(config.publicOrigin).toBe('https://from-env-file.example');
+    expect(config.port).toBe(4010);
   });
 });

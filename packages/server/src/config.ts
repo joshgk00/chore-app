@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+
 export interface AppConfig {
   port: number;
   publicOrigin: string;
@@ -8,7 +11,76 @@ export interface AppConfig {
   imageGenApiKey?: string;
 }
 
-export function loadConfig(): AppConfig {
+function findNearestEnvFile(startDir: string): string | null {
+  let currentDir = path.resolve(startDir);
+  let parentDir = path.dirname(currentDir);
+
+  while (currentDir !== parentDir) {
+    const envPath = path.join(currentDir, ".env");
+    if (fs.existsSync(envPath)) {
+      return envPath;
+    }
+
+    currentDir = parentDir;
+    parentDir = path.dirname(currentDir);
+  }
+
+  const rootEnvPath = path.join(currentDir, ".env");
+  return fs.existsSync(rootEnvPath) ? rootEnvPath : null;
+}
+
+function parseEnvFile(contents: string): Record<string, string> {
+  const entries: Record<string, string> = {};
+
+  for (const line of contents.split(/\r?\n/u)) {
+    const trimmedLine = line.trim();
+    if (trimmedLine.length === 0 || trimmedLine.startsWith("#")) {
+      continue;
+    }
+
+    const match = trimmedLine.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/u);
+    if (!match) {
+      continue;
+    }
+
+    const [, key, rawValue] = match;
+    let value = rawValue.trim();
+
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    } else {
+      const commentIndex = value.indexOf(" #");
+      if (commentIndex >= 0) {
+        value = value.slice(0, commentIndex).trim();
+      }
+    }
+
+    entries[key] = value;
+  }
+
+  return entries;
+}
+
+function loadLocalEnvFile(startDir: string): void {
+  const envPath = findNearestEnvFile(startDir);
+  if (!envPath) {
+    return;
+  }
+
+  const envEntries = parseEnvFile(fs.readFileSync(envPath, "utf-8"));
+  for (const [key, value] of Object.entries(envEntries)) {
+    if (process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  }
+}
+
+export function loadConfig(startDir = process.cwd()): AppConfig {
+  loadLocalEnvFile(startDir);
+
   const publicOrigin = process.env.PUBLIC_ORIGIN;
   if (!publicOrigin) {
     throw new Error(
@@ -19,7 +91,7 @@ export function loadConfig(): AppConfig {
   const initialAdminPin = process.env.INITIAL_ADMIN_PIN || "123456";
   if (!process.env.INITIAL_ADMIN_PIN) {
     console.warn(
-      "WARNING: INITIAL_ADMIN_PIN not set — using default PIN. Set this env var in production.",
+      "WARNING: INITIAL_ADMIN_PIN not set - using default PIN. Set this env var in production.",
     );
   }
 
