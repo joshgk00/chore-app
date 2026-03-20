@@ -31,7 +31,7 @@ describe('auth routes', () => {
     db.close();
   });
 
-  it('GET /api/auth/session with valid cookie returns 200', async () => {
+  it('GET /api/auth/session with valid cookie returns 200 and refreshes the cookie', async () => {
     const { db, app } = await createTestApp();
 
     const loginRes = await request(app).post('/api/auth/verify').send({ pin: '123456' });
@@ -42,6 +42,7 @@ describe('auth routes', () => {
       .set('Cookie', cookies as string[]);
     expect(sessionRes.status).toBe(200);
     expect(sessionRes.body.data.valid).toBe(true);
+    expect(sessionRes.headers['set-cookie']).toBeDefined();
     db.close();
   });
 
@@ -53,7 +54,7 @@ describe('auth routes', () => {
     db.close();
   });
 
-  it('POST /api/auth/lock clears the cookie', async () => {
+  it('POST /api/auth/lock clears the cookie without invalidating the session row', async () => {
     const { db, app } = await createTestApp();
 
     const loginRes = await request(app).post('/api/auth/verify').send({ pin: '123456' });
@@ -63,6 +64,12 @@ describe('auth routes', () => {
       .post('/api/auth/lock')
       .set('Cookie', cookies as string[]);
     expect(lockRes.status).toBe(200);
+    expect(lockRes.headers['set-cookie']).toBeDefined();
+
+    const sessionRes = await request(app)
+      .get('/api/auth/session')
+      .set('Cookie', cookies as string[]);
+    expect(sessionRes.status).toBe(200);
     db.close();
   });
 
@@ -91,7 +98,7 @@ describe('auth routes', () => {
     db.close();
   });
 
-  it('GET /api/admin/settings with valid session returns 200', async () => {
+  it('GET /api/admin/settings with valid session returns 200 and refreshes the cookie', async () => {
     const { db, app } = await createTestApp();
 
     const loginRes = await request(app).post('/api/auth/verify').send({ pin: '123456' });
@@ -103,6 +110,7 @@ describe('auth routes', () => {
     expect(res.status).toBe(200);
     expect(res.body.data).toBeDefined();
     expect(res.body.data).not.toHaveProperty('admin_pin_hash');
+    expect(res.headers['set-cookie']).toBeDefined();
     db.close();
   });
 });

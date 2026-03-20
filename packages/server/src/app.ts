@@ -32,7 +32,7 @@ export function createApp(db: Database.Database, config: AppConfig) {
 
   app.use("/api/auth", createAuthRoutes(authService, config));
 
-  app.use("/api/admin", adminAuth(authService));
+  app.use("/api/admin", adminAuth(authService, config));
   app.use("/api/admin", createAdminRoutes(settingsService));
 
   app.all("/api/*", (_req, _res, next) => {
