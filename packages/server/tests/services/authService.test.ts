@@ -1,34 +1,31 @@
 import { describe, it, expect } from 'vitest';
 import { createTestDb, seedTestData } from '../db-helpers.js';
-import {
-  verifyPin,
-  createSession,
-  validateSession,
-  destroySession,
-  destroyAllSessions,
-} from '../../src/services/authService.js';
+import { createAuthService } from '../../src/services/authService.js';
 
 describe('authService', () => {
-  it('verifyPin returns true for correct PIN', () => {
+  it('verifyPin returns true for correct PIN', async () => {
     const db = createTestDb();
-    seedTestData(db);
-    expect(verifyPin(db, '123456')).toBe(true);
+    await seedTestData(db);
+    const auth = createAuthService(db);
+    expect(await auth.verifyPin('123456')).toBe(true);
     db.close();
   });
 
-  it('verifyPin returns false for wrong PIN', () => {
+  it('verifyPin returns false for wrong PIN', async () => {
     const db = createTestDb();
-    seedTestData(db);
-    expect(verifyPin(db, '000000')).toBe(false);
+    await seedTestData(db);
+    const auth = createAuthService(db);
+    expect(await auth.verifyPin('000000')).toBe(false);
     db.close();
   });
 
   it('createSession inserts a row in admin_sessions', () => {
     const db = createTestDb();
+    const auth = createAuthService(db);
     const before = db.prepare('SELECT COUNT(*) as count FROM admin_sessions').get() as {
       count: number;
     };
-    createSession(db);
+    auth.createSession();
     const after = db.prepare('SELECT COUNT(*) as count FROM admin_sessions').get() as {
       count: number;
     };
@@ -38,8 +35,9 @@ describe('authService', () => {
 
   it('validateSession returns session data for valid token', () => {
     const db = createTestDb();
-    const { token } = createSession(db);
-    const session = validateSession(db, token);
+    const auth = createAuthService(db);
+    const { token } = auth.createSession();
+    const session = auth.validateSession(token);
     expect(session).not.toBeNull();
     expect(session!.id).toBeDefined();
     db.close();
@@ -47,29 +45,29 @@ describe('authService', () => {
 
   it('validateSession returns null for expired session', () => {
     const db = createTestDb();
-    const { token, tokenHash } = createSession(db);
-    // Manually expire the session — store ISO string directly to preserve timezone
+    const auth = createAuthService(db);
+    const { token, tokenHash } = auth.createSession();
     db.prepare('UPDATE admin_sessions SET expires_at = ? WHERE token_hash = ?').run(
       new Date(Date.now() - 60_000).toISOString(),
       tokenHash,
     );
-    const session = validateSession(db, token);
+    const session = auth.validateSession(token);
     expect(session).toBeNull();
     db.close();
   });
 
   it('validateSession extends expires_at on successful validation (sliding window)', () => {
     const db = createTestDb();
-    const { token, tokenHash } = createSession(db);
+    const auth = createAuthService(db);
+    const { token, tokenHash } = auth.createSession();
 
     const before = db.prepare('SELECT expires_at FROM admin_sessions WHERE token_hash = ?').get(
       tokenHash,
     ) as { expires_at: string };
 
-    // Small delay to ensure time difference
     const beforeExpiry = new Date(before.expires_at).getTime();
 
-    validateSession(db, token);
+    auth.validateSession(token);
 
     const after = db.prepare('SELECT expires_at FROM admin_sessions WHERE token_hash = ?').get(
       tokenHash,
@@ -82,18 +80,20 @@ describe('authService', () => {
 
   it('destroySession removes the session row', () => {
     const db = createTestDb();
-    const { token } = createSession(db);
-    destroySession(db, token);
-    const session = validateSession(db, token);
+    const auth = createAuthService(db);
+    const { token } = auth.createSession();
+    auth.destroySession(token);
+    const session = auth.validateSession(token);
     expect(session).toBeNull();
     db.close();
   });
 
   it('destroyAllSessions clears all rows', () => {
     const db = createTestDb();
-    createSession(db);
-    createSession(db);
-    destroyAllSessions(db);
+    const auth = createAuthService(db);
+    auth.createSession();
+    auth.createSession();
+    auth.destroyAllSessions();
     const count = db.prepare('SELECT COUNT(*) as count FROM admin_sessions').get() as {
       count: number;
     };
