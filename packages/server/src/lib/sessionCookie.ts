@@ -1,5 +1,5 @@
 import type { Response } from "express";
-import { SESSION_COOKIE_NAME } from "@chore-app/shared";
+import { SESSION_COOKIE_NAME, SESSION_DURATION_MINUTES } from "@chore-app/shared";
 import type { AppConfig } from "../config.js";
 
 function isLocalOrigin(publicOrigin: string): boolean {
@@ -12,7 +12,7 @@ export function getSessionCookieOptions(config: AppConfig) {
     secure: !isLocalOrigin(config.publicOrigin),
     sameSite: "strict" as const,
     path: "/api",
-    maxAge: 600_000,
+    maxAge: SESSION_DURATION_MINUTES * 60 * 1000,
   };
 }
 
