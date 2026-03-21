@@ -114,9 +114,9 @@ This document captures the key technical decisions for the Chores app, the reaso
 
 ---
 
-## AD-10: scryptSync for PIN Hashing
+## AD-10: scrypt for PIN Hashing
 
-**Decision**: Use Node.js built-in `crypto.scryptSync` for PIN hashing. Store as `salt:hash` in the settings table.
+**Decision**: Use Node.js built-in `crypto.scrypt` (async) for PIN hashing. Store as `salt:hash` in the settings table.
 
 **Why**: scrypt is a memory-hard KDF suitable for password/PIN hashing. It's built into Node.js — no native addon required. This matters for Docker builds (no compilation step for bcrypt/argon2 on Alpine). For a single PIN with throttling (5 attempts per 15 minutes), scrypt is more than adequate.
 
@@ -186,14 +186,14 @@ This document captures the key technical decisions for the Chores app, the reaso
 
 ---
 
-## AD-16: Node 22 Alpine Base Image
+## AD-16: Node 24 Alpine Base Image
 
-**Decision**: Use `node:22-alpine` for all Docker stages.
+**Decision**: Use `node:24-alpine` for all Docker stages.
 
-**Why**: Node 22 is the current LTS (as of 2026). Alpine keeps the image small (~50MB vs ~350MB for Debian). `better-sqlite3` and `sharp` both ship prebuilt binaries for Alpine/musl, so no compilation tools are needed in the runtime stage.
+**Why**: Node 24 is the current LTS (as of 2026). Alpine keeps the image small (~50MB vs ~350MB for Debian). `better-sqlite3` and `sharp` both ship prebuilt binaries for Alpine/musl, so no compilation tools are needed in the runtime stage.
 
 **Alternatives considered**:
-- **node:22-slim (Debian)**: Larger image, but avoids potential musl compatibility issues. Kept as a fallback if Alpine binaries cause problems.
+- **node:24-slim (Debian)**: Larger image, but avoids potential musl compatibility issues. Kept as a fallback if Alpine binaries cause problems.
 
 ---
 

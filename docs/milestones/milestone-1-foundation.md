@@ -115,7 +115,7 @@ Bootstrap default settings and VAPID keys on first run.
   - `timezone`: from `TZ` env var
   - `activity_retention_days`: from `ACTIVITY_RETENTION_DAYS_DEFAULT` env var
   - Time slot windows: `morning_start=05:00`, `morning_end=10:59`, `afternoon_start=15:00`, `afternoon_end=18:29`, `bedtime_start=18:30`, `bedtime_end=21:30`
-- `packages/server/src/lib/crypto.ts`: `hashPin(pin)` → `salt:hash` using `crypto.scryptSync`, `verifyPin(pin, stored)` → boolean
+- `packages/server/src/lib/crypto.ts`: `hashPin(pin)` → `salt:hash` using async `crypto.scrypt`, `verifyPin(pin, stored)` → boolean
 - `packages/server/src/services/pushService.ts` (init portion): check if `/data/secrets/webpush.json` exists. If not, generate VAPID keys via `web-push.generateVAPIDKeys()`, write to file. Load keys on startup.
 
 **Validation**:
