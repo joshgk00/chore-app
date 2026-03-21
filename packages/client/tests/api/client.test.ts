@@ -1,82 +1,85 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
+import { http, HttpResponse } from 'msw';
 import { api } from '../../src/api/client.js';
-
-const mockFetch = vi.fn();
-
-beforeEach(() => {
-  vi.stubGlobal('fetch', mockFetch);
-});
-
-afterEach(() => {
-  vi.restoreAllMocks();
-});
+import { server } from '../msw/server.js';
 
 describe('api client', () => {
   describe('successful requests', () => {
     it('GET returns ok:true with parsed data', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ data: { id: 1, name: 'test' } }),
-      });
+      let capturedRequest: Request | undefined;
+      server.use(
+        http.get('/api/items', ({ request }) => {
+          capturedRequest = request;
+          return HttpResponse.json({ data: { id: 1, name: 'test' } });
+        }),
+      );
 
       const result = await api.get<{ id: number; name: string }>('/api/items');
 
       expect(result).toEqual({ ok: true, data: { id: 1, name: 'test' } });
-      expect(mockFetch).toHaveBeenCalledWith('/api/items', expect.objectContaining({
-        credentials: 'same-origin',
-        headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
-      }));
+      expect(capturedRequest!.url).toContain('/api/items');
+      expect(capturedRequest!.credentials).toBe('same-origin');
+      expect(capturedRequest!.headers.get('Content-Type')).toBe('application/json');
     });
 
     it('POST sends JSON body and returns data', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ data: { valid: true } }),
-      });
+      let capturedRequest: Request | undefined;
+      server.use(
+        http.post('/api/auth/verify', ({ request }) => {
+          capturedRequest = request.clone();
+          return HttpResponse.json({ data: { valid: true } });
+        }),
+      );
 
       const result = await api.post<{ valid: boolean }>('/api/auth/verify', { pin: '123456' });
 
       expect(result).toEqual({ ok: true, data: { valid: true } });
-      const [, options] = mockFetch.mock.calls[0];
-      expect(options.method).toBe('POST');
-      expect(options.body).toBe(JSON.stringify({ pin: '123456' }));
+      expect(capturedRequest!.method).toBe('POST');
+      const body = await capturedRequest!.json();
+      expect(body).toEqual({ pin: '123456' });
     });
 
     it('PUT sends JSON body with PUT method', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ data: { updated: true } }),
-      });
+      let capturedRequest: Request | undefined;
+      server.use(
+        http.put('/api/settings', ({ request }) => {
+          capturedRequest = request;
+          return HttpResponse.json({ data: { updated: true } });
+        }),
+      );
 
       const result = await api.put<{ updated: boolean }>('/api/settings', { timezone: 'US/Pacific' });
 
       expect(result).toEqual({ ok: true, data: { updated: true } });
-      const [, options] = mockFetch.mock.calls[0];
-      expect(options.method).toBe('PUT');
+      expect(capturedRequest!.method).toBe('PUT');
     });
 
     it('DELETE sends DELETE method', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ data: null }),
-      });
+      let capturedRequest: Request | undefined;
+      server.use(
+        http.delete('/api/sessions', ({ request }) => {
+          capturedRequest = request;
+          return HttpResponse.json({ data: null });
+        }),
+      );
 
       const result = await api.delete<null>('/api/sessions');
 
       expect(result).toEqual({ ok: true, data: null });
-      const [, options] = mockFetch.mock.calls[0];
-      expect(options.method).toBe('DELETE');
+      expect(capturedRequest!.method).toBe('DELETE');
     });
   });
 
   describe('HTTP error responses', () => {
     it('returns ok:false with server error details on 401', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        json: () => Promise.resolve({
-          error: { code: 'UNAUTHORIZED', message: 'Invalid credentials' },
-        }),
-      });
+      server.use(
+        http.post('/api/auth/verify', () =>
+          HttpResponse.json(
+            { error: { code: 'UNAUTHORIZED', message: 'Invalid credentials' } },
+            { status: 401 },
+          ),
+        ),
+      );
 
       const result = await api.post('/api/auth/verify', { pin: 'wrong' });
 
@@ -87,12 +90,14 @@ describe('api client', () => {
     });
 
     it('returns ok:false with server error details on 500', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        json: () => Promise.resolve({
-          error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' },
-        }),
-      });
+      server.use(
+        http.get('/api/health', () =>
+          HttpResponse.json(
+            { error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } },
+            { status: 500 },
+          ),
+        ),
+      );
 
       const result = await api.get('/api/health');
 
@@ -103,10 +108,9 @@ describe('api client', () => {
     });
 
     it('returns fallback error when response body has no error field', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        json: () => Promise.resolve({}),
-      });
+      server.use(
+        http.get('/api/missing', () => HttpResponse.json({}, { status: 400 })),
+      );
 
       const result = await api.get('/api/missing');
 
@@ -119,7 +123,9 @@ describe('api client', () => {
 
   describe('network errors', () => {
     it('returns NETWORK_ERROR when fetch throws', async () => {
-      mockFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+      server.use(
+        http.get('/api/health', () => HttpResponse.error()),
+      );
 
       const result = await api.get('/api/health');
 
@@ -132,10 +138,14 @@ describe('api client', () => {
 
   describe('parse errors', () => {
     it('returns PARSE_ERROR when response JSON is invalid', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.reject(new SyntaxError('Unexpected token')),
-      });
+      server.use(
+        http.get('/api/health', () =>
+          new HttpResponse('invalid json{{{', {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        ),
+      );
 
       const result = await api.get('/api/health');
 
@@ -148,27 +158,31 @@ describe('api client', () => {
 
   describe('request configuration', () => {
     it('includes credentials:same-origin on all requests', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ data: null }),
-      });
+      let capturedRequest: Request | undefined;
+      server.use(
+        http.get('/api/test', ({ request }) => {
+          capturedRequest = request;
+          return HttpResponse.json({ data: null });
+        }),
+      );
 
       await api.get('/api/test');
 
-      const [, options] = mockFetch.mock.calls[0];
-      expect(options.credentials).toBe('same-origin');
+      expect(capturedRequest!.credentials).toBe('same-origin');
     });
 
     it('POST without data sends no body', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ data: null }),
-      });
+      let capturedRequest: Request | undefined;
+      server.use(
+        http.post('/api/auth/logout', ({ request }) => {
+          capturedRequest = request;
+          return HttpResponse.json({ data: null });
+        }),
+      );
 
       await api.post('/api/auth/logout');
 
-      const [, options] = mockFetch.mock.calls[0];
-      expect(options.body).toBeUndefined();
+      expect(capturedRequest!.body).toBeNull();
     });
   });
 });

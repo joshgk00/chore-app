@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createTestDb } from '../db-helpers.js';
+import { runMigrations } from '../../src/db/migrate.js';
 
 describe('Migration runner', () => {
   it('applies all migrations on a fresh database', () => {
@@ -33,11 +34,13 @@ describe('Migration runner', () => {
       count: number;
     };
 
-    // Re-run migrations (already applied in createTestDb)
-    const applied = db.prepare('SELECT version FROM _migrations').all() as Array<{
-      version: string;
-    }>;
-    expect(applied.length).toBe(before.count);
+    // Running migrations a second time must not throw or insert duplicate rows
+    expect(() => runMigrations(db)).not.toThrow();
+
+    const after = db.prepare('SELECT COUNT(*) as count FROM _migrations').get() as {
+      count: number;
+    };
+    expect(after.count).toBe(before.count);
     db.close();
   });
 

@@ -2,9 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
+import { http, HttpResponse } from 'msw';
+import { server } from '../../../msw/server.js';
 import PinEntry from '../../../../src/features/admin/pin/PinEntry.js';
 
-// Mock the navigate function
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
@@ -13,10 +14,6 @@ vi.mock('react-router-dom', async () => {
     useNavigate: () => mockNavigate,
   };
 });
-
-// Mock fetch globally
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
 
 function renderPinEntry() {
   return render(
@@ -37,10 +34,11 @@ describe('PinEntry', () => {
   });
 
   it('navigates to admin on correct PIN', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ data: { valid: true } }),
-    });
+    server.use(
+      http.post('/api/auth/verify', () =>
+        HttpResponse.json({ data: { valid: true } }),
+      ),
+    );
 
     renderPinEntry();
     const user = userEvent.setup();
@@ -54,11 +52,14 @@ describe('PinEntry', () => {
   });
 
   it('shows error message on wrong PIN', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      json: () =>
-        Promise.resolve({ error: { code: 'UNAUTHORIZED', message: 'Invalid credentials' } }),
-    });
+    server.use(
+      http.post('/api/auth/verify', () =>
+        HttpResponse.json(
+          { error: { code: 'UNAUTHORIZED', message: 'Invalid credentials' } },
+          { status: 401 },
+        ),
+      ),
+    );
 
     renderPinEntry();
     const user = userEvent.setup();
@@ -72,13 +73,14 @@ describe('PinEntry', () => {
   });
 
   it('shows throttle message on 429 response', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      json: () =>
-        Promise.resolve({
-          error: { code: 'TOO_MANY_REQUESTS', message: 'Too many attempts' },
-        }),
-    });
+    server.use(
+      http.post('/api/auth/verify', () =>
+        HttpResponse.json(
+          { error: { code: 'TOO_MANY_REQUESTS', message: 'Too many attempts' } },
+          { status: 429 },
+        ),
+      ),
+    );
 
     renderPinEntry();
     const user = userEvent.setup();

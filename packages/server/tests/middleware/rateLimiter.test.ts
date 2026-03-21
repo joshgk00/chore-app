@@ -36,7 +36,7 @@ describe('rateLimiter', () => {
     rateLimiter._store.clear();
   });
 
-  it('allows the first 5 requests from same IP', () => {
+  it('blocks requests once the failure limit is reached', () => {
     for (let i = 0; i < 5; i++) {
       rateLimiter.recordFailure('127.0.0.1');
     }

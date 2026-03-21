@@ -1,17 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { http, HttpResponse, delay } from 'msw';
+import { server } from '../msw/server.js';
 import AdminGuard from '../../src/components/AdminGuard.js';
-
-const mockFetch = vi.fn();
-
-beforeEach(() => {
-  vi.stubGlobal('fetch', mockFetch);
-});
-
-afterEach(() => {
-  vi.restoreAllMocks();
-});
 
 function renderWithRouter(initialRoute = '/admin') {
   return render(
@@ -28,7 +20,12 @@ function renderWithRouter(initialRoute = '/admin') {
 
 describe('AdminGuard', () => {
   it('shows loading state with aria-live region while checking session', () => {
-    mockFetch.mockReturnValueOnce(new Promise(() => {}));
+    server.use(
+      http.get('/api/auth/session', async () => {
+        await delay('infinite');
+        return HttpResponse.json({ data: { valid: true } });
+      }),
+    );
 
     renderWithRouter();
 
@@ -38,10 +35,11 @@ describe('AdminGuard', () => {
   });
 
   it('renders child route when session is valid', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ data: { valid: true } }),
-    });
+    server.use(
+      http.get('/api/auth/session', () =>
+        HttpResponse.json({ data: { valid: true } }),
+      ),
+    );
 
     renderWithRouter();
 
@@ -52,12 +50,14 @@ describe('AdminGuard', () => {
   });
 
   it('redirects to /admin/pin when session is invalid', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      json: () => Promise.resolve({
-        error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
-      }),
-    });
+    server.use(
+      http.get('/api/auth/session', () =>
+        HttpResponse.json(
+          { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
+          { status: 401 },
+        ),
+      ),
+    );
 
     renderWithRouter();
 
@@ -68,7 +68,9 @@ describe('AdminGuard', () => {
   });
 
   it('redirects to /admin/pin on network error', async () => {
-    mockFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    server.use(
+      http.get('/api/auth/session', () => HttpResponse.error()),
+    );
 
     renderWithRouter();
 
