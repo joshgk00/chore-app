@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type Database from 'better-sqlite3';
 import { createTestDb } from '../db-helpers.js';
 import { createActivityService } from '../../src/services/activityService.js';
@@ -7,6 +7,10 @@ let db: Database.Database;
 
 beforeEach(() => {
   db = createTestDb();
+});
+
+afterEach(() => {
+  db.close();
 });
 
 describe('activityService', () => {

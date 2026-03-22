@@ -5,13 +5,11 @@ type ApiResult<T> = { ok: true; data: T } | { ok: false; error: ApiError["error"
 const REQUEST_TIMEOUT_MS = 10_000;
 
 async function request<T>(url: string, options?: RequestInit): Promise<ApiResult<T>> {
-  const controller = new AbortController();
-  // Race fetch against a timeout — AbortSignal.timeout is not used because it is
-  // incompatible with MSW in the jsdom test environment.
+  // Race fetch against a manual timeout — AbortSignal is not passed to fetch because
+  // it is incompatible with MSW in the jsdom test environment.
   let timeoutId: ReturnType<typeof setTimeout>;
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
-      controller.abort();
       reject(new DOMException("Request timed out", "AbortError"));
     }, REQUEST_TIMEOUT_MS);
   });

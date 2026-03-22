@@ -13,22 +13,21 @@ function buildQueryClient(): QueryClient {
   });
 }
 
-function Providers({ children }: { children: ReactNode }) {
-  const queryClient = buildQueryClient();
-  return (
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
-        <OnlineProvider>{children}</OnlineProvider>
-      </MemoryRouter>
-    </QueryClientProvider>
-  );
-}
-
 export function renderWithProviders(
   ui: React.ReactElement,
   options?: Omit<RenderOptions, 'wrapper'>,
 ): RenderResult {
-  return render(ui, { wrapper: Providers, ...options });
+  const queryClient = buildQueryClient();
+  function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <OnlineProvider>{children}</OnlineProvider>
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+  }
+  return render(ui, { wrapper: Wrapper, ...options });
 }
 
 export * from '@testing-library/react';

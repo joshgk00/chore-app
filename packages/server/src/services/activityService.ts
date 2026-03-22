@@ -25,7 +25,7 @@ export function createActivityService(db: Database.Database): ActivityService {
   const selectRecentStmt = db.prepare(
     `SELECT id, event_type, entity_type, entity_id, summary, metadata_json, created_at
      FROM activity_events
-     ORDER BY created_at DESC
+     ORDER BY created_at DESC, id DESC
      LIMIT ?`,
   );
 

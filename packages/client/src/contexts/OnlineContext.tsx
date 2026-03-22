@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { getDraftsWithFailedSubmission, deleteDraft } from "../lib/draft.js";
 import { api } from "../api/client.js";
 
@@ -14,7 +14,6 @@ export function useOnline(): boolean {
 
 export function OnlineProvider({ children }: { children: React.ReactNode }) {
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
-  const retryDelayRef = useRef(1000);
 
   const syncFailedDrafts = useCallback(async () => {
     const drafts = await getDraftsWithFailedSubmission();
@@ -40,8 +39,6 @@ export function OnlineProvider({ children }: { children: React.ReactNode }) {
         // leave draft intact, retry next time
       }
     }
-
-    retryDelayRef.current = 1000;
   }, []);
 
   useEffect(() => {
