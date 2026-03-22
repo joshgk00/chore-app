@@ -1,4 +1,7 @@
-import { type RequestHandler } from 'msw';
+import { http, HttpResponse, type RequestHandler } from 'msw';
 
-// No default handlers — individual tests configure responses via server.use()
-export const handlers: RequestHandler[] = [];
+export const handlers: RequestHandler[] = [
+  http.get('/api/auth/session', () =>
+    HttpResponse.json({ data: { authenticated: false } }),
+  ),
+];

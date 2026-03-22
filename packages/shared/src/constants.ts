@@ -8,6 +8,14 @@ export const DEFAULT_TIME_SLOTS = {
   bedtime_end: "21:30",
 } as const;
 
+// Named slot window exports (consumed by timeSlots.ts)
+export const DEFAULT_MORNING_START = DEFAULT_TIME_SLOTS.morning_start;
+export const DEFAULT_MORNING_END = DEFAULT_TIME_SLOTS.morning_end;
+export const DEFAULT_AFTERNOON_START = DEFAULT_TIME_SLOTS.afternoon_start;
+export const DEFAULT_AFTERNOON_END = DEFAULT_TIME_SLOTS.afternoon_end;
+export const DEFAULT_BEDTIME_START = DEFAULT_TIME_SLOTS.bedtime_start;
+export const DEFAULT_BEDTIME_END = DEFAULT_TIME_SLOTS.bedtime_end;
+
 // Badge key constants
 export const BADGE_KEYS = {
   FIRST_STEP: "first_step",
@@ -27,7 +35,11 @@ export const PIN_MIN_LENGTH = 6;
 export const SESSION_DURATION_MINUTES = 10;
 export const SESSION_COOKIE_NAME = "chores_session";
 
-// Rate limiting
+// Rate limiting (auth)
 export const MAX_PIN_ATTEMPTS = 5;
 export const RATE_LIMIT_WINDOW_MINUTES = 15;
 export const COOLDOWN_ESCALATION_MINUTES = [15, 30, 60] as const;
+
+// Rate limiting (submission endpoints: POST /routine-completions, /chore-logs, /reward-requests)
+export const SUBMISSION_RATE_LIMIT_MAX = 10;
+export const SUBMISSION_RATE_LIMIT_WINDOW_SECONDS = 10;
