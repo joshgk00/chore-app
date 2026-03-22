@@ -8,7 +8,7 @@
 
 ## PR 1a: Infrastructure
 
-Establishes the shared foundation all subsequent PRs build on: client test setup, MSW, online detection, IndexedDB drafts, idempotency utilities, time slot logic, and activity service.
+Establishes the shared foundation all subsequent PRs build on: client test setup, MSW, online detection, IndexedDB drafts, idempotency utilities, and activity service. No UI screens, no feature-specific logic — just the plumbing subsequent PRs build on.
 
 ### Dependencies to install
 
@@ -24,23 +24,13 @@ npm install --save-dev --workspace packages/client fake-indexeddb @testing-libra
 - `FrequencyType`: `'once_per_day' | 'once_per_slot' | 'unlimited'`
 - `TimeSlot`: `'Morning' | 'Afternoon' | 'Bedtime' | 'Any Time'`
 - `BootstrapData` (initial shape — empty, extended by each subsequent PR)
+- `SlotConfig` (base type — consumed by `timeSlots.ts` in PR 1b)
+- `ActivityEvent` shape: `eventType`, `entityType`, `entityId`, `summary`, `metadata`, `createdAt`
 
 `packages/shared/src/constants.ts` — default slot windows:
 - `DEFAULT_MORNING_START`, `DEFAULT_MORNING_END`
 - `DEFAULT_AFTERNOON_START`, `DEFAULT_AFTERNOON_END`
 - `DEFAULT_BEDTIME_START`, `DEFAULT_BEDTIME_END`
-
-### Server: time slot logic
-
-`packages/server/src/lib/timeSlots.ts`:
-- `getCurrentSlot(now, timezone, slotConfig)`: returns which slot(s) are active at the given time
-- `isRoutineVisible(routine, now, timezone, slotConfig)`: true if the routine's slot is currently active or if it's "Any Time"
-- `getCompletionWindowKey(routine, localDate)`: generates the uniqueness key
-  - `once_per_day`: `routine:{id}:day:{localDate}`
-  - `once_per_slot`: `routine:{id}:slot:{localDate}:{timeSlot}`
-  - `unlimited`: returns `null` (no uniqueness check)
-
-Slot config comes from `settingsService.getSlotConfig(db)` — reads customized windows from the settings table, falling back to `DEFAULT_*` constants.
 
 ### Server: activityService
 
@@ -48,22 +38,15 @@ Slot config comes from `settingsService.getSlotConfig(db)` — reads customized 
 - `recordActivity(db, event)`: inserts an activity event row — called from `routineService`, `choreService`, and `rewardService` from PR 1b onward
 - `getRecentActivity(db, limit)`: returns the most recent `limit` activity events (default 20)
 
-`ActivityEvent` shape (defined upfront, used by all PRs):
-- `eventType`: string (e.g. `'routine_submitted'`, `'chore_submitted'`, `'reward_requested'`, `'chore_canceled'`, `'reward_canceled'`, `'badge_earned'`)
-- `entityType`: string | null (e.g. `'routine_completion'`, `'chore_log'`, `'reward_request'`, `'badge'`)
-- `entityId`: number | null
-- `summary`: string | null (human-readable, e.g. `'Completed Morning Routine for 5 points'`)
-- `metadata`: JSON | null (optional structured data for future use)
-- `createdAt`: ISO timestamp (set server-side)
+The `ActivityEvent` type is defined in `packages/shared/src/types.ts` (see above) — all PRs import from shared.
 
 PRs 1b–3 import and call `activityService.recordActivity` instead of inline inserts. PR 4 adds the routes and Me screen that expose this data — no service refactor needed.
 
-### Server: initial bootstrap endpoint + rate limiting
-
-`packages/server/src/routes/child.ts` (new or extend):
-- `GET /api/app/bootstrap` — returns minimal `BootstrapData` (no routine/chore/reward/badge fields yet; extended by each subsequent PR)
+### Server: rate limiting
 
 Submission endpoints (`POST /api/routine-completions`, `POST /api/chore-logs`, `POST /api/reward-requests`) share a rate limiter: 10 requests per 10 seconds per IP. Frontend disables submit buttons during in-flight requests to prevent double-tap.
+
+The `GET /api/app/bootstrap` endpoint is deferred to PR 1b (it requires time slot filtering, which is also in PR 1b).
 
 Every route handler wrapped in try-catch with `next(err)`.
 
@@ -75,7 +58,7 @@ Every route handler wrapped in try-catch with `next(err)`.
 - **Offline sync on reconnect**: When the `online` event fires, query IndexedDB for any drafts with `submissionFailed: true` (add this flag to the draft schema in `draft.ts`). For each, re-POST using the stored idempotency key. On `200` or `409` (already exists): delete draft. On network error: leave in IndexedDB, retry on next `online` event with exponential backoff. Surface a toast to the child: `'Syncing your work...'`
 
 `packages/client/src/lib/api.ts` (fetch client):
-- All API calls use a 10-second fetch timeout (`AbortSignal.timeout(10_000)`). On timeout, the mutation is treated as a network error — drafts are preserved with their idempotency key for retry. TanStack Query's `retry: 2` with exponential backoff handles transient failures automatically.
+- All API calls use a 10-second timeout via `AbortController` + `setTimeout`. On timeout, the mutation is treated as a network error — drafts are preserved with their idempotency key for retry. TanStack Query's `retry: 2` with exponential backoff handles transient failures automatically.
 
 `packages/client/src/lib/draft.ts` (IndexedDB via `idb`):
 - `getDraft(routineId)`: returns draft or `undefined`
@@ -89,27 +72,14 @@ Every route handler wrapped in try-catch with `next(err)`.
 - Global test setup: configures jsdom, React Testing Library cleanup, starts MSW server in `beforeAll`, resets handlers in `afterEach`, stops server in `afterAll`
 
 `packages/client/tests/msw-handlers.ts`:
-- Default MSW handlers for `/api/app/bootstrap`, `/api/auth/session`
-- Extended by PR 1b for routine endpoints and by later PRs for their endpoints
+- Default MSW handlers for `/api/auth/session`
+- Extended by PR 1b for `/api/app/bootstrap` and routine endpoints; later PRs add their own handlers
 
 `packages/client/tests/test-utils.tsx`:
 - `renderWithProviders(ui)`: wraps with `QueryClientProvider` (fresh `QueryClient` per test), `MemoryRouter`, `OnlineProvider`
 - Re-exports all `@testing-library/react` utilities
 
 ### Tests
-
-**Server unit — `packages/server/tests/lib/timeSlots.test.ts`**:
-- `getCurrentSlot` returns `Morning` at 7:00 AM
-- `getCurrentSlot` returns `Afternoon` at 4:00 PM
-- `getCurrentSlot` returns `Bedtime` at 8:00 PM
-- `getCurrentSlot` returns null during gap period (12:00 PM)
-- "Any Time" routine is always visible regardless of time
-- Slot boundaries are inclusive (5:00 AM is Morning, 10:59 AM is Morning)
-- Custom slot windows from settings are used over defaults
-- Timezone parameter affects slot matching (UTC vs America/New_York)
-- Day boundary: 11:59 PM submission uses today's `localDate`, 12:00 AM uses tomorrow's
-- DST spring-forward: slot boundaries still correct on transition day
-- Device timezone differs from household timezone: server uses household TZ from settings, not request TZ
 
 **Client unit — `packages/client/tests/lib/draft.test.ts`**:
 - `saveDraft` + `getDraft` round-trips correctly (`fake-indexeddb`)
@@ -123,13 +93,12 @@ Every route handler wrapped in try-catch with `next(err)`.
 
 ### Definition of done
 
-- [ ] Time slot logic correct across all 11 test cases
-- [ ] `GET /api/app/bootstrap` returns minimal empty data structure
 - [ ] Rate limiter configured for all submission endpoints
 - [ ] `OnlineContext` detects connectivity changes and triggers draft retry on reconnect
 - [ ] `draft.ts` round-trips correctly with `fake-indexeddb`; draft preserves checked items and randomized order
 - [ ] `idempotency.ts` generates unique UUID keys
 - [ ] MSW test infrastructure set up (`setup.ts`, `test-utils.tsx`, `msw-handlers.ts`)
+- [ ] `activityService.recordActivity` and `getRecentActivity` covered by unit tests
 - [ ] `npm run test -- --run` passes green
 
 ---
@@ -137,6 +106,18 @@ Every route handler wrapped in try-catch with `next(err)`.
 ## PR 1b: Routines (read + complete)
 
 Builds on PR 1a. Adds the full routines feature end-to-end — service, routes, client hooks, UI screens, and tests.
+
+### Server: time slot logic
+
+`packages/server/src/lib/timeSlots.ts`:
+- `getCurrentSlot(now, timezone, slotConfig)`: returns which slot(s) are active at the given time
+- `isRoutineVisible(routine, now, timezone, slotConfig)`: true if the routine's slot is currently active or if it's "Any Time"
+- `getCompletionWindowKey(routine, localDate)`: generates the uniqueness key
+  - `once_per_day`: `routine:{id}:day:{localDate}`
+  - `once_per_slot`: `routine:{id}:slot:{localDate}:{timeSlot}`
+  - `unlimited`: returns `null` (no uniqueness check)
+
+Slot config comes from `settingsService.getSlotConfig(db)` — reads customized windows from the settings table, falling back to `DEFAULT_*` constants.
 
 ### Shared types (routines)
 
@@ -168,7 +149,7 @@ Builds on PR 1a. Adds the full routines feature end-to-end — service, routes, 
 `packages/server/src/routes/child.ts` (new or extend):
 - `GET /api/routines` — calls `routineService.getActiveRoutines`
 - `GET /api/routines/:id` — calls `routineService.getRoutineById`
-- `GET /api/app/bootstrap` — updated to return `{ routines: slot-filtered list, pendingRoutineCount }` (builds on PR 1a's initial endpoint)
+- `GET /api/app/bootstrap` — creates the bootstrap endpoint; returns `{ routines: slot-filtered list, pendingRoutineCount }` using time slot logic from `timeSlots.ts`
 
 `packages/server/src/routes/submissions.ts` (new):
 - `POST /api/routine-completions` — body: `{ routineId, checklistSnapshot, randomizedOrder, idempotencyKey, localDate }`
@@ -213,6 +194,19 @@ Every route handler wrapped in try-catch with `next(err)`.
 
 ### Tests
 
+**Server unit — `packages/server/tests/lib/timeSlots.test.ts`**:
+- `getCurrentSlot` returns `Morning` at 7:00 AM
+- `getCurrentSlot` returns `Afternoon` at 4:00 PM
+- `getCurrentSlot` returns `Bedtime` at 8:00 PM
+- `getCurrentSlot` returns null during gap period (12:00 PM)
+- "Any Time" routine is always visible regardless of time
+- Slot boundaries are inclusive (5:00 AM is Morning, 10:59 AM is Morning)
+- Custom slot windows from settings are used over defaults
+- Timezone parameter affects slot matching (UTC vs America/New_York)
+- Day boundary: 11:59 PM submission uses today's `localDate`, 12:00 AM uses tomorrow's
+- DST spring-forward: slot boundaries still correct on transition day
+- Device timezone differs from household timezone: server uses household TZ from settings, not request TZ
+
 **Server unit — `packages/server/tests/services/routineService.test.ts`**:
 - `getActiveRoutines` returns only active routines with active checklist items
 - `getActiveRoutines` excludes archived routines
@@ -234,7 +228,7 @@ Every route handler wrapped in try-catch with `next(err)`.
 - `GET /api/routines/:id` returns routine without auth
 - `GET /api/routines/:id` with nonexistent ID returns 404
 - `POST /api/routine-completions` creates completion
-- `GET /api/app/bootstrap` returns routines and `pendingRoutineCount`
+- `GET /api/app/bootstrap` returns slot-filtered routines and `pendingRoutineCount`
 - All responses follow `{ "data": ... }` envelope
 
 **Client component — `packages/client/tests/features/child/routines/RoutineChecklist.test.tsx`**:
