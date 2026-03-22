@@ -76,6 +76,16 @@ packages/server    packages/client
 - Extract shared test setup into helper functions at the top of the file or in shared helpers.
 - Test middleware and API client code -- these are critical paths.
 
+### Submission & Data Integrity
+- Every write mutation wraps all steps in a single db.transaction() — from idempotency check through activity event. If any step fails, everything rolls back.
+- Insert ordering: entity record → ledger entry → badge evaluation → activity event.
+- All POST mutations are idempotent via idempotencyKey. Duplicates return the existing record, never error.
+- Snapshot fields capture entity state at submission time and are immutable after that.
+- Point balance is always aggregated live from points_ledger and pending reward_requests — no cached balance.
+- Cancel operations are idempotent: re-canceling returns the existing canceled record.
+- Destructive or costly user actions require confirmation before the POST fires.
+- See package-level CLAUDE.md files for implementation details.
+
 ## Specs & Docs
 
 - Feature spec: `docs/chores-spec-v1_1.md`

@@ -40,7 +40,7 @@ Never skip the try-catch. The error handler middleware depends on `next(err)`.
 ### Database
 
 - Cache prepared statements at module scope or service init, not inline per call.
-- Use transactions for multi-statement operations.
+- Use db.transaction() for all multi-statement operations. Wrap every step from idempotency check through activity event in a single transaction so any failure rolls back the entire write.
 - All queries use `?` parameterized placeholders. No string interpolation in SQL.
 - Migrations in `src/db/migrations/` are numbered sequentially and idempotent (`IF NOT EXISTS`).
 
@@ -56,6 +56,21 @@ Never skip the try-catch. The error handler middleware depends on `next(err)`.
 - The centralized `errorHandler` middleware converts these to structured JSON responses.
 - Process-level handlers (`unhandledRejection`, `uncaughtException`) must exist in the entry point.
 - Wrap the startup init sequence in try-catch -- a failed migration or missing env var shouldn't crash silently.
+
+### Submissions
+- All submission services follow this pattern inside a single db.transaction():
+  1. Check idempotency key — if exists, return existing record
+  2. Load and validate entity (active, not archived) — throw ConflictError if invalid
+  3. Insert entity record (completion/log/request) with snapshot fields
+  4. **If requires_approval = false (auto-approved path only):**
+     a. Insert ledger entry
+     b. Call evaluateBadges (when wired in PR 4)
+     c. Set status = 'approved'
+  5. **If requires_approval = true:** set status = 'pending', skip ledger/badges
+  6. activityService.recordActivity (always, regardless of approval path)
+  7. Return the new record
+- Cancel operations: idempotent for already-canceled (return existing), ConflictError for approved/rejected only.
+- Rate limiting: submission POST endpoints share a limiter (10 requests / 10 seconds / IP).
 
 ### Configuration
 
