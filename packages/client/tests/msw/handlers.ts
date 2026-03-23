@@ -30,6 +30,28 @@ const mockRoutines = [
   },
 ];
 
+const mockChoreTiers = [
+  { id: 1, choreId: 1, name: "Quick Clean", points: 3, sortOrder: 1 },
+  { id: 2, choreId: 1, name: "Deep Clean", points: 5, sortOrder: 2 },
+];
+
+const mockChores = [
+  {
+    id: 1,
+    name: "Clean Kitchen",
+    requiresApproval: false,
+    sortOrder: 1,
+    tiers: mockChoreTiers,
+  },
+  {
+    id: 2,
+    name: "Yard Work",
+    requiresApproval: true,
+    sortOrder: 2,
+    tiers: [{ id: 3, choreId: 2, name: "Basic", points: 10, sortOrder: 1 }],
+  },
+];
+
 export const handlers: RequestHandler[] = [
   http.get('/api/auth/session', () =>
     HttpResponse.json(
@@ -53,9 +75,13 @@ export const handlers: RequestHandler[] = [
     return HttpResponse.json({ data: routine });
   }),
 
+  http.get('/api/chores', () =>
+    HttpResponse.json({ data: mockChores }),
+  ),
+
   http.get('/api/app/bootstrap', () =>
     HttpResponse.json({
-      data: { routines: mockRoutines, pendingRoutineCount: 0 },
+      data: { routines: mockRoutines, pendingRoutineCount: 0, pendingChoreCount: 0 },
     }),
   ),
 
@@ -82,6 +108,45 @@ export const handlers: RequestHandler[] = [
       { status: 201 },
     ),
   ),
+
+  http.post('/api/chore-logs', () =>
+    HttpResponse.json(
+      {
+        data: {
+          id: 1,
+          choreId: 1,
+          choreNameSnapshot: "Clean Kitchen",
+          tierId: 1,
+          tierNameSnapshot: "Quick Clean",
+          pointsSnapshot: 3,
+          requiresApprovalSnapshot: false,
+          loggedAt: "2026-03-15T12:00:00",
+          localDate: "2026-03-15",
+          status: "approved",
+          idempotencyKey: "test-key",
+        },
+      },
+      { status: 201 },
+    ),
+  ),
+
+  http.post('/api/chore-logs/:id/cancel', () =>
+    HttpResponse.json({
+      data: {
+        id: 1,
+        choreId: 1,
+        choreNameSnapshot: "Clean Kitchen",
+        tierId: 1,
+        tierNameSnapshot: "Quick Clean",
+        pointsSnapshot: 3,
+        requiresApprovalSnapshot: false,
+        loggedAt: "2026-03-15T12:00:00",
+        localDate: "2026-03-15",
+        status: "canceled",
+        idempotencyKey: "test-key",
+      },
+    }),
+  ),
 ];
 
-export { mockRoutines, mockChecklistItems };
+export { mockRoutines, mockChecklistItems, mockChores, mockChoreTiers };

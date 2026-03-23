@@ -120,6 +120,38 @@ describe("TodayScreen", () => {
     expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
   });
 
+  it("renders pending chore count badge when pendingChoreCount is greater than zero", async () => {
+    server.use(
+      http.get("/api/app/bootstrap", () =>
+        HttpResponse.json({
+          data: {
+            routines: [
+              {
+                id: 1,
+                name: "Morning Routine",
+                timeSlot: "morning",
+                completionRule: "once_per_day",
+                points: 5,
+                requiresApproval: false,
+                randomizeItems: false,
+                sortOrder: 1,
+                items: [{ id: 1, routineId: 1, label: "Brush teeth", sortOrder: 1 }],
+              },
+            ],
+            pendingRoutineCount: 0,
+            pendingChoreCount: 2,
+          },
+        }),
+      ),
+    );
+
+    renderTodayScreen();
+
+    await waitFor(() => {
+      expect(screen.getByText("2 pending")).toBeInTheDocument();
+    });
+  });
+
   it("refetches when refresh button is clicked", async () => {
     let requestCount = 0;
     server.use(

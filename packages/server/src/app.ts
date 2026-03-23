@@ -15,6 +15,7 @@ import { createAuthService } from "./services/authService.js";
 import { createSettingsService } from "./services/settingsService.js";
 import { createActivityService } from "./services/activityService.js";
 import { createRoutineService } from "./services/routineService.js";
+import { createChoreService } from "./services/choreService.js";
 import type { AppConfig } from "./config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -33,6 +34,7 @@ export function createApp(db: Database.Database, config: AppConfig) {
   const settingsService = createSettingsService(db);
   const activityService = createActivityService(db);
   const routineService = createRoutineService(db, activityService);
+  const choreService = createChoreService(db, activityService);
 
   app.get("/api/health", (_req, res) => {
     res.json({ data: { status: "ok" } });
@@ -40,8 +42,8 @@ export function createApp(db: Database.Database, config: AppConfig) {
 
   app.use("/api/auth", createAuthRoutes(authService, config));
 
-  app.use("/api", createChildRoutes(routineService, settingsService));
-  app.use("/api", createSubmissionRoutes(routineService, settingsService));
+  app.use("/api", createChildRoutes(routineService, choreService, settingsService));
+  app.use("/api", createSubmissionRoutes(routineService, choreService, settingsService));
 
   app.use("/api/admin", adminAuth(authService, config));
   app.use("/api/admin", createAdminRoutes(settingsService));

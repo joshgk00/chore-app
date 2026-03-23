@@ -4,6 +4,7 @@ import type Database from 'better-sqlite3';
 import { createTestDb, seedTestData, createTestConfig } from '../db-helpers.js';
 import { createApp } from '../../src/app.js';
 import { seedRoutineData } from '../helpers/seed-routines.js';
+import { seedChoreData } from '../helpers/seed-chores.js';
 
 const testConfig = createTestConfig();
 let db: Database.Database;
@@ -12,6 +13,7 @@ beforeEach(async () => {
   db = createTestDb();
   await seedTestData(db);
   seedRoutineData(db);
+  seedChoreData(db);
 });
 
 afterEach(() => {
@@ -164,5 +166,120 @@ describe('submission routes', () => {
 
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('CONFLICT');
+  });
+});
+
+const validChoreBody = {
+  choreId: 1,
+  tierId: 1,
+  idempotencyKey: 'chore-test-key-1',
+  localDate: '2026-03-15',
+};
+
+describe('chore-log submission routes', () => {
+  it('valid chore log returns 201', async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .post('/api/chore-logs')
+      .send(validChoreBody);
+
+    expect(res.status).toBe(201);
+    expect(res.body.data).toHaveProperty('id');
+    expect(res.body.data.choreNameSnapshot).toBe('Clean Kitchen');
+    expect(res.body.data.tierNameSnapshot).toBe('Quick Clean');
+    expect(res.body.data.pointsSnapshot).toBe(3);
+    expect(res.body.data.status).toBe('approved');
+  });
+
+  it('missing choreId returns 422', async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .post('/api/chore-logs')
+      .send({ ...validChoreBody, choreId: undefined });
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('missing tierId returns 422', async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .post('/api/chore-logs')
+      .send({ ...validChoreBody, tierId: undefined });
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('missing idempotencyKey returns 422', async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .post('/api/chore-logs')
+      .send({ ...validChoreBody, idempotencyKey: undefined });
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('missing localDate returns 422', async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .post('/api/chore-logs')
+      .send({ ...validChoreBody, localDate: undefined });
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('invalid localDate format returns 422', async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .post('/api/chore-logs')
+      .send({ ...validChoreBody, localDate: '03/15/2026' });
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('idempotencyKey exceeding 255 chars returns 422', async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .post('/api/chore-logs')
+      .send({ ...validChoreBody, idempotencyKey: 'k'.repeat(256) });
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('archived chore returns 409', async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .post('/api/chore-logs')
+      .send({ ...validChoreBody, choreId: 3, tierId: 4, idempotencyKey: 'archived-test' });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('CONFLICT');
+  });
+
+  it('cancel approved log returns 409', async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post('/api/chore-logs')
+      .send(validChoreBody);
+    expect(createRes.body.data.status).toBe('approved');
+
+    const cancelRes = await request(app)
+      .post(`/api/chore-logs/${createRes.body.data.id}/cancel`);
+
+    expect(cancelRes.status).toBe(409);
+    expect(cancelRes.body.error.code).toBe('CONFLICT');
+  });
+
+  it('cancel nonexistent log returns 404', async () => {
+    const app = buildApp();
+    const res = await request(app).post('/api/chore-logs/999/cancel');
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('NOT_FOUND');
   });
 });
