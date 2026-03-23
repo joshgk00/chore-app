@@ -7,9 +7,9 @@ import RecentActivity from "./RecentActivity.js";
 import NotificationOptIn from "./NotificationOptIn.js";
 
 export default function MeScreen() {
-  const { data: points, isLoading: isLoadingPoints, error: pointsError } = usePoints();
-  const { data: badges, isLoading: isLoadingBadges, error: badgesError } = useBadges();
-  const { data: activity, isLoading: isLoadingActivity, error: activityError } = useRecentActivity();
+  const { data: points, isLoading: isLoadingPoints, error: pointsError, refetch: refetchPoints } = usePoints();
+  const { data: badges, isLoading: isLoadingBadges, error: badgesError, refetch: refetchBadges } = useBadges();
+  const { data: activity, isLoading: isLoadingActivity, error: activityError, refetch: refetchActivity } = useRecentActivity();
 
   const isLoading = isLoadingPoints || isLoadingBadges || isLoadingActivity;
   const error = pointsError || badgesError || activityError;
@@ -35,7 +35,7 @@ export default function MeScreen() {
           <p className="mt-2 text-[var(--color-text-muted)]">Please check your connection and try again.</p>
           <button
             type="button"
-            onClick={() => window.location.reload()}
+            onClick={() => { refetchPoints(); refetchBadges(); refetchActivity(); }}
             className="mt-6 rounded-full bg-amber-500 px-6 py-3 font-display font-bold text-white shadow-md transition-all duration-200 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500"
           >
             Try Again

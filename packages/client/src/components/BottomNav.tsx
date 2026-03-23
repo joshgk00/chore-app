@@ -51,7 +51,6 @@ export default function BottomNav() {
           <NavLink
             key={tab.to}
             to={tab.to}
-            aria-current={undefined}
             className={({ isActive }) =>
               `relative flex flex-1 flex-col items-center gap-0.5 pb-3 pt-2 text-[11px] font-semibold ${
                 isActive
