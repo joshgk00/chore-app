@@ -29,6 +29,7 @@ export default {
         'glow-amber': '0 0 20px rgba(251,191,36,0.3)',
         'glow-emerald': '0 0 20px rgba(52,211,153,0.3)',
         'glow-violet': '0 0 16px rgba(139,92,246,0.25)',
+        'toast': '0 8px 24px rgba(0,0,0,0.16), 0 2px 8px rgba(0,0,0,0.08)',
       },
     },
   },

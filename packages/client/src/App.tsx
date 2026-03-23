@@ -34,7 +34,7 @@ function ChildErrorFallback() {
         <p className="mt-2 text-[var(--color-text-muted)]">Let's go back and try again.</p>
         <a
           href="/today"
-          className="mt-6 inline-block rounded-full bg-emerald-500 px-6 py-3 font-display font-bold text-white shadow-card"
+          className="mt-6 inline-block rounded-full bg-[var(--color-emerald-500)] px-6 py-3 font-display font-bold text-white shadow-card"
         >
           Go Home
         </a>
@@ -78,10 +78,8 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-          {/* Redirect root to today */}
           <Route path="/" element={<Navigate to="/today" replace />} />
 
-          {/* Child-facing routes with bottom nav */}
           <Route element={<AppShell />}>
             <Route path="/today" element={<Today />} />
             <Route path="/routines" element={<Routines />} />
@@ -90,10 +88,8 @@ export default function App() {
             <Route path="/me" element={<Me />} />
           </Route>
 
-          {/* Admin PIN entry (public) */}
           <Route path="/admin/pin" element={<PinEntry />} />
 
-          {/* Protected admin routes */}
           <Route element={<AdminGuard />}>
             <Route element={<AdminLayout />}>
               <Route path="/admin" element={<AdminPlaceholder title="Admin Dashboard" />} />

@@ -12,7 +12,7 @@ function formatEventTime(createdAt?: string): string {
 
 function getDotColor(eventType: string): string {
   if (eventType.startsWith("routine")) return "bg-sky-500";
-  if (eventType.startsWith("chore")) return "bg-amber-500";
+  if (eventType.startsWith("chore")) return "bg-[var(--color-amber-500)]";
   if (eventType.startsWith("reward")) return "bg-violet-500";
   return "bg-[var(--color-text-faint)]";
 }

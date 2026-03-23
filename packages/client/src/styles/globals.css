@@ -58,7 +58,7 @@
   /* Nav */
   --color-nav-bg: rgba(255, 255, 255, 0.92);
   --color-nav-active: #d97706;
-  --color-nav-inactive: #94a3b8;
+  --color-nav-inactive: #64748b;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -81,6 +81,9 @@
     --color-amber-700: #fbbf24;
 
     --color-emerald-50: #022c22;
+    --color-emerald-400: #34d399;
+    --color-emerald-500: #10b981;
+    --color-emerald-600: #059669;
     --color-emerald-700: #34d399;
 
     --color-sky-50: #0c4a6e;
@@ -92,6 +95,8 @@
 
     --gradient-points-from: #d97706;
     --gradient-points-to: #78350f;
+
+    --color-red-600: #f87171;
 
     --color-nav-bg: rgba(15, 23, 42, 0.92);
     --color-nav-active: #fbbf24;
@@ -114,6 +119,13 @@ a,
 [role="checkbox"] {
   min-height: 44px;
   min-width: 44px;
+}
+
+/* Focus indicators for keyboard navigation */
+:focus-visible {
+  outline: 2px solid var(--color-amber-500);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 /* Protect emoji from Smart Invert double-inversion */

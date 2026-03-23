@@ -67,7 +67,7 @@ export default function QuickChoreLog() {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="flex w-full items-center justify-center gap-2 rounded-3xl border-2 border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-4 font-semibold text-[var(--color-text-muted)] transition-all duration-200 hover:border-amber-400 hover:bg-amber-50 hover:text-amber-700"
+        className="flex w-full items-center justify-center gap-2 rounded-3xl border-2 border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-4 font-semibold text-[var(--color-text-muted)] transition-all duration-200 hover:border-[var(--color-amber-400)] hover:bg-[var(--color-amber-50)] hover:text-[var(--color-amber-700)]"
         aria-label="Log a chore"
       >
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -81,7 +81,7 @@ export default function QuickChoreLog() {
   return (
     <div
       className="rounded-3xl bg-[var(--color-surface)] p-4 shadow-card ring-1 ring-[var(--color-border)]"
-      role="dialog"
+      role="region"
       aria-label="Log a chore"
     >
       <div className="flex items-center justify-between">
@@ -116,14 +116,14 @@ export default function QuickChoreLog() {
       )}
 
       {error && (
-        <p className="mt-3 text-sm text-red-600" aria-live="assertive">
+        <p className="mt-3 text-sm text-[var(--color-red-600)]" aria-live="assertive">
           Could not load chores. Please try again.
         </p>
       )}
 
       {recentLog && (
-        <div className="mt-3 rounded-xl bg-green-50 p-3" aria-live="polite">
-          <p className="font-medium text-green-800">
+        <div className="mt-3 rounded-xl bg-[var(--color-emerald-50)] p-3" aria-live="polite">
+          <p className="font-medium text-[var(--color-emerald-700)]">
             Logged {recentLog.choreNameSnapshot} for +{recentLog.pointsSnapshot} pts
           </p>
           {recentLog.status === "pending" && (
@@ -131,7 +131,7 @@ export default function QuickChoreLog() {
               type="button"
               onClick={handleCancelLog}
               disabled={cancelMutation.isPending}
-              className="mt-2 min-h-touch text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+              className="mt-2 min-h-touch text-sm font-medium text-[var(--color-red-600)] hover:text-red-700 disabled:opacity-50"
             >
               {cancelMutation.isPending ? "Canceling..." : "Cancel"}
             </button>
@@ -152,7 +152,7 @@ export default function QuickChoreLog() {
                 type="button"
                 onClick={() => handleChoreSelect(chore)}
                 disabled={!isOnline}
-                className="flex w-full items-center justify-between rounded-xl bg-[var(--color-surface-muted)] px-4 py-3 text-left font-medium text-[var(--color-text-secondary)] transition-all duration-200 hover:bg-amber-50 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full items-center justify-between rounded-xl bg-[var(--color-surface-muted)] px-4 py-3 text-left font-medium text-[var(--color-text-secondary)] transition-all duration-200 hover:bg-[var(--color-amber-50)] hover:text-[var(--color-amber-700)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <span>{chore.name}</span>
                 <span className="text-sm text-[var(--color-text-faint)]">
@@ -179,7 +179,7 @@ export default function QuickChoreLog() {
               type="button"
               onClick={() => handleTierSelect(tier)}
               disabled={!isOnline || submitMutation.isPending}
-              className="flex w-full items-center justify-between rounded-xl bg-[var(--color-surface-muted)] px-4 py-3 text-left transition-all duration-200 hover:bg-green-50 hover:ring-1 hover:ring-green-300 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex w-full items-center justify-between rounded-xl bg-[var(--color-surface-muted)] px-4 py-3 text-left transition-all duration-200 hover:bg-[var(--color-emerald-50)] hover:ring-1 hover:ring-[var(--color-emerald-400)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <span className="font-medium text-[var(--color-text-secondary)]">{tier.name}</span>
               <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-sm font-bold text-amber-700">
@@ -194,7 +194,7 @@ export default function QuickChoreLog() {
             </p>
           )}
           {submitMutation.isError && (
-            <p className="text-center text-sm text-red-600" aria-live="assertive">
+            <p className="text-center text-sm text-[var(--color-red-600)]" aria-live="assertive">
               Something went wrong. Please check your connection and try again.
             </p>
           )}

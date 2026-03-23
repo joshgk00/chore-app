@@ -56,7 +56,7 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
           type="button"
           onClick={handleCancel}
           disabled={cancelMutation.isPending || !isOnline}
-          className="mt-3 text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+          className="mt-3 text-sm font-medium text-[var(--color-red-600)] hover:text-red-700 disabled:opacity-50"
         >
           {cancelMutation.isPending ? "Canceling..." : "Cancel Request"}
         </button>
@@ -72,7 +72,7 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
       <div className="mt-3">
         <div className="h-2 overflow-hidden rounded-full bg-[var(--color-surface-muted)]">
           <div
-            className="h-full rounded-full bg-amber-400 transition-all duration-300"
+            className="h-full rounded-full bg-[var(--color-amber-400)] transition-all duration-300"
             style={{ width: `${progressPercent}%` }}
             role="progressbar"
             aria-valuenow={Math.min(availablePoints, reward.pointsCost)}
@@ -84,7 +84,7 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
       </div>
 
       {isConfirming ? (
-        <div className="mt-3 rounded-xl bg-amber-50 p-3 dark:bg-amber-950/30" role="alertdialog" aria-label="Confirm reward request">
+        <div className="mt-3 rounded-xl bg-[var(--color-amber-50)] p-3" role="alertdialog" aria-label="Confirm reward request">
           <p className="text-sm font-medium text-[var(--color-text-secondary)]">
             Redeem {reward.name} for {reward.pointsCost} points?
           </p>
@@ -100,7 +100,7 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
               type="button"
               onClick={handleRequest}
               disabled={submitMutation.isPending}
-              className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-bold text-white hover:bg-amber-600 disabled:opacity-50"
+              className="rounded-lg bg-[var(--color-amber-500)] px-3 py-1.5 text-sm font-bold text-white hover:bg-[var(--color-amber-600)] disabled:opacity-50"
             >
               {submitMutation.isPending ? "Requesting..." : "Confirm"}
             </button>
@@ -111,14 +111,14 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
           type="button"
           onClick={() => setIsConfirming(true)}
           disabled={!isAffordable || !isOnline || submitMutation.isPending}
-          className="mt-3 w-full rounded-xl bg-amber-500 py-2.5 font-bold text-white transition-all duration-200 hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-[var(--color-border)] disabled:text-[var(--color-text-faint)]"
+          className="mt-3 w-full rounded-xl bg-[var(--color-amber-500)] py-2.5 font-bold text-white transition-all duration-200 hover:bg-[var(--color-amber-600)] disabled:cursor-not-allowed disabled:bg-[var(--color-border)] disabled:text-[var(--color-text-faint)]"
         >
           {isAffordable ? "Request" : `Need ${reward.pointsCost - availablePoints} more pts`}
         </button>
       )}
 
       {submitMutation.isError && (
-        <p className="mt-2 text-center text-sm text-red-600" aria-live="assertive">
+        <p className="mt-2 text-center text-sm text-[var(--color-red-600)]" aria-live="assertive">
           Could not request this reward. Please try again.
         </p>
       )}

@@ -27,7 +27,7 @@ export default function PointsDisplay({ balance }: PointsDisplayProps) {
           {balance.available}
         </p>
       </div>
-      <div className="relative mt-2 flex justify-center gap-6 text-sm text-white/75">
+      <div className="relative mt-2 flex justify-center gap-6 text-sm text-white/90">
         <span>Total: {balance.total}</span>
         {balance.reserved > 0 && <span>Reserved: {balance.reserved}</span>}
       </div>

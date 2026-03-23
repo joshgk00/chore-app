@@ -112,7 +112,7 @@ export default function RoutineChecklist() {
           <p className="mt-2 text-[var(--color-text-muted)]">Please try again in a moment.</p>
           <Link
             to="/routines"
-            className="mt-6 inline-block rounded-full bg-amber-400 px-6 py-3 font-display font-bold text-white shadow-card transition-all duration-200 hover:bg-amber-500 dark:bg-amber-600 dark:hover:bg-amber-500"
+            className="mt-6 inline-block rounded-full bg-[var(--color-amber-400)] px-6 py-3 font-display font-bold text-white shadow-card transition-all duration-200 hover:bg-[var(--color-amber-500)]"
           >
             Go Back
           </Link>
@@ -146,7 +146,7 @@ export default function RoutineChecklist() {
     <div className="flex min-h-screen flex-col bg-[var(--color-bg)]">
       <div aria-live="assertive" role="status" className="fixed left-4 right-4 top-4 z-50 pointer-events-none">
         {toastMessage && (
-          <div className="rounded-2xl bg-gray-800 px-4 py-3 text-center font-medium text-white shadow-lg pointer-events-auto">
+          <div className="rounded-2xl bg-[var(--color-text)] px-4 py-3 text-center font-medium text-white shadow-toast pointer-events-auto">
             {toastMessage}
           </div>
         )}
@@ -182,7 +182,7 @@ export default function RoutineChecklist() {
               type="button"
               onClick={handleShuffle}
               disabled={hasAnyChecked}
-              className="rounded-full bg-sky-100 px-3 py-1 text-sm font-medium text-sky-700 transition-all duration-200 enabled:hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-full bg-[var(--color-sky-100)] px-3 py-1 text-sm font-medium text-[var(--color-sky-700)] transition-all duration-200 enabled:hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-40"
               aria-label="Shuffle checklist order"
             >
               Shuffle
@@ -192,7 +192,7 @@ export default function RoutineChecklist() {
 
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--color-border)]">
           <div
-            className="h-full rounded-full bg-emerald-400 transition-all duration-300"
+            className="h-full rounded-full bg-[var(--color-emerald-400)] transition-all duration-300"
             style={{ width: draftItems.length > 0 ? `${(checkedCount / draftItems.length) * 100}%` : "0%" }}
             role="progressbar"
             aria-valuenow={checkedCount}
@@ -229,7 +229,7 @@ export default function RoutineChecklist() {
           type="button"
           onClick={handleSubmit}
           disabled={!isAllChecked || !isOnline || submitRoutine.isPending}
-          className="w-full rounded-full bg-emerald-500 px-6 py-4 text-lg font-bold text-white shadow-card transition-all duration-200 enabled:hover:bg-emerald-600 enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+          className="w-full rounded-full bg-[var(--color-emerald-500)] px-6 py-4 text-lg font-bold text-white shadow-card transition-all duration-200 enabled:hover:bg-[var(--color-emerald-600)] enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {submitRoutine.isPending ? "Submitting..." : "Complete Routine!"}
         </button>

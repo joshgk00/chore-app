@@ -37,7 +37,7 @@ export default function TodayScreen() {
           <button
             type="button"
             onClick={() => refetch()}
-            className="mt-6 rounded-full bg-amber-500 px-6 py-3 font-display font-bold text-white shadow-md transition-all duration-200 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500"
+            className="mt-6 rounded-full bg-[var(--color-amber-500)] px-6 py-3 font-display font-bold text-white shadow-card transition-all duration-200 hover:bg-[var(--color-amber-600)]"
           >
             Try Again
           </button>
