@@ -3,7 +3,7 @@ import type { Badge } from "@chore-app/shared";
 import { BADGE_KEYS } from "@chore-app/shared";
 
 export interface BadgeEvaluationContext {
-  type: "routine_completion" | "chore_log";
+  type: "routine_completion" | "chore_log" | "reward_request";
 }
 
 export interface BadgeService {
@@ -74,6 +74,24 @@ export function createBadgeService(db: Database.Database): BadgeService {
        COALESCE((SELECT SUM(amount) FROM points_ledger), 0)
        - COALESCE((SELECT SUM(cost_snapshot) FROM reward_requests WHERE status = 'pending'), 0)
        AS available`,
+  );
+
+  const countApprovedRewardsStmt = db.prepare(
+    `SELECT COUNT(*) as count FROM reward_requests WHERE status = 'approved'`,
+  );
+
+  const countHelpTierChoreLogsStmt = db.prepare(
+    `SELECT COUNT(*) as count
+     FROM chore_logs
+     WHERE status = 'approved'
+       AND LOWER(tier_name_snapshot) LIKE '%help%'`,
+  );
+
+  const countAloneTierChoreLogsStmt = db.prepare(
+    `SELECT COUNT(*) as count
+     FROM chore_logs
+     WHERE status = 'approved'
+       AND LOWER(tier_name_snapshot) LIKE '%alone%'`,
   );
 
   function getEarnedBadges(): Badge[] {
@@ -149,12 +167,26 @@ export function createBadgeService(db: Database.Database): BadgeService {
       }
     }
 
-    // Deferred to Milestone 3: requires tier-type column (help/alone) not yet in schema
-    // HELPING_HAND: 5 approved chore logs using a "help" tier
-    // SOLO_ACT: 5 approved chore logs using an "alone" tier
+    if (!hasBadge(BADGE_KEYS.HELPING_HAND)) {
+      const { count } = countHelpTierChoreLogsStmt.get() as { count: number };
+      if (count >= 5) {
+        awardBadge(BADGE_KEYS.HELPING_HAND);
+      }
+    }
 
-    // Deferred to Milestone 3: requires approval service to mark reward as redeemed
-    // BIG_SPENDER: first approved reward redemption
+    if (!hasBadge(BADGE_KEYS.SOLO_ACT)) {
+      const { count } = countAloneTierChoreLogsStmt.get() as { count: number };
+      if (count >= 5) {
+        awardBadge(BADGE_KEYS.SOLO_ACT);
+      }
+    }
+
+    if (!hasBadge(BADGE_KEYS.BIG_SPENDER)) {
+      const { count } = countApprovedRewardsStmt.get() as { count: number };
+      if (count >= 1) {
+        awardBadge(BADGE_KEYS.BIG_SPENDER);
+      }
+    }
   }
 
   return { getEarnedBadges, getRecentBadges, evaluateBadges };
