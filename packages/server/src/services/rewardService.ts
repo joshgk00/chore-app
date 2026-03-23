@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 import type { Reward, RewardRequest, Status } from "@chore-app/shared";
-import { ConflictError, NotFoundError } from "../lib/errors.js";
+import { ConflictError, NotFoundError, ValidationError } from "../lib/errors.js";
 import type { ActivityService } from "./activityService.js";
 
 export interface SubmitRewardRequestData {
@@ -9,11 +9,29 @@ export interface SubmitRewardRequestData {
   localDate: string;
 }
 
+export interface CreateRewardData {
+  name: string;
+  pointsCost: number;
+  sortOrder: number;
+}
+
+export interface UpdateRewardData {
+  name?: string;
+  pointsCost?: number;
+  sortOrder?: number;
+}
+
 export interface RewardService {
   getActiveRewards(): Reward[];
   submitRequest(data: SubmitRewardRequestData): RewardRequest;
   cancelRequest(requestId: number): RewardRequest;
   getPendingRewardRequestCount(): number;
+  listRewardsAdmin(): Reward[];
+  getRewardAdmin(id: number): Reward;
+  createReward(data: CreateRewardData): Reward;
+  updateReward(id: number, data: UpdateRewardData): Reward;
+  archiveReward(id: number): void;
+  unarchiveReward(id: number): void;
 }
 
 interface RewardRow {
@@ -44,6 +62,17 @@ function mapRewardRow(row: RewardRow): Reward {
     pointsCost: row.points_cost,
     imageAssetId: row.image_asset_id ?? undefined,
     sortOrder: row.sort_order,
+  };
+}
+
+function mapRewardRowAdmin(row: RewardRow): Reward {
+  return {
+    id: row.id,
+    name: row.name,
+    pointsCost: row.points_cost,
+    imageAssetId: row.image_asset_id ?? undefined,
+    sortOrder: row.sort_order,
+    archivedAt: row.archived_at ?? undefined,
   };
 }
 
@@ -110,6 +139,32 @@ export function createRewardService(
 
   const countPendingStmt = db.prepare(
     `SELECT COUNT(*) as count FROM reward_requests WHERE status = 'pending'`,
+  );
+
+  const selectAllRewardsStmt = db.prepare(
+    `SELECT id, name, points_cost, image_asset_id, active, sort_order, archived_at
+     FROM rewards
+     ORDER BY sort_order ASC`,
+  );
+
+  const insertRewardStmt = db.prepare(
+    `INSERT INTO rewards (name, points_cost, sort_order)
+     VALUES (?, ?, ?)`,
+  );
+
+  const updateRewardStmt = db.prepare(
+    `UPDATE rewards SET name = ?, points_cost = ?, sort_order = ?, updated_at = datetime('now')
+     WHERE id = ?`,
+  );
+
+  const archiveRewardStmt = db.prepare(
+    `UPDATE rewards SET archived_at = datetime('now'), active = 0, updated_at = datetime('now')
+     WHERE id = ? AND active = 1 AND archived_at IS NULL`,
+  );
+
+  const unarchiveRewardStmt = db.prepare(
+    `UPDATE rewards SET archived_at = NULL, active = 1, updated_at = datetime('now')
+     WHERE id = ? AND active = 0 AND archived_at IS NOT NULL`,
   );
 
   function getActiveRewards(): Reward[] {
@@ -211,5 +266,101 @@ export function createRewardService(
     return row.count;
   }
 
-  return { getActiveRewards, submitRequest, cancelRequest, getPendingRewardRequestCount };
+  function listRewardsAdmin(): Reward[] {
+    const rows = selectAllRewardsStmt.all() as RewardRow[];
+    return rows.map(mapRewardRowAdmin);
+  }
+
+  function getRewardAdmin(id: number): Reward {
+    const row = selectRewardByIdStmt.get(id) as RewardRow | undefined;
+    if (!row) {
+      throw new NotFoundError("Reward not found");
+    }
+    return mapRewardRowAdmin(row);
+  }
+
+  const createRewardTx = db.transaction((data: CreateRewardData): Reward => {
+    if (data.name.trim().length === 0) {
+      throw new ValidationError("Name is required");
+    }
+
+    const result = insertRewardStmt.run(
+      data.name.trim(),
+      data.pointsCost,
+      data.sortOrder,
+    );
+    const rewardId = Number(result.lastInsertRowid);
+
+    return getRewardAdmin(rewardId);
+  });
+
+  function createReward(data: CreateRewardData): Reward {
+    return createRewardTx(data);
+  }
+
+  const updateRewardTx = db.transaction((id: number, data: UpdateRewardData): Reward => {
+    const existing = selectRewardByIdStmt.get(id) as RewardRow | undefined;
+    if (!existing) {
+      throw new NotFoundError("Reward not found");
+    }
+    if (existing.archived_at !== null) {
+      throw new ConflictError("Cannot update an archived reward. Unarchive it first.");
+    }
+
+    const newName = data.name !== undefined ? data.name : existing.name;
+    const newPointsCost = data.pointsCost !== undefined ? data.pointsCost : existing.points_cost;
+    const newSortOrder = data.sortOrder !== undefined ? data.sortOrder : existing.sort_order;
+
+    if (newName.trim().length === 0) {
+      throw new ValidationError("Name is required");
+    }
+
+    updateRewardStmt.run(
+      newName.trim(),
+      newPointsCost,
+      newSortOrder,
+      id,
+    );
+
+    return getRewardAdmin(id);
+  });
+
+  function updateReward(id: number, data: UpdateRewardData): Reward {
+    return updateRewardTx(id, data);
+  }
+
+  function archiveReward(id: number): void {
+    const result = archiveRewardStmt.run(id);
+    if (result.changes === 0) {
+      const existing = selectRewardByIdStmt.get(id) as RewardRow | undefined;
+      if (!existing) {
+        throw new NotFoundError("Reward not found");
+      }
+      throw new ConflictError("Reward is already archived");
+    }
+  }
+
+  function unarchiveReward(id: number): void {
+    const result = unarchiveRewardStmt.run(id);
+    if (result.changes === 0) {
+      const existing = selectRewardByIdStmt.get(id) as RewardRow | undefined;
+      if (!existing) {
+        throw new NotFoundError("Reward not found");
+      }
+      throw new ConflictError("Reward is not archived");
+    }
+  }
+
+  return {
+    getActiveRewards,
+    submitRequest,
+    cancelRequest,
+    getPendingRewardRequestCount,
+    listRewardsAdmin,
+    getRewardAdmin,
+    createReward,
+    updateReward,
+    archiveReward,
+    unarchiveReward,
+  };
 }

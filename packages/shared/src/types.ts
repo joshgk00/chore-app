@@ -133,6 +133,7 @@ export interface Reward {
   pointsCost: number;
   imageAssetId?: number;
   sortOrder: number;
+  archivedAt?: string;
 }
 
 export interface RewardRequest {

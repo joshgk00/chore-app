@@ -20,6 +20,8 @@ Before planning, note what already exists:
 
 Six PRs, each self-contained with server + client + tests. Admin routes split into separate files per domain to avoid merge conflicts.
 
+Each PR ships with unit tests (Vitest) AND E2E tests (Playwright). E2E specs live in `e2e/` following the conventions in CLAUDE.md. The full verification suite (`typecheck`, `lint`, `test --run`, `test:e2e`) must pass before merging.
+
 ### Dependency Graph
 
 ```
@@ -61,6 +63,9 @@ Build create, read, update, and archive for routines and their checklist items.
 - `packages/server/tests/services/routineService.test.ts` (additions): admin CRUD methods
 - `packages/client/tests/features/admin/routines/AdminRoutineForm.test.tsx`: form + checklist editor
 
+**E2E Tests** (ship with this PR):
+- `e2e/admin-routines.spec.ts`: serial CRUD lifecycle (create with checklist items, edit, archive, unarchive), offline submit disabled, archived routine hidden from child
+
 **Validation**:
 - [ ] `POST /api/admin/routines` creates a routine with checklist items — returns `201`
 - [ ] Created routine appears in `GET /api/routines` (child endpoint)
@@ -100,6 +105,9 @@ Build create, read, update, and archive for chores and their tiers.
 - `packages/server/tests/routes/adminChores.test.ts`
 - `packages/server/tests/services/choreService.test.ts` (additions)
 - `packages/client/tests/features/admin/chores/AdminChoreForm.test.tsx`
+
+**E2E Tests** (ship with this PR):
+- `e2e/admin-chores.spec.ts`: serial CRUD lifecycle (create with tiers, edit, archive, unarchive), archived chore hidden from child, offline submit disabled
 
 **Validation**:
 - [ ] Creating a chore with tiers returns `201`
@@ -143,6 +151,9 @@ Build create, read, update, and archive for rewards. Simplest of the three CRUD 
 - `packages/server/tests/routes/adminRewards.test.ts`
 - `packages/server/tests/services/rewardService.test.ts` (additions)
 - `packages/client/tests/features/admin/rewards/AdminRewardForm.test.tsx`
+
+**E2E Tests** (ship with this PR):
+- `e2e/admin-rewards.spec.ts`: serial CRUD lifecycle (create, edit, archive, unarchive), archived reward hidden from child API, 409 on editing archived reward, offline submit/archive disabled, double-click idempotency
 
 **Validation**:
 - [ ] Creating a reward returns `201`
@@ -192,6 +203,9 @@ Build the unified approval queue with approve/reject actions. Badge evaluation i
   - Renders snapshot data
   - Approve/reject call correct endpoints
   - Double-clicking approve only sends one request
+
+**E2E Tests** (ship with this PR):
+- `e2e/admin-approvals.spec.ts`: submit a routine/chore/reward as child, approve and reject through admin UI, verify points ledger updates, verify 409 on double-approve, verify cards removed from queue after action
 
 **Validation**:
 - [ ] `GET /api/admin/approvals` returns pending items grouped by type
@@ -246,6 +260,9 @@ Add the 3 deferred badge rules and build the admin ledger view with manual adjus
   - When `available_points` is negative, new reward requests are blocked
 - `packages/server/tests/routes/adminLedger.test.ts`
 
+**E2E Tests** (ship with this PR):
+- `e2e/admin-ledger.spec.ts`: create manual adjustment via admin UI, verify balance updates, verify negative adjustment blocks new reward requests, verify adjustment note required
+
 **Validation**:
 - [ ] `big_spender`: first approved reward request earns the badge
 - [ ] `helping_hand` and `solo_act`: tier-based badges count correctly
@@ -286,6 +303,11 @@ Build the admin activity log with filters, settings management UI, and logout. T
 - `packages/server/tests/routes/adminActivity.test.ts`: filter combinations, pagination
 - `packages/server/tests/routes/adminSettings.test.ts`: settings update, PIN change + session invalidation, validation
 - `packages/client/tests/features/admin/settings/SettingsScreen.test.tsx`
+
+**E2E Tests** (ship with this PR):
+- `e2e/admin-settings.spec.ts`: change admin PIN via UI, verify old PIN rejected and new PIN works, verify session invalidation forces re-login
+- `e2e/admin-activity.spec.ts`: verify activity events appear after admin actions, verify date range and event type filters work
+- `e2e/admin-logout.spec.ts`: logout via nav button, verify redirect to `/today`, verify `/admin/*` redirects to PIN entry
 
 **Validation**:
 - [ ] Activity log shows all tracked event types
