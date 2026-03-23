@@ -12,7 +12,20 @@ npm run build        # Build shared -> client -> server
 npm run lint         # ESLint across all packages
 npm run typecheck    # TypeScript build check
 npm run test -- --run # Vitest, all packages, single run
+npm run test:e2e     # Playwright E2E tests (starts dev server)
+npm run test:e2e:ui  # Playwright with interactive UI
 ```
+
+### Verification (run before every PR)
+
+```bash
+npm run typecheck
+npm run lint
+npm run test -- --run
+npm run test:e2e
+```
+
+All four must pass. Do not skip E2E tests -- they catch integration issues that unit tests miss (rate limiter scope, offline behavior, mutation sequencing).
 
 ## Architecture
 
@@ -78,6 +91,17 @@ packages/server    packages/client
 - Client tests use Testing Library + jsdom. MSW available for API mocking.
 - Extract shared test setup into helper functions at the top of the file or in shared helpers.
 - Test middleware and API client code -- these are critical paths.
+
+### E2E Testing (Playwright)
+
+- E2E tests live in `e2e/` at the project root with shared helpers in `e2e/helpers/`.
+- Playwright config uses an isolated `data-e2e/` database directory -- never share the dev database.
+- Use serial mode with a shared `Page` instance for stateful CRUD flows that build on each other. Group truly independent tests (offline, idempotency) separately when possible.
+- Append `Date.now()` to test entity names for uniqueness across runs against the persistent database.
+- Scope assertions to specific rows/containers (`locator("tr", { hasText: name })`) -- never assert on bare text that could collide with data from prior runs.
+- Prefer role and label selectors (`getByRole`, `getByLabel`) over CSS selectors.
+- After mutation clicks, use `waitForResponse` to confirm the API call completed before asserting UI state.
+- The submission rate limiter is mounted at `/api` and accidentally catches admin routes (known bug). E2E tests that make many sequential API calls need `paceForRateLimiter()` delays between bursts.
 
 ### Submission & Data Integrity
 - Every write mutation wraps all steps in a single db.transaction() — from idempotency check through activity event. If any step fails, everything rolls back.
