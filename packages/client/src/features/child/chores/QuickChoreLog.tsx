@@ -132,7 +132,7 @@ export default function QuickChoreLog() {
               type="button"
               onClick={handleCancelLog}
               disabled={cancelMutation.isPending}
-              className="mt-2 text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+              className="mt-2 min-h-touch text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
             >
               {cancelMutation.isPending ? "Canceling..." : "Cancel"}
             </button>
@@ -170,7 +170,7 @@ export default function QuickChoreLog() {
           <button
             type="button"
             onClick={() => setSelectedChore(null)}
-            className="mb-1 text-sm font-medium text-amber-600 hover:text-amber-700"
+            className="mb-1 min-h-touch text-sm font-medium text-amber-600 hover:text-amber-700"
           >
             &larr; Back to chores
           </button>

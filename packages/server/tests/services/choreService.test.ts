@@ -34,7 +34,6 @@ describe('choreService', () => {
     it('returns chores with active tiers only', () => {
       const chores = service.getActiveChores();
 
-      // chores 1, 2, 4 are active (3 is archived)
       expect(chores).toHaveLength(3);
       expect(chores.map((c) => c.id)).toEqual([1, 2, 4]);
 
