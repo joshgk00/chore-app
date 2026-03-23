@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
+import userEvent from '@testing-library/user-event';
 import { renderWithProviders, screen, waitFor } from '../../../test-utils.js';
 import { server } from '../../../msw/server.js';
 import MeScreen from '../../../../src/features/child/me/MeScreen.js';
@@ -91,6 +92,41 @@ describe('MeScreen', () => {
     await waitFor(() => {
       expect(screen.getByText(/could not load your profile/i)).toBeInTheDocument();
     });
+
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+  });
+
+  it('refetches when Try Again is clicked after error', async () => {
+    let pointsRequestCount = 0;
+    server.use(
+      http.get('/api/points/summary', () => {
+        pointsRequestCount++;
+        if (pointsRequestCount === 1) {
+          return HttpResponse.json(
+            { error: { code: 'INTERNAL', message: 'fail' } },
+            { status: 500 },
+          );
+        }
+        return HttpResponse.json({
+          data: { total: 50, reserved: 10, available: 40 },
+        });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<MeScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/could not load your profile/i)).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /try again/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('available-points')).toHaveTextContent('40');
+    });
+
+    expect(pointsRequestCount).toBeGreaterThanOrEqual(2);
   });
 
   it('shows all badges locked when none earned', async () => {

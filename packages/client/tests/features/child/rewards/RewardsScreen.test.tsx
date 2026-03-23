@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
+import userEvent from '@testing-library/user-event';
 import { renderWithProviders, screen, waitFor } from '../../../test-utils.js';
 import { server } from '../../../msw/server.js';
 import RewardsScreen from '../../../../src/features/child/rewards/RewardsScreen.js';
@@ -59,6 +60,48 @@ describe('RewardsScreen', () => {
     await waitFor(() => {
       expect(screen.getByText(/could not load rewards/i)).toBeInTheDocument();
     });
+
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+  });
+
+  it('refetches when Try Again is clicked after error', async () => {
+    let rewardsRequestCount = 0;
+    server.use(
+      http.get('/api/rewards', () => {
+        rewardsRequestCount++;
+        if (rewardsRequestCount === 1) {
+          return HttpResponse.json(
+            { error: { code: 'INTERNAL', message: 'fail' } },
+            { status: 500 },
+          );
+        }
+        return HttpResponse.json({
+          data: [
+            {
+              id: 1,
+              name: 'Extra Screen Time',
+              pointsCost: 20,
+              sortOrder: 1,
+            },
+          ],
+        });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<RewardsScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/could not load rewards/i)).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /try again/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Extra Screen Time')).toBeInTheDocument();
+    });
+
+    expect(rewardsRequestCount).toBeGreaterThanOrEqual(2);
   });
 
   it('renders reward cards in a grid', async () => {
