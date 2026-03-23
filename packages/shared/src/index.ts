@@ -6,7 +6,6 @@ export type {
   EntryType,
   TimeSlot,
   CompletionRule,
-  FrequencyType,
   SlotConfig,
   ActivityEvent,
   BootstrapData,
@@ -18,12 +17,6 @@ export type {
 
 export {
   DEFAULT_TIME_SLOTS,
-  DEFAULT_MORNING_START,
-  DEFAULT_MORNING_END,
-  DEFAULT_AFTERNOON_START,
-  DEFAULT_AFTERNOON_END,
-  DEFAULT_BEDTIME_START,
-  DEFAULT_BEDTIME_END,
   BADGE_KEYS,
   PIN_MIN_LENGTH,
   SESSION_DURATION_MINUTES,

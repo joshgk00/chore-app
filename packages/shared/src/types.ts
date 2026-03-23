@@ -25,10 +25,6 @@ export type TimeSlot = "morning" | "afternoon" | "bedtime" | "anytime";
 // Completion rule enum
 export type CompletionRule = "once_per_day" | "once_per_slot" | "unlimited";
 
-// Alias used in routine/chore domain logic
-export type FrequencyType = CompletionRule;
-
-// Slot configuration (start/end times in HH:MM format)
 export interface SlotConfig {
   morningStart: string;
   morningEnd: string;
@@ -38,7 +34,6 @@ export interface SlotConfig {
   bedtimeEnd: string;
 }
 
-// Activity event shape
 export interface ActivityEvent {
   eventType: string;
   entityType?: string;
@@ -48,9 +43,8 @@ export interface ActivityEvent {
   createdAt?: string;
 }
 
-// Bootstrap data (initial shape — extended by each subsequent PR)
 export interface BootstrapData {
-  [key: string]: unknown;
+  // Extended by each PR — fields added as optional properties for progressive type safety
 }
 
 // Asset source
