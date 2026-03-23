@@ -14,13 +14,13 @@ export default function TodayScreen() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-4">
+      <div className="min-h-screen bg-[var(--color-bg)] p-4">
         <div aria-live="polite" className="sr-only">Loading your routines...</div>
         <div className="animate-pulse space-y-4">
-          <div className="h-8 w-48 rounded-lg bg-gray-200" />
-          <div className="grid gap-4">
+          <div className="h-8 w-48 rounded-lg bg-[var(--color-surface-muted)]" />
+          <div className="grid gap-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-24 rounded-2xl bg-gray-200" />
+              <div key={i} className="h-[72px] rounded-3xl bg-[var(--color-surface-muted)]" />
             ))}
           </div>
         </div>
@@ -30,14 +30,14 @@ export default function TodayScreen() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-bg)] p-4">
         <div aria-live="assertive" className="text-center">
-          <p className="text-xl font-bold text-gray-700">Could not load your day.</p>
-          <p className="mt-2 text-gray-600">Please check your connection and try again.</p>
+          <p className="font-display text-xl font-bold text-[var(--color-text)]">Could not load your day.</p>
+          <p className="mt-2 text-[var(--color-text-muted)]">Please check your connection and try again.</p>
           <button
             type="button"
             onClick={() => refetch()}
-            className="mt-6 rounded-full bg-amber-500 px-6 py-3 font-bold text-white shadow-md transition-all duration-200 hover:bg-amber-600"
+            className="mt-6 rounded-full bg-[var(--color-amber-500)] px-6 py-3 font-display font-bold text-white shadow-card transition-all duration-200 hover:bg-[var(--color-amber-600)]"
           >
             Try Again
           </button>
@@ -51,16 +51,19 @@ export default function TodayScreen() {
   const pendingChoreCount = bootstrap?.pendingChoreCount ?? 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">{getGreeting()}!</h1>
+    <div className="min-h-screen bg-[var(--color-bg)] p-4">
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="font-display text-[28px] font-bold text-[var(--color-text)]">{getGreeting()}!</h1>
+          <p className="mt-0.5 text-[15px] text-[var(--color-text-muted)]">Let's get some things done</p>
+        </div>
         <button
           type="button"
           onClick={() => refetch()}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-all duration-200 hover:bg-gray-200"
+          className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] transition-all duration-200 hover:bg-[var(--color-border)]"
           aria-label="Refresh routines"
         >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+          <svg className="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
         </button>
@@ -68,22 +71,22 @@ export default function TodayScreen() {
 
       {routines.length === 0 ? (
         <div className="mt-12 text-center" aria-live="polite">
-          <p className="text-5xl">&#127774;</p>
-          <p className="mt-4 text-xl font-bold text-gray-600">No routines right now!</p>
-          <p className="mt-2 text-gray-600">Check back later.</p>
+          <p className="text-5xl" data-emoji>&#127774;</p>
+          <p className="mt-4 font-display text-xl font-bold text-[var(--color-text-secondary)]">No routines right now!</p>
+          <p className="mt-2 text-[var(--color-text-muted)]">Check back later.</p>
         </div>
       ) : (
         <div aria-live="polite">
-          <div className="mt-4 flex items-center gap-2">
-            <h2 className="text-lg font-semibold text-gray-700">Your Routines</h2>
+          <div className="mt-5 flex items-center gap-2">
+            <h2 className="font-display text-lg font-semibold text-[var(--color-text-secondary)]">Your Routines</h2>
             {pendingCount > 0 && (
-              <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-700">
+              <span className="rounded-full bg-[var(--color-amber-100)] px-2.5 py-0.5 text-[11px] font-bold text-[var(--color-amber-700)]">
                 {pendingCount} pending
               </span>
             )}
           </div>
 
-          <div className="mt-3 grid gap-4">
+          <div className="mt-3 grid gap-3">
             {routines.map((routine) => (
               <RoutineCard key={routine.id} routine={routine} showSlotBadge />
             ))}
@@ -91,11 +94,11 @@ export default function TodayScreen() {
         </div>
       )}
 
-      <div className="mt-6">
+      <div className="mt-8">
         <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold text-gray-700">Chores</h2>
+          <h2 className="font-display text-lg font-semibold text-[var(--color-text-secondary)]">Chores</h2>
           {pendingChoreCount > 0 && (
-            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-700">
+            <span className="rounded-full bg-[var(--color-amber-100)] px-2.5 py-0.5 text-[11px] font-bold text-[var(--color-amber-700)]">
               {pendingChoreCount} pending
             </span>
           )}

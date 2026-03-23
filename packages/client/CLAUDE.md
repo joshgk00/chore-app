@@ -56,11 +56,78 @@ This app will be used by a child, potentially with assistive technology. Accessi
 - On online event: retry any drafts with submissionFailed=true using stored idempotencyKey. Delete on 200/409.
 - On 409 archived from server: delete draft, show toast, navigate back.
 
+## Design System
+
+### Fonts
+
+- **Display font** (`font-display`): Fredoka -- used for all headings (h1-h3), large numbers (points), CTAs, and badges. Loaded via Google Fonts in `index.html`.
+- **Body font** (`font-body`): Inter -- used for body text, labels, metadata. Falls back to system fonts.
+- Never use raw `font-sans` or system defaults for headings. Always apply `font-display` to h1, h2, h3 elements and primary action buttons.
+
+### Color Tokens
+
+All colors MUST use CSS custom properties defined in `styles/globals.css`. Never use raw Tailwind color classes (e.g., `bg-gray-50`, `text-amber-700`) -- always use `bg-[var(--color-bg)]`, `text-[var(--color-amber-700)]`, etc. This enables dark mode and Smart Invert support.
+
+**Semantic tokens** (adapt to light/dark automatically):
+- `--color-bg`, `--color-surface`, `--color-surface-muted`, `--color-surface-elevated`
+- `--color-text`, `--color-text-secondary`, `--color-text-muted`, `--color-text-faint`
+- `--color-border`, `--color-border-light`
+
+**Accent tokens** (have dark mode overrides in globals.css):
+- Amber: `--color-amber-50` through `--color-amber-700` (points, CTAs, brand)
+- Emerald: `--color-emerald-50` through `--color-emerald-700` (completions, success)
+- Sky: `--color-sky-50` through `--color-sky-700` (routines domain)
+- Violet: `--color-violet-50` through `--color-violet-500` (badges)
+- Red: `--color-red-600` (errors, destructive actions)
+
+**When adding new colors**: add both light and dark values to `globals.css` `:root` and `@media (prefers-color-scheme: dark)` blocks. Do not add one without the other.
+
+### Domain Colors
+
+Each domain has a visual identity maintained across child and admin screens:
+- **Routines**: Sky blue (left borders, slot badges, activity dots)
+- **Chores**: Amber/orange (tier badges, activity dots)
+- **Rewards/Points**: Amber gradient (PointsDisplay), amber CTAs
+- **Badges**: Violet (earned glow, activity dots)
+
+### Dark Mode & Smart Invert
+
+- `color-scheme: light dark` is set on `:root` -- iOS Smart Invert respects this.
+- Dark mode values are defined in `@media (prefers-color-scheme: dark)` in globals.css.
+- Emoji elements must have `data-emoji` attribute -- CSS rule `[data-emoji] { color-scheme: light; }` prevents double-inversion.
+- Never use `dark:` Tailwind prefix for colors that have token equivalents. The tokens handle the switch.
+- Use `dark:` prefix ONLY for Tailwind classes that don't have token equivalents (e.g., `dark:from-violet-900/50` on badge glow gradients).
+
+### Shadows
+
+Use semantic shadow tokens from `tailwind.config.ts`, not raw Tailwind shadows:
+- `shadow-card` -- standard card elevation
+- `shadow-elevated` -- hover/active card state
+- `shadow-toast` -- toast/overlay notifications
+- `shadow-glow-amber`, `shadow-glow-emerald`, `shadow-glow-violet` -- colored glow effects
+
+### Component Patterns
+
+- **Cards**: `rounded-3xl bg-[var(--color-surface)] shadow-card`
+- **Points pills**: `font-display font-bold text-[var(--color-amber-700)] bg-[var(--color-amber-50)] border border-amber-200 rounded-full`
+- **Section headers**: `font-display text-lg font-semibold text-[var(--color-text-secondary)]`
+- **Error states**: Always include retry action, use `font-display font-bold` on retry button
+- **Loading skeletons**: Match shape of actual content, use `bg-[var(--color-surface-muted)]` with `animate-pulse`
+- **Empty states**: Centered text with emoji (`data-emoji` attribute), `font-display` for heading
+
+### Admin vs Child
+
+- Both share the same design tokens, fonts, and domain colors.
+- **Child screens**: Bottom tab nav, full-bleed layout, `rounded-3xl` cards, larger touch targets, playful tone.
+- **Admin screens**: Top horizontal nav in `AdminLayout`, `max-w-5xl` centered content, data tables for lists, standard form inputs. Functional/scannable tone.
+- Admin brand accent is amber (not indigo). Consistent with child side.
+
 ## Styling
 
 - Tailwind utility classes. Custom CSS only in `styles/globals.css` for base-level concerns.
 - Custom breakpoints: `tablet` (768px), `desktop` (1024px).
 - Touch-friendly sizing utilities: `min-h-touch`, `min-w-touch` (44px).
+- Global `:focus-visible` indicator uses amber outline (2px, 2px offset).
 
 ## Testing
 

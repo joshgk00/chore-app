@@ -19,7 +19,7 @@ describe('PointsDisplay', () => {
     );
 
     const available = screen.getByTestId('available-points');
-    expect(available.className).toContain('text-4xl');
+    expect(available.className).toContain('text-5xl');
     expect(available.className).toContain('font-bold');
   });
 
