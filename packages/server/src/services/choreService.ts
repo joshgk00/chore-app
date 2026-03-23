@@ -91,9 +91,7 @@ function mapTierRow(row: TierRow): ChoreTier {
   };
 }
 
-interface AdminTierRow extends TierRow {
-  archived_at: string | null;
-}
+type AdminTierRow = TierRow;
 
 function mapChoreRowAdmin(row: ChoreRow): Chore {
   return {
@@ -490,9 +488,12 @@ export function createChoreService(
 
     if (data.tiers) {
       for (const tier of data.tiers) {
-        if (tier.id) {
+        if (tier.id != null) {
           if (tier.shouldArchive) {
-            archiveTierStmt.run(tier.id, id);
+            const archiveResult = archiveTierStmt.run(tier.id, id);
+            if (archiveResult.changes === 0) {
+              throw new NotFoundError(`Tier ${tier.id} not found for chore ${id}`);
+            }
           } else {
             if (!tier.name || tier.name.trim().length === 0) {
               throw new ValidationError("Each tier must have a non-empty name");
@@ -500,7 +501,10 @@ export function createChoreService(
             if (typeof tier.points !== "number" || !Number.isInteger(tier.points) || tier.points < 0) {
               throw new ValidationError("Each tier must have points >= 0");
             }
-            updateTierStmt.run(tier.name.trim(), tier.points, tier.sortOrder, tier.id, id);
+            const updateResult = updateTierStmt.run(tier.name.trim(), tier.points, tier.sortOrder, tier.id, id);
+            if (updateResult.changes === 0) {
+              throw new NotFoundError(`Tier ${tier.id} not found for chore ${id}`);
+            }
           }
         } else {
           if (!tier.name || tier.name.trim().length === 0) {
@@ -512,6 +516,12 @@ export function createChoreService(
           insertTierStmt.run(id, tier.name.trim(), tier.points, tier.sortOrder);
         }
       }
+    }
+
+    const remainingTiers = selectAllTiersForChoreStmt.all(id) as AdminTierRow[];
+    const activeTierCount = remainingTiers.filter((t) => t.archived_at === null).length;
+    if (activeTierCount === 0) {
+      throw new ValidationError("A chore must have at least one active tier");
     }
 
     return getChoreAdmin(id);

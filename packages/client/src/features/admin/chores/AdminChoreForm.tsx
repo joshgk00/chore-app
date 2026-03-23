@@ -52,6 +52,8 @@ function validate(form: FormState): FormErrors {
   const activeTiers = form.tiers.filter((tier) => tier.name.trim());
   if (activeTiers.length === 0) {
     errors.tiers = "At least one tier with a name is required";
+  } else if (activeTiers.some((tier) => tier.points < 0)) {
+    errors.tiers = "Tier points must be 0 or more";
   }
   return errors;
 }
