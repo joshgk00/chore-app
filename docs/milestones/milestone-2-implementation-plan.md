@@ -8,7 +8,7 @@
 
 ## PR 1a: Infrastructure
 
-Establishes the shared foundation all subsequent PRs build on: client test setup, MSW, online detection, IndexedDB drafts, idempotency utilities, time slot logic, and activity service.
+Establishes the shared foundation all subsequent PRs build on: client test setup, MSW, online detection, IndexedDB drafts, idempotency utilities, and activity service. No UI screens, no feature-specific logic — just the plumbing subsequent PRs build on.
 
 ### Dependencies to install
 
@@ -22,25 +22,14 @@ npm install --save-dev --workspace packages/client fake-indexeddb @testing-libra
 
 `packages/shared/src/types.ts` — add:
 - `FrequencyType`: `'once_per_day' | 'once_per_slot' | 'unlimited'`
-- `TimeSlot`: `'Morning' | 'Afternoon' | 'Bedtime' | 'Any Time'`
+- `TimeSlot`: `'morning' | 'afternoon' | 'bedtime' | 'anytime'`
 - `BootstrapData` (initial shape — empty, extended by each subsequent PR)
+- `SlotConfig` (base type — consumed by `timeSlots.ts` in PR 1b)
+- `ActivityEvent` shape: `eventType`, `entityType`, `entityId`, `summary`, `metadata`, `createdAt`
 
 `packages/shared/src/constants.ts` — default slot windows:
-- `DEFAULT_MORNING_START`, `DEFAULT_MORNING_END`
-- `DEFAULT_AFTERNOON_START`, `DEFAULT_AFTERNOON_END`
-- `DEFAULT_BEDTIME_START`, `DEFAULT_BEDTIME_END`
-
-### Server: time slot logic
-
-`packages/server/src/lib/timeSlots.ts`:
-- `getCurrentSlot(now, timezone, slotConfig)`: returns which slot(s) are active at the given time
-- `isRoutineVisible(routine, now, timezone, slotConfig)`: true if the routine's slot is currently active or if it's "Any Time"
-- `getCompletionWindowKey(routine, localDate)`: generates the uniqueness key
-  - `once_per_day`: `routine:{id}:day:{localDate}`
-  - `once_per_slot`: `routine:{id}:slot:{localDate}:{timeSlot}`
-  - `unlimited`: returns `null` (no uniqueness check)
-
-Slot config comes from `settingsService.getSlotConfig(db)` — reads customized windows from the settings table, falling back to `DEFAULT_*` constants.
+- `DEFAULT_TIME_SLOTS` object with keys `morning_start`, `morning_end`, `afternoon_start`, `afternoon_end`, `bedtime_start`, `bedtime_end`
+- Named alias exports derived from it: `DEFAULT_MORNING_START`, `DEFAULT_MORNING_END`, `DEFAULT_AFTERNOON_START`, `DEFAULT_AFTERNOON_END`, `DEFAULT_BEDTIME_START`, `DEFAULT_BEDTIME_END`
 
 ### Server: activityService
 
@@ -48,22 +37,15 @@ Slot config comes from `settingsService.getSlotConfig(db)` — reads customized 
 - `recordActivity(db, event)`: inserts an activity event row — called from `routineService`, `choreService`, and `rewardService` from PR 1b onward
 - `getRecentActivity(db, limit)`: returns the most recent `limit` activity events (default 20)
 
-`ActivityEvent` shape (defined upfront, used by all PRs):
-- `eventType`: string (e.g. `'routine_submitted'`, `'chore_submitted'`, `'reward_requested'`, `'chore_canceled'`, `'reward_canceled'`, `'badge_earned'`)
-- `entityType`: string | null (e.g. `'routine_completion'`, `'chore_log'`, `'reward_request'`, `'badge'`)
-- `entityId`: number | null
-- `summary`: string | null (human-readable, e.g. `'Completed Morning Routine for 5 points'`)
-- `metadata`: JSON | null (optional structured data for future use)
-- `createdAt`: ISO timestamp (set server-side)
+The `ActivityEvent` type is defined in `packages/shared/src/types.ts` (see above) — all PRs import from shared.
 
 PRs 1b–3 import and call `activityService.recordActivity` instead of inline inserts. PR 4 adds the routes and Me screen that expose this data — no service refactor needed.
 
-### Server: initial bootstrap endpoint + rate limiting
-
-`packages/server/src/routes/child.ts` (new or extend):
-- `GET /api/app/bootstrap` — returns minimal `BootstrapData` (no routine/chore/reward/badge fields yet; extended by each subsequent PR)
+### Server: rate limiting
 
 Submission endpoints (`POST /api/routine-completions`, `POST /api/chore-logs`, `POST /api/reward-requests`) share a rate limiter: 10 requests per 10 seconds per IP. Frontend disables submit buttons during in-flight requests to prevent double-tap.
+
+The `GET /api/app/bootstrap` endpoint is deferred to PR 1b (it requires time slot filtering, which is also in PR 1b).
 
 Every route handler wrapped in try-catch with `next(err)`.
 
@@ -72,10 +54,10 @@ Every route handler wrapped in try-catch with `next(err)`.
 `packages/client/src/contexts/OnlineContext.tsx`:
 - `OnlineProvider` wraps app; listens to `window.online`/`offline` events
 - `useOnline()` hook returns current connectivity state
-- **Offline sync on reconnect**: When the `online` event fires, query IndexedDB for any drafts with `submissionFailed: true` (add this flag to the draft schema in `draft.ts`). For each, re-POST using the stored idempotency key. On `200` or `409` (already exists): delete draft. On network error: leave in IndexedDB, retry on next `online` event with exponential backoff. Surface a toast to the child: `'Syncing your work...'`
+- **Offline sync on reconnect**: When the `online` event fires, query IndexedDB for any drafts with `submissionFailed: true` (add this flag to the draft schema in `draft.ts`). For each, re-POST using the stored idempotency key. On `200` or `409` (already exists): delete draft. On network error: leave in IndexedDB, retry on the next `online` event. Surface a toast to the child: `'Syncing your work...'`
 
-`packages/client/src/lib/api.ts` (fetch client):
-- All API calls use a 10-second fetch timeout (`AbortSignal.timeout(10_000)`). On timeout, the mutation is treated as a network error — drafts are preserved with their idempotency key for retry. TanStack Query's `retry: 2` with exponential backoff handles transient failures automatically.
+`packages/client/src/api/client.ts` (fetch client):
+- All API calls use a 10-second timeout via `AbortController` + `setTimeout`. On timeout, the mutation is treated as a network error — drafts are preserved with their idempotency key for retry.
 
 `packages/client/src/lib/draft.ts` (IndexedDB via `idb`):
 - `getDraft(routineId)`: returns draft or `undefined`
@@ -89,27 +71,14 @@ Every route handler wrapped in try-catch with `next(err)`.
 - Global test setup: configures jsdom, React Testing Library cleanup, starts MSW server in `beforeAll`, resets handlers in `afterEach`, stops server in `afterAll`
 
 `packages/client/tests/msw-handlers.ts`:
-- Default MSW handlers for `/api/app/bootstrap`, `/api/auth/session`
-- Extended by PR 1b for routine endpoints and by later PRs for their endpoints
+- Default MSW handlers for `/api/auth/session`
+- Extended by PR 1b for `/api/app/bootstrap` and routine endpoints; later PRs add their own handlers
 
 `packages/client/tests/test-utils.tsx`:
 - `renderWithProviders(ui)`: wraps with `QueryClientProvider` (fresh `QueryClient` per test), `MemoryRouter`, `OnlineProvider`
 - Re-exports all `@testing-library/react` utilities
 
 ### Tests
-
-**Server unit — `packages/server/tests/lib/timeSlots.test.ts`**:
-- `getCurrentSlot` returns `Morning` at 7:00 AM
-- `getCurrentSlot` returns `Afternoon` at 4:00 PM
-- `getCurrentSlot` returns `Bedtime` at 8:00 PM
-- `getCurrentSlot` returns null during gap period (12:00 PM)
-- "Any Time" routine is always visible regardless of time
-- Slot boundaries are inclusive (5:00 AM is Morning, 10:59 AM is Morning)
-- Custom slot windows from settings are used over defaults
-- Timezone parameter affects slot matching (UTC vs America/New_York)
-- Day boundary: 11:59 PM submission uses today's `localDate`, 12:00 AM uses tomorrow's
-- DST spring-forward: slot boundaries still correct on transition day
-- Device timezone differs from household timezone: server uses household TZ from settings, not request TZ
 
 **Client unit — `packages/client/tests/lib/draft.test.ts`**:
 - `saveDraft` + `getDraft` round-trips correctly (`fake-indexeddb`)
@@ -123,13 +92,12 @@ Every route handler wrapped in try-catch with `next(err)`.
 
 ### Definition of done
 
-- [ ] Time slot logic correct across all 11 test cases
-- [ ] `GET /api/app/bootstrap` returns minimal empty data structure
 - [ ] Rate limiter configured for all submission endpoints
 - [ ] `OnlineContext` detects connectivity changes and triggers draft retry on reconnect
 - [ ] `draft.ts` round-trips correctly with `fake-indexeddb`; draft preserves checked items and randomized order
 - [ ] `idempotency.ts` generates unique UUID keys
 - [ ] MSW test infrastructure set up (`setup.ts`, `test-utils.tsx`, `msw-handlers.ts`)
+- [ ] `activityService.recordActivity` and `getRecentActivity` covered by unit tests
 - [ ] `npm run test -- --run` passes green
 
 ---
@@ -137,6 +105,18 @@ Every route handler wrapped in try-catch with `next(err)`.
 ## PR 1b: Routines (read + complete)
 
 Builds on PR 1a. Adds the full routines feature end-to-end — service, routes, client hooks, UI screens, and tests.
+
+### Server: time slot logic
+
+`packages/server/src/lib/timeSlots.ts`:
+- `getCurrentSlot(now, timezone, slotConfig)`: returns which slot(s) are active at the given time
+- `isRoutineVisible(routine, now, timezone, slotConfig)`: true if the routine's slot is currently active or if it's `'anytime'`
+- `getCompletionWindowKey(routine, localDate)`: generates the uniqueness key
+  - `once_per_day`: `routine:{id}:day:{localDate}`
+  - `once_per_slot`: `routine:{id}:slot:{localDate}:{timeSlot}`
+  - `unlimited`: returns `null` (no uniqueness check)
+
+Slot config comes from `settingsService.getSlotConfig(db)` — reads customized windows from the settings table, falling back to `DEFAULT_*` constants.
 
 ### Shared types (routines)
 
@@ -160,7 +140,7 @@ Builds on PR 1a. Adds the full routines feature end-to-end — service, routes, 
   5. Snapshot routine fields into the completion row (`routine_name_snapshot`, `time_slot_snapshot`, `points_snapshot`, `checklist_snapshot_json`)
   6. If `requires_approval = false`: create ledger entry in the same transaction; status = `approved`
   7. If `requires_approval = true`: status = `pending`
-  8. Call `activityService.recordActivity(db, { type: 'routine_submitted', ... })`
+  8. Call `activityService.recordActivity(db, { eventType: 'routine_submitted', ... })`
   9. Return the new completion
 
 ### Server: routes
@@ -168,7 +148,7 @@ Builds on PR 1a. Adds the full routines feature end-to-end — service, routes, 
 `packages/server/src/routes/child.ts` (new or extend):
 - `GET /api/routines` — calls `routineService.getActiveRoutines`
 - `GET /api/routines/:id` — calls `routineService.getRoutineById`
-- `GET /api/app/bootstrap` — updated to return `{ routines: slot-filtered list, pendingRoutineCount }` (builds on PR 1a's initial endpoint)
+- `GET /api/app/bootstrap` — creates the bootstrap endpoint; returns `{ routines: slot-filtered list, pendingRoutineCount }` using time slot logic from `timeSlots.ts`
 
 `packages/server/src/routes/submissions.ts` (new):
 - `POST /api/routine-completions` — body: `{ routineId, checklistSnapshot, randomizedOrder, idempotencyKey, localDate }`
@@ -213,6 +193,19 @@ Every route handler wrapped in try-catch with `next(err)`.
 
 ### Tests
 
+**Server unit — `packages/server/tests/lib/timeSlots.test.ts`**:
+- `getCurrentSlot` returns `morning` at 7:00 AM
+- `getCurrentSlot` returns `afternoon` at 4:00 PM
+- `getCurrentSlot` returns `bedtime` at 8:00 PM
+- `getCurrentSlot` returns null during gap period (12:00 PM)
+- `anytime` routine is always visible regardless of time
+- Slot boundaries are inclusive (5:00 AM is `morning`, 10:59 AM is `morning`)
+- Custom slot windows from settings are used over defaults
+- Timezone parameter affects slot matching (UTC vs America/New_York)
+- Day boundary: 11:59 PM submission uses today's `localDate`, 12:00 AM uses tomorrow's
+- DST spring-forward: slot boundaries still correct on transition day
+- Device timezone differs from household timezone: server uses household TZ from settings, not request TZ
+
 **Server unit — `packages/server/tests/services/routineService.test.ts`**:
 - `getActiveRoutines` returns only active routines with active checklist items
 - `getActiveRoutines` excludes archived routines
@@ -234,7 +227,7 @@ Every route handler wrapped in try-catch with `next(err)`.
 - `GET /api/routines/:id` returns routine without auth
 - `GET /api/routines/:id` with nonexistent ID returns 404
 - `POST /api/routine-completions` creates completion
-- `GET /api/app/bootstrap` returns routines and `pendingRoutineCount`
+- `GET /api/app/bootstrap` returns slot-filtered routines and `pendingRoutineCount`
 - All responses follow `{ "data": ... }` envelope
 
 **Client component — `packages/client/tests/features/child/routines/RoutineChecklist.test.tsx`**:
@@ -289,14 +282,14 @@ Builds on PR 1b. Adds the chore log flow end-to-end. TodayScreen gains a quick c
   3. Snapshot `chore_name_snapshot`, `tier_name_snapshot`, `points_snapshot`, `requires_approval`
   4. If `requires_approval = false`: create ledger entry in same transaction; status = `approved`
   5. If `requires_approval = true`: status = `pending`
-  6. Call `activityService.recordActivity(db, { type: 'chore_submitted', ... })`
+  6. Call `activityService.recordActivity(db, { eventType: 'chore_submitted', ... })`
   7. Return the log
 - `cancelChoreLog(db, logId)`:
   1. Load log — throw `NotFoundError` if missing
   2. If status is `canceled`, return the existing record (cancel is idempotent)
   3. If status is `approved` or `rejected`, throw `ConflictError('cannot_cancel')`
   4. Set status to `canceled`
-  5. Call `activityService.recordActivity(db, { type: 'chore_canceled', ... })`
+  5. Call `activityService.recordActivity(db, { eventType: 'chore_canceled', ... })`
 
 ### 2c. Server: routes
 
@@ -403,7 +396,7 @@ Builds on PR 2. Adds the full rewards screen with point tracking and request/can
   2. If status is `canceled`, return the existing record (cancel is idempotent)
   3. If status is `approved` or `rejected`, throw `ConflictError('cannot_cancel')`
   4. Set status to `canceled` (reservation released — balance recalculates from ledger)
-  5. Call `activityService.recordActivity(db, { type: 'reward_canceled', ... })`
+  5. Call `activityService.recordActivity(db, { eventType: 'reward_canceled', ... })`
 
 ### 3c. Server: pointsService
 
@@ -647,5 +640,5 @@ Both calls run inside the same transaction as the ledger insertion. Approved adm
 - **activityService created in PR 1a**: `activityService.recordActivity` is available from the start — PRs 1b–3 all call it directly. PR 4 adds the routes and Me screen only; no refactor of inline inserts is needed.
 - **Offline support via OnlineContext**: `useOnline()` gates submit buttons across all screens. Checklist drafts survive page refresh via IndexedDB, and the idempotency key stored in the draft prevents duplicate submissions on retry. Drafts with `submissionFailed: true` are retried automatically when connectivity resumes.
 - **Bootstrap mocks use partial matching**: each PR's tests mock only the fields introduced in that PR. The `BootstrapData` TypeScript interface uses optional fields for properties added in later PRs, so PR 1b tests remain valid after PR 3 adds `pointsSummary`.
-- **10-second fetch timeout on all API calls**: implemented via `AbortSignal.timeout(10_000)` in the shared fetch client. On timeout, the mutation is treated as a network error — drafts are preserved with their idempotency key for retry. TanStack Query's `retry: 2` with exponential backoff handles transient failures automatically.
+- **10-second fetch timeout on all API calls**: implemented via `AbortController` + `setTimeout` in the shared fetch client (`src/api/client.ts`). On timeout, the mutation is treated as a network error — drafts are preserved with their idempotency key for retry.
 - **Insert ordering in transactions**: Within submission transactions, insert the completion/log/request record first, then the ledger entry, then badge evaluation, then activity event. If any later step fails, the entire transaction rolls back cleanly — no orphaned ledger entries.

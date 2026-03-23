@@ -21,6 +21,7 @@ Thumbs.db
 .vscode/
 .idea/
 .agent/
+AGENTS.md
 
 # Logs
 *.log

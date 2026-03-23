@@ -45,7 +45,7 @@ This app will be used by a child, potentially with assistive technology. Accessi
 - All submit buttons are disabled during in-flight requests (prevent double-tap).
 - All submit buttons are disabled when offline (gated by useOnline() from OnlineContext).
 - Destructive or costly actions (e.g. spending points) require a confirmation dialog before the POST fires.
-- All API calls use AbortSignal.timeout(10_000). On timeout, treat as network error.
+- All API calls use AbortController + setTimeout timeout (10s). On timeout, treat as network error.
 - TanStack Query mutations use retry: 2 with exponential backoff for transient failures.
 
 ## Drafts & Offline
