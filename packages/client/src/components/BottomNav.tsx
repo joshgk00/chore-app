@@ -16,13 +16,20 @@ export default function BottomNav() {
             key={tab.to}
             to={tab.to}
             className={({ isActive }) =>
-              `flex flex-1 flex-col items-center py-2 text-xs font-medium ${
+              `relative flex flex-1 flex-col items-center py-2 text-sm font-medium ${
                 isActive ? "text-indigo-600" : "text-gray-600 hover:text-gray-700"
               }`
             }
           >
-            <span className="text-lg">{tab.icon}</span>
-            <span>{tab.label}</span>
+            {({ isActive }) => (
+              <>
+                <span className="text-lg">{tab.icon}</span>
+                <span>{tab.label}</span>
+                {isActive && (
+                  <span className="absolute -bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-indigo-600" />
+                )}
+              </>
+            )}
           </NavLink>
         ))}
       </div>

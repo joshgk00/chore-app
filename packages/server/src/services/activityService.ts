@@ -13,6 +13,7 @@ interface ActivityRow {
 
 export interface ActivityService {
   recordActivity(event: ActivityEvent): void;
+  recordActivityOrThrow(event: ActivityEvent): void;
   getRecentActivity(limit?: number): ActivityEvent[];
 }
 
@@ -52,8 +53,8 @@ export function createActivityService(db: Database.Database): ActivityService {
   }
 
   function getRecentActivity(limit = 20): ActivityEvent[] {
-    const safeLim = Math.max(1, Math.min(limit, 100));
-    const rows = selectRecentStmt.all(safeLim) as ActivityRow[];
+    const safeLimit = Math.max(1, Math.min(limit, 100));
+    const rows = selectRecentStmt.all(safeLimit) as ActivityRow[];
     return rows.map((row) => ({
       eventType: row.event_type,
       entityType: row.entity_type ?? undefined,
@@ -64,5 +65,16 @@ export function createActivityService(db: Database.Database): ActivityService {
     }));
   }
 
-  return { recordActivity, getRecentActivity };
+  // Lets errors propagate — use inside db.transaction() so failures trigger rollback
+  function recordActivityOrThrow(event: ActivityEvent): void {
+    insertStmt.run(
+      event.eventType,
+      event.entityType ?? null,
+      event.entityId ?? null,
+      event.summary ?? null,
+      event.metadata ? JSON.stringify(event.metadata) : null,
+    );
+  }
+
+  return { recordActivity, recordActivityOrThrow, getRecentActivity };
 }

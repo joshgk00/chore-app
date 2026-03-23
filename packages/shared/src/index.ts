@@ -6,13 +6,16 @@ export type {
   EntryType,
   TimeSlot,
   CompletionRule,
-  SlotConfig,
-  ActivityEvent,
-  BootstrapData,
   AssetSource,
   AssetStatus,
   PushRole,
   PushStatus,
+  SlotConfig,
+  ActivityEvent,
+  ChecklistItem,
+  Routine,
+  RoutineCompletion,
+  BootstrapData,
 } from "./types.js";
 
 export {

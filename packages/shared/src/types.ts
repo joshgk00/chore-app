@@ -19,7 +19,7 @@ export type Status = "pending" | "approved" | "rejected" | "canceled";
 // Entry types for points ledger
 export type EntryType = "routine" | "chore" | "reward" | "manual";
 
-// Time slot enum (matches DB constraint values)
+// Time slot enum
 export type TimeSlot = "morning" | "afternoon" | "bedtime" | "anytime";
 
 // Completion rule enum
@@ -43,10 +43,6 @@ export interface ActivityEvent {
   createdAt?: string;
 }
 
-export interface BootstrapData {
-  // Extended by each PR — fields added as optional properties for progressive type safety
-}
-
 // Asset source
 export type AssetSource = "upload" | "ai_generated";
 
@@ -58,3 +54,46 @@ export type PushRole = "child" | "admin";
 
 // Push subscription status
 export type PushStatus = "active" | "expired" | "failed";
+
+export interface ChecklistItem {
+  id: number;
+  routineId: number;
+  label: string;
+  imageAssetId?: number;
+  sortOrder: number;
+}
+
+export interface Routine {
+  id: number;
+  name: string;
+  timeSlot: TimeSlot;
+  completionRule: CompletionRule;
+  points: number;
+  requiresApproval: boolean;
+  imageAssetId?: number;
+  randomizeItems: boolean;
+  sortOrder: number;
+  items: ChecklistItem[];
+}
+
+export interface RoutineCompletion {
+  id: number;
+  routineId: number;
+  routineNameSnapshot: string;
+  timeSlotSnapshot: string;
+  completionRuleSnapshot: string;
+  pointsSnapshot: number;
+  requiresApprovalSnapshot: boolean;
+  checklistSnapshotJson: string | null;
+  randomizedOrderJson: string | null;
+  completionWindowKey: string | null;
+  completedAt: string;
+  localDate: string;
+  status: Status;
+  idempotencyKey: string;
+}
+
+export interface BootstrapData {
+  routines?: Routine[];
+  pendingRoutineCount?: number;
+}
