@@ -1,6 +1,10 @@
 import '@testing-library/jest-dom/vitest';
 import { server } from './msw/server.js';
 
+// TODO: Remove this proxy when undici fixes the AbortSignal realm check.
+// Track: https://github.com/nodejs/undici/issues — search for "AbortSignal instanceof"
+// This workaround is only needed for Node 24 + jsdom + MSW. If upgrading Node
+// or MSW resolves the mismatch, delete this block and verify tests still pass.
 // Node 24's undici Request constructor rejects AbortSignal instances from the
 // global scope when running under jsdom + MSW because of a realm mismatch.
 // Strip the signal from RequestInit before delegating to the original
@@ -25,6 +29,6 @@ globalThis.Request = new Proxy(OriginalRequest, {
   },
 }) as unknown as typeof Request;
 
-beforeAll(() => server.listen({ onUnhandledRequest: 'warn' }));
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());

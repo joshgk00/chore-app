@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useSyncOnReconnect } from "./lib/draft-sync.js";
 import BottomNav from "./components/BottomNav.js";
 import AdminGuard from "./components/AdminGuard.js";
 import AdminLayout from "./layouts/AdminLayout.js";
@@ -45,6 +46,8 @@ function AdminPlaceholder({ title }: { title: string }) {
 }
 
 export default function App() {
+  useSyncOnReconnect();
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
