@@ -1,5 +1,6 @@
 import { Router } from "express";
 import type { RoutineService } from "../services/routineService.js";
+import type { ChoreService } from "../services/choreService.js";
 import type { SettingsService } from "../services/settingsService.js";
 import { ValidationError } from "../lib/errors.js";
 import { resolveSlotContext } from "../lib/timeSlots.js";
@@ -7,6 +8,7 @@ import { createSubmissionRateLimiter } from "../middleware/submissionRateLimiter
 
 export function createSubmissionRoutes(
   routineService: RoutineService,
+  choreService: ChoreService,
   settingsService: SettingsService,
 ) {
   const router = Router();
@@ -62,6 +64,53 @@ export function createSubmissionRoutes(
       });
 
       res.status(201).json({ data: completion });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post("/chore-logs", (req, res, next) => {
+    try {
+      const { choreId, tierId, idempotencyKey, localDate } = req.body;
+
+      if (typeof choreId !== "number" || !Number.isInteger(choreId) || choreId < 1)
+        throw new ValidationError("choreId must be a positive integer");
+      if (typeof tierId !== "number" || !Number.isInteger(tierId) || tierId < 1)
+        throw new ValidationError("tierId must be a positive integer");
+      if (!idempotencyKey || typeof idempotencyKey !== "string")
+        throw new ValidationError("idempotencyKey is required");
+      if (!localDate || typeof localDate !== "string")
+        throw new ValidationError("localDate is required");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(localDate))
+        throw new ValidationError("localDate must be in YYYY-MM-DD format");
+      if (idempotencyKey.length > 255)
+        throw new ValidationError("idempotencyKey exceeds maximum length");
+
+      const log = choreService.submitChoreLog({
+        choreId,
+        tierId,
+        idempotencyKey,
+        localDate,
+      });
+
+      res.status(201).json({ data: log });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post("/chore-logs/:id/cancel", (req, res, next) => {
+    try {
+      const idParam = req.params.id;
+      if (!/^\d+$/.test(idParam)) {
+        throw new ValidationError("Invalid chore log ID");
+      }
+      const id = Number(idParam);
+      if (!Number.isInteger(id) || id < 1) {
+        throw new ValidationError("Invalid chore log ID");
+      }
+      const log = choreService.cancelChoreLog(id);
+      res.json({ data: log });
     } catch (err) {
       next(err);
     }

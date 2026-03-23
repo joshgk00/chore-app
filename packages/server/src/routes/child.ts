@@ -1,11 +1,13 @@
 import { Router } from "express";
 import type { RoutineService } from "../services/routineService.js";
+import type { ChoreService } from "../services/choreService.js";
 import type { SettingsService } from "../services/settingsService.js";
 import { ValidationError } from "../lib/errors.js";
 import { isRoutineVisible, resolveSlotContext } from "../lib/timeSlots.js";
 
 export function createChildRoutes(
   routineService: RoutineService,
+  choreService: ChoreService,
   settingsService: SettingsService,
 ) {
   const router = Router();
@@ -33,6 +35,15 @@ export function createChildRoutes(
     }
   });
 
+  router.get("/chores", (_req, res, next) => {
+    try {
+      const chores = choreService.getActiveChores();
+      res.json({ data: chores });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   router.get("/app/bootstrap", (_req, res, next) => {
     try {
       const routines = routineService.getActiveRoutines();
@@ -42,7 +53,10 @@ export function createChildRoutes(
         isRoutineVisible(r.timeSlot, now, timezone, slotConfig),
       );
       const pendingRoutineCount = routineService.getPendingCompletionCount();
-      res.json({ data: { routines: filteredRoutines, pendingRoutineCount } });
+      const pendingChoreCount = choreService.getPendingChoreLogCount();
+      res.json({
+        data: { routines: filteredRoutines, pendingRoutineCount, pendingChoreCount },
+      });
     } catch (err) {
       next(err);
     }

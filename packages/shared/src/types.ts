@@ -93,7 +93,38 @@ export interface RoutineCompletion {
   idempotencyKey: string;
 }
 
+export interface ChoreTier {
+  id: number;
+  choreId: number;
+  name: string;
+  points: number;
+  sortOrder: number;
+}
+
+export interface Chore {
+  id: number;
+  name: string;
+  requiresApproval: boolean;
+  sortOrder: number;
+  tiers: ChoreTier[];
+}
+
+export interface ChoreLog {
+  id: number;
+  choreId: number;
+  choreNameSnapshot: string;
+  tierId: number | null;
+  tierNameSnapshot: string | null;
+  pointsSnapshot: number;
+  requiresApprovalSnapshot: boolean;
+  loggedAt: string;
+  localDate: string;
+  status: Status;
+  idempotencyKey: string;
+}
+
 export interface BootstrapData {
   routines?: Routine[];
   pendingRoutineCount?: number;
+  pendingChoreCount?: number;
 }

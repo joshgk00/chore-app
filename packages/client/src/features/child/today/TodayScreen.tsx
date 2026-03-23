@@ -1,5 +1,6 @@
 import { useBootstrap } from "./hooks/useBootstrap.js";
 import RoutineCard from "../routines/RoutineCard.js";
+import QuickChoreLog from "../chores/QuickChoreLog.js";
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -47,6 +48,7 @@ export default function TodayScreen() {
 
   const routines = bootstrap?.routines ?? [];
   const pendingCount = bootstrap?.pendingRoutineCount ?? 0;
+  const pendingChoreCount = bootstrap?.pendingChoreCount ?? 0;
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -88,6 +90,20 @@ export default function TodayScreen() {
           </div>
         </div>
       )}
+
+      <div className="mt-6">
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-gray-700">Chores</h2>
+          {pendingChoreCount > 0 && (
+            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-700">
+              {pendingChoreCount} pending
+            </span>
+          )}
+        </div>
+        <div className="mt-3">
+          <QuickChoreLog />
+        </div>
+      </div>
     </div>
   );
 }

@@ -15,6 +15,9 @@ export type {
   ChecklistItem,
   Routine,
   RoutineCompletion,
+  Chore,
+  ChoreTier,
+  ChoreLog,
   BootstrapData,
 } from "./types.js";
 
