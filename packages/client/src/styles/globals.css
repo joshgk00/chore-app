@@ -78,6 +78,9 @@
 
     --color-amber-50: #451a03;
     --color-amber-100: #78350f;
+    --color-amber-400: #fbbf24;
+    --color-amber-500: #f59e0b;
+    --color-amber-600: #fbbf24;
     --color-amber-700: #fbbf24;
 
     --color-emerald-50: #022c22;
@@ -88,10 +91,13 @@
 
     --color-sky-50: #0c4a6e;
     --color-sky-100: #075985;
+    --color-sky-500: #38bdf8;
     --color-sky-700: #7dd3fc;
 
     --color-violet-50: #2e1065;
     --color-violet-100: #3b0764;
+    --color-violet-400: #c4b5fd;
+    --color-violet-500: #a78bfa;
 
     --gradient-points-from: #d97706;
     --gradient-points-to: #78350f;
@@ -107,7 +113,7 @@
 body {
   background: var(--color-bg);
   color: var(--color-text);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: 'Inter Variable', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }

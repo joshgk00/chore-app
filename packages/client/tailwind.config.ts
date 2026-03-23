@@ -6,8 +6,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        display: ['Fredoka', 'system-ui', 'sans-serif'],
-        body: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        display: ['Fredoka Variable', 'system-ui', 'sans-serif'],
+        body: ['Inter Variable', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
       },
       screens: {
         tablet: '768px',

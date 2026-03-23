@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@chore-app/shared": "*",
+    "@fontsource-variable/fredoka": "^5.2.10",
+    "@fontsource-variable/inter": "^5.2.8",
     "@tanstack/react-query": "^5.28.0",
     "idb": "^8.0.3",
     "react": "^18.3.0",

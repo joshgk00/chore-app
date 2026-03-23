@@ -8,7 +8,7 @@
     "packages/client"
   ],
   "scripts": {
-    "dev": "concurrently -n server,client -c blue,green \"npm run dev --workspace=packages/server\" \"npm run dev --workspace=packages/client\"",
+    "dev": "node scripts/dev.mjs",
     "build": "npm run build --workspace=packages/shared && npm run build --workspace=packages/client && npm run build --workspace=packages/server",
     "lint": "eslint packages/*/src/**/*.ts packages/*/src/**/*.tsx",
     "typecheck": "tsc --build",
