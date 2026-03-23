@@ -16,6 +16,8 @@ import { createSettingsService } from "./services/settingsService.js";
 import { createActivityService } from "./services/activityService.js";
 import { createRoutineService } from "./services/routineService.js";
 import { createChoreService } from "./services/choreService.js";
+import { createRewardService } from "./services/rewardService.js";
+import { createPointsService } from "./services/pointsService.js";
 import type { AppConfig } from "./config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -35,6 +37,8 @@ export function createApp(db: Database.Database, config: AppConfig) {
   const activityService = createActivityService(db);
   const routineService = createRoutineService(db, activityService);
   const choreService = createChoreService(db, activityService);
+  const rewardService = createRewardService(db, activityService);
+  const pointsService = createPointsService(db);
 
   app.get("/api/health", (_req, res) => {
     res.json({ data: { status: "ok" } });
@@ -42,8 +46,8 @@ export function createApp(db: Database.Database, config: AppConfig) {
 
   app.use("/api/auth", createAuthRoutes(authService, config));
 
-  app.use("/api", createChildRoutes(routineService, choreService, settingsService));
-  app.use("/api", createSubmissionRoutes(routineService, choreService, settingsService));
+  app.use("/api", createChildRoutes(routineService, choreService, rewardService, pointsService, settingsService));
+  app.use("/api", createSubmissionRoutes(routineService, choreService, rewardService, settingsService));
 
   app.use("/api/admin", adminAuth(authService, config));
   app.use("/api/admin", createAdminRoutes(settingsService));

@@ -5,6 +5,7 @@ import { createTestDb, seedTestData, createTestConfig } from '../db-helpers.js';
 import { createApp } from '../../src/app.js';
 import { seedRoutineData } from '../helpers/seed-routines.js';
 import { seedChoreData } from '../helpers/seed-chores.js';
+import { seedRewardData, seedPointsLedger } from '../helpers/seed-rewards.js';
 
 const testConfig = createTestConfig();
 let db: Database.Database;
@@ -14,6 +15,7 @@ beforeEach(async () => {
   await seedTestData(db);
   seedRoutineData(db);
   seedChoreData(db);
+  seedRewardData(db);
 });
 
 afterEach(() => {
@@ -251,5 +253,101 @@ describe('chore routes', () => {
 
     expect(res.status).toBe(422);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+});
+
+describe('reward routes', () => {
+  it('GET /api/rewards returns rewards without auth', async () => {
+    const app = buildApp();
+    const res = await request(app).get('/api/rewards');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toBeInstanceOf(Array);
+    expect(res.body.data).toHaveLength(2);
+    expect(res.body.data[0].name).toBe('Extra Screen Time');
+    expect(res.body.data[0].pointsCost).toBe(20);
+  });
+
+  it('GET /api/points/summary returns balance', async () => {
+    const app = buildApp();
+    const res = await request(app).get('/api/points/summary');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveProperty('total');
+    expect(res.body.data).toHaveProperty('reserved');
+    expect(res.body.data).toHaveProperty('available');
+  });
+
+  it('GET /api/points/ledger supports pagination', async () => {
+    const app = buildApp();
+    const res = await request(app).get('/api/points/ledger?limit=10&offset=0');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toBeInstanceOf(Array);
+  });
+
+  it('POST /api/reward-requests creates request', async () => {
+    seedPointsLedger(db, 100);
+
+    const app = buildApp();
+    const res = await request(app)
+      .post('/api/reward-requests')
+      .send({
+        rewardId: 1,
+        idempotencyKey: 'reward-test-1',
+        localDate: '2026-03-15',
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data).toHaveProperty('rewardNameSnapshot', 'Extra Screen Time');
+    expect(res.body.data).toHaveProperty('costSnapshot', 20);
+    expect(res.body.data).toHaveProperty('status', 'pending');
+  });
+
+  it('POST /api/reward-requests with insufficient points returns 409', async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .post('/api/reward-requests')
+      .send({
+        rewardId: 1,
+        idempotencyKey: 'insufficient-test',
+        localDate: '2026-03-15',
+      });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('CONFLICT');
+  });
+
+  it('POST /api/reward-requests/:id/cancel cancels pending request', async () => {
+    seedPointsLedger(db, 100);
+
+    const app = buildApp();
+    const createRes = await request(app)
+      .post('/api/reward-requests')
+      .send({
+        rewardId: 1,
+        idempotencyKey: 'cancel-reward-test',
+        localDate: '2026-03-15',
+      });
+    expect(createRes.status).toBe(201);
+
+    const cancelRes = await request(app)
+      .post(`/api/reward-requests/${createRes.body.data.id}/cancel`);
+
+    expect(cancelRes.status).toBe(200);
+    expect(cancelRes.body.data.status).toBe('canceled');
+  });
+
+  it('GET /api/app/bootstrap includes pointsSummary and pendingRewardCount', async () => {
+    const app = buildApp();
+    const res = await request(app).get('/api/app/bootstrap');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveProperty('pointsSummary');
+    expect(res.body.data.pointsSummary).toHaveProperty('total');
+    expect(res.body.data.pointsSummary).toHaveProperty('reserved');
+    expect(res.body.data.pointsSummary).toHaveProperty('available');
+    expect(res.body.data).toHaveProperty('pendingRewardCount');
+    expect(typeof res.body.data.pendingRewardCount).toBe('number');
   });
 });

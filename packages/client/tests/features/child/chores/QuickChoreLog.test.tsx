@@ -159,7 +159,7 @@ describe('QuickChoreLog', () => {
     await user.click(screen.getByText('Quick Clean'));
 
     await waitFor(() => {
-      expect(screen.getByText(/no longer be available/i)).toBeInTheDocument();
+      expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
     });
   });
 

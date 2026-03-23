@@ -20,6 +20,8 @@ export function useSubmitChoreLog() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bootstrap"] });
+      queryClient.invalidateQueries({ queryKey: ["points"] });
+      queryClient.invalidateQueries({ queryKey: ["ledger"] });
     },
   });
 }

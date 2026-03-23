@@ -1,18 +1,11 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useChores } from "./hooks/useChores.js";
 import { useSubmitChoreLog } from "./hooks/useSubmitChoreLog.js";
 import { useCancelChoreLog } from "./hooks/useCancelChoreLog.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
 import { generateIdempotencyKey } from "../../../lib/idempotency.js";
+import { formatLocalDate } from "../../../lib/draft-sync.js";
 import type { Chore, ChoreTier, ChoreLog } from "@chore-app/shared";
-
-function getLocalDate(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
 
 export default function QuickChoreLog() {
   const [isOpen, setIsOpen] = useState(false);
@@ -22,6 +15,12 @@ export default function QuickChoreLog() {
   const { data: chores, isLoading, error } = useChores();
   const submitMutation = useSubmitChoreLog();
   const cancelMutation = useCancelChoreLog();
+  const idempotencyKeyRef = useRef<string>(generateIdempotencyKey());
+
+  function handleChoreSelect(chore: Chore) {
+    idempotencyKeyRef.current = generateIdempotencyKey();
+    setSelectedChore(chore);
+  }
 
   function handleTierSelect(tier: ChoreTier) {
     if (!selectedChore) return;
@@ -30,8 +29,8 @@ export default function QuickChoreLog() {
       {
         choreId: selectedChore.id,
         tierId: tier.id,
-        idempotencyKey: generateIdempotencyKey(),
-        localDate: getLocalDate(),
+        idempotencyKey: idempotencyKeyRef.current,
+        localDate: formatLocalDate(),
       },
       {
         onSuccess: (log) => {
@@ -151,7 +150,7 @@ export default function QuickChoreLog() {
               <button
                 key={chore.id}
                 type="button"
-                onClick={() => setSelectedChore(chore)}
+                onClick={() => handleChoreSelect(chore)}
                 disabled={!isOnline}
                 className="flex w-full items-center justify-between rounded-xl bg-gray-50 px-4 py-3 text-left font-medium text-gray-700 transition-all duration-200 hover:bg-amber-50 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -196,7 +195,7 @@ export default function QuickChoreLog() {
           )}
           {submitMutation.isError && (
             <p className="text-center text-sm text-red-600" aria-live="assertive">
-              This chore may no longer be available. Please close and try again.
+              Something went wrong. Please check your connection and try again.
             </p>
           )}
         </div>

@@ -71,6 +71,12 @@ function mapTierRow(row: TierRow): ChoreTier {
 }
 
 function mapChoreLogRow(row: ChoreLogRow): ChoreLog {
+  if (row.tier_id == null || row.tier_name_snapshot == null) {
+    throw new Error(
+      `Chore log ${row.id} is missing tier data (tier_id or tier_name_snapshot is NULL)`,
+    );
+  }
+
   return {
     id: row.id,
     choreId: row.chore_id,
