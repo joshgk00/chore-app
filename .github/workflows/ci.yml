@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  check:
+    name: Lint, Typecheck, Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test -- --run
+
+  docker:
+    name: Docker Build & Smoke Test
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t chore-app .
+
+      - name: Smoke test
+        run: |
+          docker run -d --name chore-test \
+            -p 3000:3000 \
+            -e PUBLIC_ORIGIN=http://localhost:3000 \
+            -e INITIAL_ADMIN_PIN=123456 \
+            chore-app
+
+          # Retry health check up to 15 seconds
+          for i in $(seq 1 15); do
+            if curl -sf http://localhost:3000/api/health > /dev/null 2>&1; then
+              echo "Health check passed on attempt $i"
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo "Health check failed after 15 attempts. Container logs:"
+          docker logs chore-test
+          exit 1
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop chore-test 2>/dev/null || true
+          docker rm chore-test 2>/dev/null || true
