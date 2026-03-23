@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chore App — Admin Design Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --surface-muted: #f1f5f9;
+    --text: #1e293b;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --text-faint: #94a3b8;
+    --border: #e2e8f0;
+    --border-light: #f1f5f9;
+
+    --amber-50: #fffbeb;
+    --amber-100: #fef3c7;
+    --amber-400: #fbbf24;
+    --amber-500: #f59e0b;
+    --amber-600: #d97706;
+    --amber-700: #b45309;
+
+    --emerald-50: #ecfdf5;
+    --emerald-500: #10b981;
+    --emerald-600: #059669;
+    --emerald-700: #047857;
+
+    --sky-50: #f0f9ff;
+    --sky-500: #0ea5e9;
+    --sky-700: #0369a1;
+
+    --violet-50: #f5f3ff;
+    --violet-500: #8b5cf6;
+
+    --red-50: #fef2f2;
+    --red-500: #ef4444;
+    --red-600: #dc2626;
+    --red-700: #b91c1c;
+
+    --radius: 12px;
+    --radius-lg: 16px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-elevated: 0 4px 12px rgba(0,0,0,0.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: #e8eaef;
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+    padding: 32px;
+    justify-content: center;
+  }
+
+  h1, h2, h3, .display { font-family: 'Fredoka', sans-serif; }
+
+  /* Screen frame */
+  .screen {
+    width: 900px;
+    min-height: 620px;
+    background: var(--bg);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  .screen-label {
+    position: absolute;
+    top: -28px;
+    left: 0;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* PIN Screen */
+  .pin-screen {
+    width: 420px;
+    min-height: 520px;
+    background: var(--bg);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  .pin-card {
+    width: 320px;
+    text-align: center;
+  }
+
+  .pin-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 20px;
+    background: linear-gradient(135deg, var(--amber-400), var(--amber-600));
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .pin-icon svg { width: 32px; height: 32px; stroke: white; stroke-width: 2; fill: none; }
+
+  .pin-title {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .pin-sub {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  .pin-input {
+    display: block;
+    width: 100%;
+    margin-top: 24px;
+    padding: 14px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 24px;
+    text-align: center;
+    letter-spacing: 8px;
+    font-family: 'Inter', sans-serif;
+    color: var(--text);
+    background: var(--surface);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .pin-input:focus { border-color: var(--amber-500); }
+  .pin-input::placeholder { letter-spacing: 4px; font-size: 16px; color: var(--text-faint); }
+
+  .pin-btn {
+    display: block;
+    width: 100%;
+    margin-top: 16px;
+    padding: 14px;
+    border: none;
+    border-radius: var(--radius);
+    font-family: 'Fredoka', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+    background: linear-gradient(135deg, var(--amber-500), var(--amber-600));
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(245,158,11,0.3);
+    transition: all 0.2s;
+  }
+
+  .pin-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(245,158,11,0.4); }
+
+  .pin-back {
+    display: inline-block;
+    margin-top: 16px;
+    font-size: 13px;
+    color: var(--text-muted);
+    text-decoration: none;
+  }
+
+  .pin-back:hover { color: var(--text-secondary); }
+
+  /* Admin nav */
+  .admin-nav {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    height: 56px;
+    gap: 8px;
+  }
+
+  .admin-brand {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--amber-600);
+    margin-right: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .admin-brand-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--amber-400);
+    border-radius: 50%;
+  }
+
+  .nav-link {
+    padding: 16px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+
+  .nav-link:hover { color: var(--text-secondary); }
+  .nav-link.active { color: var(--amber-700); border-bottom-color: var(--amber-500); }
+
+  .nav-spacer { flex: 1; }
+
+  .nav-exit {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-faint);
+    text-decoration: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: all 0.15s;
+  }
+
+  .nav-exit:hover { background: var(--surface-muted); color: var(--text-muted); }
+
+  /* Content */
+  .admin-content {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+  }
+
+  .content-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .content-title {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .btn-primary {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: white;
+    background: var(--amber-500);
+    border: none;
+    border-radius: 10px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn-primary:hover { background: var(--amber-600); }
+  .btn-primary svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2.5; fill: none; }
+
+  /* Stat cards */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    box-shadow: var(--shadow);
+  }
+
+  .stat-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+
+  .stat-value {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text);
+    margin-top: 4px;
+  }
+
+  .stat-badge {
+    display: inline-block;
+    margin-top: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 99px;
+  }
+
+  .stat-badge.pending { background: var(--amber-100); color: var(--amber-700); }
+  .stat-badge.success { background: var(--emerald-50); color: var(--emerald-700); }
+
+  /* Table */
+  .data-table {
+    width: 100%;
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .data-table thead { background: var(--surface-muted); }
+
+  .data-table th {
+    padding: 12px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .data-table td {
+    padding: 14px 16px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    border-top: 1px solid var(--border-light);
+  }
+
+  .data-table tr:hover td { background: var(--surface-muted); }
+
+  .table-name {
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .table-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 99px;
+  }
+
+  .table-badge.active { background: var(--emerald-50); color: var(--emerald-700); }
+  .table-badge.archived { background: var(--surface-muted); color: var(--text-faint); }
+  .table-badge.morning { background: var(--sky-50); color: var(--sky-700); }
+  .table-badge.anytime { background: var(--amber-50); color: var(--amber-700); }
+  .table-badge.bedtime { background: var(--violet-50); color: var(--violet-500); }
+
+  .table-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .table-btn {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .table-btn:hover { background: var(--surface-muted); border-color: var(--text-faint); }
+  .table-btn.danger { color: var(--red-600); border-color: var(--red-500); }
+  .table-btn.danger:hover { background: var(--red-50); }
+
+  /* Approval cards */
+  .approval-section { margin-bottom: 28px; }
+
+  .approval-section-title {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .approval-count {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 99px;
+    background: var(--amber-100);
+    color: var(--amber-700);
+  }
+
+  .approval-card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    box-shadow: var(--shadow);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .approval-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .approval-icon.routine { background: var(--sky-50); }
+  .approval-icon.chore { background: var(--amber-50); }
+  .approval-icon.reward { background: var(--violet-50); }
+
+  .approval-body { flex: 1; min-width: 0; }
+
+  .approval-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  .approval-meta {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .approval-snapshot {
+    font-size: 12px;
+    color: var(--text-faint);
+    margin-top: 4px;
+    font-style: italic;
+  }
+
+  .approval-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .btn-approve {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 10px;
+    border: none;
+    background: var(--emerald-500);
+    color: white;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-approve:hover { background: var(--emerald-600); }
+
+  .btn-reject {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 10px;
+    border: 1.5px solid var(--red-500);
+    background: transparent;
+    color: var(--red-600);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-reject:hover { background: var(--red-50); }
+
+  /* Points pill in table */
+  .points-pill {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--amber-700);
+    background: var(--amber-50);
+    padding: 3px 10px;
+    border-radius: 99px;
+    border: 1px solid var(--amber-100);
+    display: inline-block;
+  }
+
+  /* Empty state for approvals */
+  .empty-approvals {
+    text-align: center;
+    padding: 40px 20px;
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+  }
+
+  .empty-approvals .emoji { font-size: 40px; }
+  .empty-approvals .msg { font-family: 'Fredoka'; font-size: 16px; color: var(--text-muted); margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<!-- ===== PIN ENTRY ===== -->
+<div class="pin-screen" style="position:relative">
+  <span class="screen-label">Pin Entry</span>
+  <div class="pin-card">
+    <div class="pin-icon">
+      <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+    </div>
+    <div class="pin-title">Admin Access</div>
+    <div class="pin-sub">Enter your PIN to manage chores</div>
+    <input class="pin-input" type="password" placeholder="Enter PIN" value="••••••">
+    <button class="pin-btn">Unlock</button>
+    <a class="pin-back" href="#">&larr; Back to app</a>
+  </div>
+</div>
+
+<!-- ===== DASHBOARD ===== -->
+<div class="screen" style="position:relative">
+  <span class="screen-label">Admin Dashboard</span>
+  <div class="admin-nav">
+    <div class="admin-brand"><span class="admin-brand-dot"></span> Admin</div>
+    <a class="nav-link active" href="#">Dashboard</a>
+    <a class="nav-link" href="#">Routines</a>
+    <a class="nav-link" href="#">Chores</a>
+    <a class="nav-link" href="#">Rewards</a>
+    <a class="nav-link" href="#">Approvals</a>
+    <a class="nav-link" href="#">Settings</a>
+    <span class="nav-spacer"></span>
+    <a class="nav-exit" href="#">Exit Admin</a>
+  </div>
+
+  <div class="admin-content">
+    <div class="content-header">
+      <div class="content-title">Dashboard</div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-label">Pending Approvals</div>
+        <div class="stat-value">5</div>
+        <span class="stat-badge pending">3 routines, 2 chores</span>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Points Earned (Today)</div>
+        <div class="stat-value">18</div>
+        <span class="stat-badge success">+3 from yesterday</span>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Active Routines</div>
+        <div class="stat-value">4</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Badges Earned</div>
+        <div class="stat-value">4/8</div>
+        <span class="stat-badge success">Latest: Point Hoarder</span>
+      </div>
+    </div>
+
+    <div class="approval-section">
+      <div class="approval-section-title">Recent Pending <span class="approval-count">5</span></div>
+
+      <div class="approval-card">
+        <div class="approval-icon routine">🌅</div>
+        <div class="approval-body">
+          <div class="approval-title">Morning Routine</div>
+          <div class="approval-meta">Submitted today at 7:42 AM · <span class="points-pill">5 pts</span></div>
+        </div>
+        <div class="approval-actions">
+          <button class="btn-approve">Approve</button>
+          <button class="btn-reject">Reject</button>
+        </div>
+      </div>
+
+      <div class="approval-card">
+        <div class="approval-icon chore">🧹</div>
+        <div class="approval-body">
+          <div class="approval-title">Yard Work — Basic</div>
+          <div class="approval-meta">Submitted today at 3:15 PM · <span class="points-pill">10 pts</span></div>
+        </div>
+        <div class="approval-actions">
+          <button class="btn-approve">Approve</button>
+          <button class="btn-reject">Reject</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ROUTINES LIST ===== -->
+<div class="screen" style="position:relative">
+  <span class="screen-label">Admin Routines</span>
+  <div class="admin-nav">
+    <div class="admin-brand"><span class="admin-brand-dot"></span> Admin</div>
+    <a class="nav-link" href="#">Dashboard</a>
+    <a class="nav-link active" href="#">Routines</a>
+    <a class="nav-link" href="#">Chores</a>
+    <a class="nav-link" href="#">Rewards</a>
+    <a class="nav-link" href="#">Approvals</a>
+    <a class="nav-link" href="#">Settings</a>
+    <span class="nav-spacer"></span>
+    <a class="nav-exit" href="#">Exit Admin</a>
+  </div>
+
+  <div class="admin-content">
+    <div class="content-header">
+      <div class="content-title">Routines</div>
+      <button class="btn-primary"><svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg> New Routine</button>
+    </div>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Time Slot</th>
+          <th>Points</th>
+          <th>Items</th>
+          <th>Rule</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="table-name">Morning Routine</td>
+          <td><span class="table-badge morning">Morning</span></td>
+          <td><span class="points-pill">5 pts</span></td>
+          <td>2 items</td>
+          <td>Once per day</td>
+          <td><span class="table-badge active">Active</span></td>
+          <td class="table-actions">
+            <button class="table-btn">Edit</button>
+            <button class="table-btn danger">Archive</button>
+          </td>
+        </tr>
+        <tr>
+          <td class="table-name">Afternoon Check</td>
+          <td><span class="table-badge morning">Afternoon</span></td>
+          <td><span class="points-pill">3 pts</span></td>
+          <td>1 item</td>
+          <td>Once per slot</td>
+          <td><span class="table-badge active">Active</span></td>
+          <td class="table-actions">
+            <button class="table-btn">Edit</button>
+            <button class="table-btn danger">Archive</button>
+          </td>
+        </tr>
+        <tr>
+          <td class="table-name">Quick Win</td>
+          <td><span class="table-badge anytime">Any Time</span></td>
+          <td><span class="points-pill">1 pt</span></td>
+          <td>1 item</td>
+          <td>Unlimited</td>
+          <td><span class="table-badge active">Active</span></td>
+          <td class="table-actions">
+            <button class="table-btn">Edit</button>
+            <button class="table-btn danger">Archive</button>
+          </td>
+        </tr>
+        <tr>
+          <td class="table-name">Bedtime Routine</td>
+          <td><span class="table-badge bedtime">Bedtime</span></td>
+          <td><span class="points-pill">4 pts</span></td>
+          <td>1 item</td>
+          <td>Once per day</td>
+          <td><span class="table-badge active">Active</span></td>
+          <td class="table-actions">
+            <button class="table-btn">Edit</button>
+            <button class="table-btn danger">Archive</button>
+          </td>
+        </tr>
+        <tr style="opacity:0.6">
+          <td class="table-name">Old Routine</td>
+          <td><span class="table-badge morning">Morning</span></td>
+          <td><span class="points-pill">2 pts</span></td>
+          <td>1 item</td>
+          <td>Once per day</td>
+          <td><span class="table-badge archived">Archived</span></td>
+          <td class="table-actions">
+            <button class="table-btn">Restore</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== APPROVALS SCREEN ===== -->
+<div class="screen" style="position:relative">
+  <span class="screen-label">Admin Approvals</span>
+  <div class="admin-nav">
+    <div class="admin-brand"><span class="admin-brand-dot"></span> Admin</div>
+    <a class="nav-link" href="#">Dashboard</a>
+    <a class="nav-link" href="#">Routines</a>
+    <a class="nav-link" href="#">Chores</a>
+    <a class="nav-link" href="#">Rewards</a>
+    <a class="nav-link active" href="#">Approvals</a>
+    <a class="nav-link" href="#">Settings</a>
+    <span class="nav-spacer"></span>
+    <a class="nav-exit" href="#">Exit Admin</a>
+  </div>
+
+  <div class="admin-content">
+    <div class="content-header">
+      <div class="content-title">Approvals</div>
+    </div>
+
+    <div class="approval-section">
+      <div class="approval-section-title">Routines <span class="approval-count">2</span></div>
+
+      <div class="approval-card">
+        <div class="approval-icon routine">🌅</div>
+        <div class="approval-body">
+          <div class="approval-title">Morning Routine</div>
+          <div class="approval-meta">Mar 23 at 7:42 AM · <span class="points-pill">5 pts</span></div>
+          <div class="approval-snapshot">Snapshot: Brush teeth ✓, Make bed ✓</div>
+        </div>
+        <div class="approval-actions">
+          <button class="btn-approve">Approve</button>
+          <button class="btn-reject">Reject</button>
+        </div>
+      </div>
+
+      <div class="approval-card">
+        <div class="approval-icon routine">🌙</div>
+        <div class="approval-body">
+          <div class="approval-title">Bedtime Routine</div>
+          <div class="approval-meta">Mar 22 at 8:30 PM · <span class="points-pill">4 pts</span></div>
+          <div class="approval-snapshot">Snapshot: Brush teeth (night) ✓</div>
+        </div>
+        <div class="approval-actions">
+          <button class="btn-approve">Approve</button>
+          <button class="btn-reject">Reject</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="approval-section">
+      <div class="approval-section-title">Chores <span class="approval-count">2</span></div>
+
+      <div class="approval-card">
+        <div class="approval-icon chore">🧹</div>
+        <div class="approval-body">
+          <div class="approval-title">Yard Work — Basic</div>
+          <div class="approval-meta">Mar 23 at 3:15 PM · <span class="points-pill">10 pts</span></div>
+        </div>
+        <div class="approval-actions">
+          <button class="btn-approve">Approve</button>
+          <button class="btn-reject">Reject</button>
+        </div>
+      </div>
+
+      <div class="approval-card">
+        <div class="approval-icon chore">🧹</div>
+        <div class="approval-body">
+          <div class="approval-title">Yard Work — Basic</div>
+          <div class="approval-meta">Mar 22 at 4:00 PM · <span class="points-pill">10 pts</span></div>
+        </div>
+        <div class="approval-actions">
+          <button class="btn-approve">Approve</button>
+          <button class="btn-reject">Reject</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="approval-section">
+      <div class="approval-section-title">Rewards <span class="approval-count">1</span></div>
+
+      <div class="approval-card">
+        <div class="approval-icon reward">⭐</div>
+        <div class="approval-body">
+          <div class="approval-title">Extra Screen Time</div>
+          <div class="approval-meta">Mar 23 at 5:00 PM · <span class="points-pill">20 pts</span></div>
+          <div class="approval-snapshot">Available after: 107 pts remaining</div>
+        </div>
+        <div class="approval-actions">
+          <button class="btn-approve">Approve</button>
+          <button class="btn-reject">Reject</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
