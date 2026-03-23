@@ -22,6 +22,7 @@ export type {
   RewardRequest,
   PointsBalance,
   LedgerEntry,
+  Badge,
   BootstrapData,
 } from "./types.js";
 

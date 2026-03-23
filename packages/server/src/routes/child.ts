@@ -3,6 +3,8 @@ import type { RoutineService } from "../services/routineService.js";
 import type { ChoreService } from "../services/choreService.js";
 import type { RewardService } from "../services/rewardService.js";
 import type { PointsService } from "../services/pointsService.js";
+import type { BadgeService } from "../services/badgeService.js";
+import type { ActivityService } from "../services/activityService.js";
 import type { SettingsService } from "../services/settingsService.js";
 import { ValidationError } from "../lib/errors.js";
 import { isRoutineVisible, resolveSlotContext } from "../lib/timeSlots.js";
@@ -12,6 +14,8 @@ export function createChildRoutes(
   choreService: ChoreService,
   rewardService: RewardService,
   pointsService: PointsService,
+  badgeService: BadgeService,
+  activityService: ActivityService,
   settingsService: SettingsService,
 ) {
   const router = Router();
@@ -77,6 +81,25 @@ export function createChildRoutes(
     }
   });
 
+  router.get("/badges", (_req, res, next) => {
+    try {
+      const badges = badgeService.getEarnedBadges();
+      res.json({ data: badges });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.get("/activity/recent", (req, res, next) => {
+    try {
+      const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
+      const events = activityService.getRecentActivity(limit);
+      res.json({ data: events });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   router.get("/app/bootstrap", (_req, res, next) => {
     try {
       const routines = routineService.getActiveRoutines();
@@ -89,6 +112,7 @@ export function createChildRoutes(
       const pendingChoreCount = choreService.getPendingChoreLogCount();
       const pointsSummary = pointsService.getBalance();
       const pendingRewardCount = rewardService.getPendingRewardRequestCount();
+      const recentBadges = badgeService.getRecentBadges(3);
       res.json({
         data: {
           routines: filteredRoutines,
@@ -96,6 +120,7 @@ export function createChildRoutes(
           pendingChoreCount,
           pointsSummary,
           pendingRewardCount,
+          recentBadges,
         },
       });
     } catch (err) {

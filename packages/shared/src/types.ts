@@ -158,10 +158,17 @@ export interface LedgerEntry {
   createdAt: string;
 }
 
+export interface Badge {
+  id: number;
+  badgeKey: string;
+  earnedAt: string;
+}
+
 export interface BootstrapData {
   routines?: Routine[];
   pendingRoutineCount?: number;
   pendingChoreCount?: number;
   pointsSummary?: PointsBalance;
   pendingRewardCount?: number;
+  recentBadges?: Badge[];
 }
