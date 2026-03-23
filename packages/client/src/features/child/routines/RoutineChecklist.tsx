@@ -182,7 +182,7 @@ export default function RoutineChecklist() {
               type="button"
               onClick={handleShuffle}
               disabled={hasAnyChecked}
-              className="rounded-full bg-[var(--color-sky-100)] px-3 py-1 text-sm font-medium text-[var(--color-sky-700)] transition-all duration-200 enabled:hover:bg-[var(--color-sky-100)] disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-full bg-[var(--color-sky-100)] px-3 py-1 text-sm font-medium text-[var(--color-sky-700)] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-40"
               aria-label="Shuffle checklist order"
             >
               Shuffle

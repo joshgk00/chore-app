@@ -64,7 +64,7 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
           type="button"
           onClick={handleCancel}
           disabled={cancelMutation.isPending || !isOnline}
-          className="mt-3 text-sm font-medium text-[var(--color-red-600)] hover:text-[var(--color-red-600)] disabled:opacity-50"
+          className="mt-3 text-sm font-medium text-[var(--color-red-600)] disabled:opacity-50"
         >
           {cancelMutation.isPending ? "Canceling..." : "Cancel Request"}
         </button>

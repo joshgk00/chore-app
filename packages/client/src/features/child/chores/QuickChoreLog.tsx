@@ -131,7 +131,7 @@ export default function QuickChoreLog() {
               type="button"
               onClick={handleCancelLog}
               disabled={cancelMutation.isPending}
-              className="mt-2 min-h-touch text-sm font-medium text-[var(--color-red-600)] hover:text-[var(--color-red-600)] disabled:opacity-50"
+              className="mt-2 min-h-touch text-sm font-medium text-[var(--color-red-600)] disabled:opacity-50"
             >
               {cancelMutation.isPending ? "Canceling..." : "Cancel"}
             </button>

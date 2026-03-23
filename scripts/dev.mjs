@@ -27,6 +27,11 @@ function spawnLabeled(label, color, args, opts = {}) {
     });
   }
 
+  child.on("error", (err) => {
+    process.stderr.write(`${color}[${label}]${RESET} Failed to start: ${err.message}\n`);
+    shutdown(1);
+  });
+
   return child;
 }
 
@@ -41,18 +46,21 @@ const procs = [
   ], { cwd: resolve(root, "packages/client") }),
 ];
 
-function shutdown() {
+let exitCode = 0;
+
+function shutdown(code = 0) {
+  if (code > exitCode) exitCode = code;
   for (const p of procs) {
     if (!p.killed) p.kill();
   }
 }
 
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
+process.on("SIGINT", () => shutdown());
+process.on("SIGTERM", () => shutdown());
 
 for (const p of procs) {
-  p.on("exit", () => {
-    shutdown();
-    process.exit();
+  p.on("exit", (code) => {
+    shutdown(code ?? 1);
+    process.exit(exitCode);
   });
 }
