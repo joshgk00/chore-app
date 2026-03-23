@@ -6,7 +6,7 @@ const DB_VERSION = 1;
 
 export interface DraftItem {
   itemId: number;
-  checked: boolean;
+  isChecked: boolean;
 }
 
 export interface Draft {
@@ -14,34 +14,63 @@ export interface Draft {
   items: DraftItem[];
   startedAt: string;
   idempotencyKey: string;
-  submissionFailed?: boolean;
+  hasSubmissionFailed?: boolean;
 }
 
-async function openDraftDb(): Promise<IDBPDatabase> {
-  return openDB(DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      db.createObjectStore(STORE_NAME, { keyPath: "routineId" });
-    },
-  });
+let dbPromise: Promise<IDBPDatabase> | null = null;
+
+function getDb(): Promise<IDBPDatabase> {
+  if (!dbPromise) {
+    dbPromise = openDB(DB_NAME, DB_VERSION, {
+      upgrade(db) {
+        db.createObjectStore(STORE_NAME, { keyPath: "routineId" });
+      },
+    });
+  }
+  return dbPromise;
+}
+
+/** Exported for tests to reset the cached connection between runs. */
+export function resetDbCache(): void {
+  dbPromise = null;
 }
 
 export async function getDraft(routineId: number): Promise<Draft | undefined> {
-  const db = await openDraftDb();
-  return db.get(STORE_NAME, routineId) as Promise<Draft | undefined>;
+  try {
+    const db = await getDb();
+    return (await db.get(STORE_NAME, routineId)) as Draft | undefined;
+  } catch (error) {
+    console.warn("Failed to read draft from IndexedDB", error);
+    return undefined;
+  }
 }
 
 export async function saveDraft(draft: Draft): Promise<void> {
-  const db = await openDraftDb();
-  await db.put(STORE_NAME, draft);
+  try {
+    const db = await getDb();
+    await db.put(STORE_NAME, draft);
+  } catch (error) {
+    console.warn("Failed to save draft to IndexedDB", error);
+    throw error;
+  }
 }
 
 export async function deleteDraft(routineId: number): Promise<void> {
-  const db = await openDraftDb();
-  await db.delete(STORE_NAME, routineId);
+  try {
+    const db = await getDb();
+    await db.delete(STORE_NAME, routineId);
+  } catch (error) {
+    console.warn("Failed to delete draft from IndexedDB", error);
+  }
 }
 
 export async function getDraftsWithFailedSubmission(): Promise<Draft[]> {
-  const db = await openDraftDb();
-  const all = (await db.getAll(STORE_NAME)) as Draft[];
-  return all.filter((d) => d.submissionFailed === true);
+  try {
+    const db = await getDb();
+    const allDrafts = (await db.getAll(STORE_NAME)) as Draft[];
+    return allDrafts.filter((draft) => draft.hasSubmissionFailed === true);
+  } catch (error) {
+    console.warn("Failed to read drafts from IndexedDB", error);
+    return [];
+  }
 }
