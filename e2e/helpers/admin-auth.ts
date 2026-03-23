@@ -1,6 +1,7 @@
 import { type Page, expect } from "@playwright/test";
 
-const ADMIN_PIN = "123456";
+// Matches INITIAL_ADMIN_PIN in playwright.config.ts webServer env
+const ADMIN_PIN = process.env.INITIAL_ADMIN_PIN ?? "123456";
 
 export async function loginAsAdmin(page: Page) {
   await page.goto("/admin/pin");

@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { loginAsAdmin } from "./helpers/admin-auth.js";
 
-const UNIQUE = Date.now();
+const TEST_RUN_SUFFIX = Date.now();
 
 async function createReward(page: Page, name: string, pointsCost: number) {
   await page.goto("/admin/rewards/new");
@@ -13,7 +13,7 @@ async function createReward(page: Page, name: string, pointsCost: number) {
   await expect(page.getByRole("link", { name })).toBeVisible();
 }
 
-function rewardRow(page: Page, name: string) {
+function getRewardRow(page: Page, name: string) {
   return page.locator("tr", { hasText: name });
 }
 
@@ -23,11 +23,12 @@ async function paceForRateLimiter(page: Page) {
   await page.waitForTimeout(5000);
 }
 
-async function archiveToggle(page: Page, row: ReturnType<typeof rewardRow>, action: "Archive" | "Unarchive") {
-  await Promise.all([
-    page.waitForResponse((resp) => resp.url().includes("/api/admin/rewards/") && resp.ok()),
+async function toggleArchiveStatus(page: Page, row: ReturnType<typeof getRewardRow>, action: "Archive" | "Unarchive") {
+  const [response] = await Promise.all([
+    page.waitForResponse((resp) => resp.url().includes("/api/admin/rewards/")),
     row.getByRole("button", { name: action }).click(),
   ]);
+  expect(response.ok()).toBe(true);
 }
 
 test.describe("Admin Rewards CRUD", () => {
@@ -45,10 +46,10 @@ test.describe("Admin Rewards CRUD", () => {
   });
 
   test("create a reward and confirm it appears in list", async () => {
-    const name = `Create Test ${UNIQUE}`;
+    const name = `Create Test ${TEST_RUN_SUFFIX}`;
     await createReward(page, name, 75);
 
-    const row = rewardRow(page, name);
+    const row = getRewardRow(page, name);
     await expect(row).toBeVisible();
     await expect(row.getByRole("cell", { name: "75" })).toBeVisible();
   });
@@ -56,8 +57,8 @@ test.describe("Admin Rewards CRUD", () => {
   test("edit an existing reward and confirm changes persist", async () => {
     await paceForRateLimiter(page);
 
-    const name = `Edit Me ${UNIQUE}`;
-    const updated = `Updated ${UNIQUE}`;
+    const name = `Edit Me ${TEST_RUN_SUFFIX}`;
+    const updated = `Updated ${TEST_RUN_SUFFIX}`;
     await createReward(page, name, 30);
 
     await page.getByRole("link", { name }).click();
@@ -74,7 +75,7 @@ test.describe("Admin Rewards CRUD", () => {
     await page.getByRole("button", { name: "Save Changes" }).click();
     await page.waitForURL(/\/admin\/rewards$/);
 
-    const row = rewardRow(page, updated);
+    const row = getRewardRow(page, updated);
     await expect(row).toBeVisible();
     await expect(row.getByRole("cell", { name: "55" })).toBeVisible();
   });
@@ -82,12 +83,12 @@ test.describe("Admin Rewards CRUD", () => {
   test("archive a reward shows Archived badge", async () => {
     await paceForRateLimiter(page);
 
-    const name = `Archive Me ${UNIQUE}`;
+    const name = `Archive Me ${TEST_RUN_SUFFIX}`;
     await createReward(page, name, 20);
 
-    const row = rewardRow(page, name);
+    const row = getRewardRow(page, name);
     await paceForRateLimiter(page);
-    await archiveToggle(page, row, "Archive");
+    await toggleArchiveStatus(page, row, "Archive");
 
     await expect(row.getByText("Archived")).toBeVisible();
     await expect(row).toHaveClass(/opacity-60/);
@@ -98,22 +99,22 @@ test.describe("Admin Rewards CRUD", () => {
     expect(response.ok()).toBe(true);
     const body = await response.json();
     const names = body.data.map((r: { name: string }) => r.name);
-    expect(names).not.toContain(`Archive Me ${UNIQUE}`);
+    expect(names).not.toContain(`Archive Me ${TEST_RUN_SUFFIX}`);
   });
 
   test("unarchive a reward returns it to Active", async () => {
     await paceForRateLimiter(page);
 
-    const name = `Unarchive Me ${UNIQUE}`;
+    const name = `Unarchive Me ${TEST_RUN_SUFFIX}`;
     await createReward(page, name, 25);
 
-    const row = rewardRow(page, name);
+    const row = getRewardRow(page, name);
     await paceForRateLimiter(page);
-    await archiveToggle(page, row, "Archive");
+    await toggleArchiveStatus(page, row, "Archive");
     await expect(row.getByText("Archived")).toBeVisible();
 
     await paceForRateLimiter(page);
-    await archiveToggle(page, row, "Unarchive");
+    await toggleArchiveStatus(page, row, "Unarchive");
     await expect(row.getByText("Active")).toBeVisible();
     await expect(row).not.toHaveClass(/opacity-60/);
   });
@@ -121,7 +122,7 @@ test.describe("Admin Rewards CRUD", () => {
   test("archived reward cannot be edited (409 response)", async () => {
     await paceForRateLimiter(page);
 
-    const name = `No Edit After Retire ${UNIQUE}`;
+    const name = `No Edit After Retire ${TEST_RUN_SUFFIX}`;
     await createReward(page, name, 10);
 
     const editLink = page.getByRole("link", { name });
@@ -129,9 +130,9 @@ test.describe("Admin Rewards CRUD", () => {
     const rewardId = href?.match(/\/admin\/rewards\/(\d+)\/edit/)?.[1];
     expect(rewardId).toBeTruthy();
 
-    const row = rewardRow(page, name);
+    const row = getRewardRow(page, name);
     await paceForRateLimiter(page);
-    await archiveToggle(page, row, "Archive");
+    await toggleArchiveStatus(page, row, "Archive");
     await expect(row.getByText("Archived")).toBeVisible();
 
     const response = await page.request.put(`/api/admin/rewards/${rewardId}`, {
@@ -180,7 +181,7 @@ test.describe("Admin Rewards CRUD", () => {
   test("double-click on Create does not create duplicate rewards", async () => {
     await paceForRateLimiter(page);
 
-    const name = `No Dupes ${UNIQUE}`;
+    const name = `No Dupes ${TEST_RUN_SUFFIX}`;
     await page.goto("/admin/rewards/new");
 
     await page.getByLabel("Name").fill(name);
