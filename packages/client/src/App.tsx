@@ -13,6 +13,8 @@ import RoutineChecklist from "./features/child/routines/RoutineChecklist.js";
 import PinEntry from "./features/admin/pin/PinEntry.js";
 import AdminRoutinesList from "./features/admin/routines/AdminRoutinesList.js";
 import AdminRoutineForm from "./features/admin/routines/AdminRoutineForm.js";
+import AdminChoresList from "./features/admin/chores/AdminChoresList.js";
+import AdminChoreForm from "./features/admin/chores/AdminChoreForm.js";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -98,7 +100,9 @@ export default function App() {
               <Route path="/admin/routines" element={<AdminRoutinesList />} />
               <Route path="/admin/routines/new" element={<AdminRoutineForm />} />
               <Route path="/admin/routines/:id/edit" element={<AdminRoutineForm />} />
-              <Route path="/admin/chores" element={<AdminPlaceholder title="Chores" />} />
+              <Route path="/admin/chores" element={<AdminChoresList />} />
+              <Route path="/admin/chores/new" element={<AdminChoreForm />} />
+              <Route path="/admin/chores/:id/edit" element={<AdminChoreForm />} />
               <Route path="/admin/rewards" element={<AdminPlaceholder title="Rewards" />} />
               <Route path="/admin/approvals" element={<AdminPlaceholder title="Approvals" />} />
               <Route path="/admin/settings" element={<AdminPlaceholder title="Settings" />} />

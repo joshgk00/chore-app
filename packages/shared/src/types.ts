@@ -101,6 +101,7 @@ export interface ChoreTier {
   name: string;
   points: number;
   sortOrder: number;
+  archivedAt?: string;
 }
 
 export interface Chore {
@@ -109,6 +110,7 @@ export interface Chore {
   requiresApproval: boolean;
   sortOrder: number;
   tiers: ChoreTier[];
+  archivedAt?: string;
 }
 
 export interface ChoreLog {

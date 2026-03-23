@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 import type { Chore, ChoreTier, ChoreLog, Status } from "@chore-app/shared";
-import { ConflictError, NotFoundError } from "../lib/errors.js";
+import { ConflictError, NotFoundError, ValidationError } from "../lib/errors.js";
 import type { ActivityService } from "./activityService.js";
 import type { BadgeService } from "./badgeService.js";
 
@@ -11,11 +11,31 @@ export interface SubmitChoreLogData {
   localDate: string;
 }
 
+export interface CreateChoreData {
+  name: string;
+  requiresApproval: boolean;
+  sortOrder: number;
+  tiers: { name: string; points: number; sortOrder: number }[];
+}
+
+export interface UpdateChoreData {
+  name?: string;
+  requiresApproval?: boolean;
+  sortOrder?: number;
+  tiers?: { id?: number; name: string; points: number; sortOrder: number; shouldArchive?: boolean }[];
+}
+
 export interface ChoreService {
   getActiveChores(): Chore[];
   submitChoreLog(data: SubmitChoreLogData): ChoreLog;
   cancelChoreLog(logId: number): ChoreLog;
   getPendingChoreLogCount(): number;
+  listChoresAdmin(): Chore[];
+  getChoreAdmin(id: number): Chore;
+  createChore(data: CreateChoreData): Chore;
+  updateChore(id: number, data: UpdateChoreData): Chore;
+  archiveChore(id: number): void;
+  unarchiveChore(id: number): void;
 }
 
 interface ChoreRow {
@@ -68,6 +88,32 @@ function mapTierRow(row: TierRow): ChoreTier {
     name: row.name,
     points: row.points,
     sortOrder: row.sort_order,
+  };
+}
+
+interface AdminTierRow extends TierRow {
+  archived_at: string | null;
+}
+
+function mapChoreRowAdmin(row: ChoreRow): Chore {
+  return {
+    id: row.id,
+    name: row.name,
+    requiresApproval: row.requires_approval === 1,
+    sortOrder: row.sort_order,
+    tiers: [],
+    archivedAt: row.archived_at ?? undefined,
+  };
+}
+
+function mapTierRowAdmin(row: AdminTierRow): ChoreTier {
+  return {
+    id: row.id,
+    choreId: row.chore_id,
+    name: row.name,
+    points: row.points,
+    sortOrder: row.sort_order,
+    archivedAt: row.archived_at ?? undefined,
   };
 }
 
@@ -160,6 +206,60 @@ export function createChoreService(
 
   const countPendingStmt = db.prepare(
     `SELECT COUNT(*) as count FROM chore_logs WHERE status = 'pending'`,
+  );
+
+  const selectAllChoresStmt = db.prepare(
+    `SELECT id, name, requires_approval, active, sort_order, archived_at
+     FROM chores
+     ORDER BY sort_order ASC`,
+  );
+
+  const selectAllTiersForChoreStmt = db.prepare(
+    `SELECT id, chore_id, name, points, sort_order, active, archived_at
+     FROM chore_tiers
+     WHERE chore_id = ?
+     ORDER BY sort_order ASC`,
+  );
+
+  const selectAllTiersAdminBulkStmt = db.prepare(
+    `SELECT ct.id, ct.chore_id, ct.name, ct.points, ct.sort_order, ct.active, ct.archived_at
+     FROM chore_tiers ct
+     ORDER BY ct.chore_id, ct.sort_order ASC`,
+  );
+
+  const insertChoreStmt = db.prepare(
+    `INSERT INTO chores (name, requires_approval, sort_order)
+     VALUES (?, ?, ?)`,
+  );
+
+  const insertTierStmt = db.prepare(
+    `INSERT INTO chore_tiers (chore_id, name, points, sort_order)
+     VALUES (?, ?, ?, ?)`,
+  );
+
+  const updateChoreStmt = db.prepare(
+    `UPDATE chores SET name = ?, requires_approval = ?, sort_order = ?, updated_at = datetime('now')
+     WHERE id = ?`,
+  );
+
+  const updateTierStmt = db.prepare(
+    `UPDATE chore_tiers SET name = ?, points = ?, sort_order = ?, updated_at = datetime('now')
+     WHERE id = ? AND chore_id = ?`,
+  );
+
+  const archiveTierStmt = db.prepare(
+    `UPDATE chore_tiers SET archived_at = datetime('now'), active = 0, updated_at = datetime('now')
+     WHERE id = ? AND chore_id = ?`,
+  );
+
+  const archiveChoreStmt = db.prepare(
+    `UPDATE chores SET archived_at = datetime('now'), active = 0, updated_at = datetime('now')
+     WHERE id = ? AND active = 1 AND archived_at IS NULL`,
+  );
+
+  const unarchiveChoreStmt = db.prepare(
+    `UPDATE chores SET archived_at = NULL, active = 1, updated_at = datetime('now')
+     WHERE id = ? AND active = 0 AND archived_at IS NOT NULL`,
   );
 
   function getActiveChores(): Chore[] {
@@ -295,5 +395,147 @@ export function createChoreService(
     return row.count;
   }
 
-  return { getActiveChores, submitChoreLog, cancelChoreLog, getPendingChoreLogCount };
+  function listChoresAdmin(): Chore[] {
+    const rows = selectAllChoresStmt.all() as ChoreRow[];
+    const allTierRows = selectAllTiersAdminBulkStmt.all() as AdminTierRow[];
+
+    const tiersByChoreId = new Map<number, ChoreTier[]>();
+    for (const tierRow of allTierRows) {
+      let tiers = tiersByChoreId.get(tierRow.chore_id);
+      if (!tiers) {
+        tiers = [];
+        tiersByChoreId.set(tierRow.chore_id, tiers);
+      }
+      tiers.push(mapTierRowAdmin(tierRow));
+    }
+
+    return rows.map((row) => {
+      const chore = mapChoreRowAdmin(row);
+      chore.tiers = tiersByChoreId.get(row.id) ?? [];
+      return chore;
+    });
+  }
+
+  function getChoreAdmin(id: number): Chore {
+    const row = selectChoreByIdStmt.get(id) as ChoreRow | undefined;
+    if (!row) {
+      throw new NotFoundError("Chore not found");
+    }
+    const chore = mapChoreRowAdmin(row);
+    const tierRows = selectAllTiersForChoreStmt.all(id) as AdminTierRow[];
+    chore.tiers = tierRows.map(mapTierRowAdmin);
+    return chore;
+  }
+
+  const createChoreTx = db.transaction((data: CreateChoreData): Chore => {
+    if (data.name.trim().length === 0) {
+      throw new ValidationError("Name is required");
+    }
+    if (data.tiers.length === 0) {
+      throw new ValidationError("At least one tier is required");
+    }
+    for (const tier of data.tiers) {
+      if (tier.name.trim().length === 0) {
+        throw new ValidationError("Tier name is required");
+      }
+      if (tier.points < 0) {
+        throw new ValidationError("Tier points must be >= 0");
+      }
+    }
+
+    const result = insertChoreStmt.run(
+      data.name.trim(),
+      data.requiresApproval ? 1 : 0,
+      data.sortOrder,
+    );
+    const choreId = Number(result.lastInsertRowid);
+
+    for (const tier of data.tiers) {
+      insertTierStmt.run(choreId, tier.name.trim(), tier.points, tier.sortOrder);
+    }
+
+    return getChoreAdmin(choreId);
+  });
+
+  function createChore(data: CreateChoreData): Chore {
+    return createChoreTx(data);
+  }
+
+  const updateChoreTx = db.transaction((id: number, data: UpdateChoreData): Chore => {
+    const existing = selectChoreByIdStmt.get(id) as ChoreRow | undefined;
+    if (!existing) {
+      throw new NotFoundError("Chore not found");
+    }
+    if (existing.archived_at !== null) {
+      throw new ConflictError("Cannot update an archived chore. Unarchive it first.");
+    }
+
+    const newName = data.name !== undefined ? data.name : existing.name;
+    const newRequiresApproval = data.requiresApproval !== undefined ? data.requiresApproval : existing.requires_approval === 1;
+    const newSortOrder = data.sortOrder !== undefined ? data.sortOrder : existing.sort_order;
+
+    if (newName.trim().length === 0) {
+      throw new ValidationError("Name is required");
+    }
+
+    updateChoreStmt.run(
+      newName.trim(),
+      newRequiresApproval ? 1 : 0,
+      newSortOrder,
+      id,
+    );
+
+    if (data.tiers) {
+      for (const tier of data.tiers) {
+        if (tier.id) {
+          if (tier.shouldArchive) {
+            archiveTierStmt.run(tier.id, id);
+          } else {
+            updateTierStmt.run(tier.name.trim(), tier.points, tier.sortOrder, tier.id, id);
+          }
+        } else {
+          if (!tier.name || tier.name.trim().length === 0) {
+            throw new ValidationError("Each tier must have a non-empty name");
+          }
+          if (typeof tier.points !== "number" || !Number.isInteger(tier.points) || tier.points < 0) {
+            throw new ValidationError("Each tier must have points >= 0");
+          }
+          insertTierStmt.run(id, tier.name.trim(), tier.points, tier.sortOrder);
+        }
+      }
+    }
+
+    return getChoreAdmin(id);
+  });
+
+  function updateChore(id: number, data: UpdateChoreData): Chore {
+    return updateChoreTx(id, data);
+  }
+
+  function archiveChore(id: number): void {
+    const result = archiveChoreStmt.run(id);
+    if (result.changes === 0) {
+      throw new NotFoundError("Chore not found or already archived");
+    }
+  }
+
+  function unarchiveChore(id: number): void {
+    const result = unarchiveChoreStmt.run(id);
+    if (result.changes === 0) {
+      throw new NotFoundError("Chore not found or not archived");
+    }
+  }
+
+  return {
+    getActiveChores,
+    submitChoreLog,
+    cancelChoreLog,
+    getPendingChoreLogCount,
+    listChoresAdmin,
+    getChoreAdmin,
+    createChore,
+    updateChore,
+    archiveChore,
+    unarchiveChore,
+  };
 }
