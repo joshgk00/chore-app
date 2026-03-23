@@ -52,6 +52,23 @@ const mockChores = [
   },
 ];
 
+const mockRewards = [
+  {
+    id: 1,
+    name: "Extra Screen Time",
+    pointsCost: 20,
+    sortOrder: 1,
+  },
+  {
+    id: 2,
+    name: "Movie Night Pick",
+    pointsCost: 50,
+    sortOrder: 2,
+  },
+];
+
+const mockPointsSummary = { total: 100, reserved: 0, available: 100 };
+
 export const handlers: RequestHandler[] = [
   http.get('/api/auth/session', () =>
     HttpResponse.json(
@@ -79,9 +96,27 @@ export const handlers: RequestHandler[] = [
     HttpResponse.json({ data: mockChores }),
   ),
 
+  http.get('/api/rewards', () =>
+    HttpResponse.json({ data: mockRewards }),
+  ),
+
+  http.get('/api/points/summary', () =>
+    HttpResponse.json({ data: mockPointsSummary }),
+  ),
+
+  http.get('/api/points/ledger', () =>
+    HttpResponse.json({ data: [] }),
+  ),
+
   http.get('/api/app/bootstrap', () =>
     HttpResponse.json({
-      data: { routines: mockRoutines, pendingRoutineCount: 0, pendingChoreCount: 0 },
+      data: {
+        routines: mockRoutines,
+        pendingRoutineCount: 0,
+        pendingChoreCount: 0,
+        pointsSummary: mockPointsSummary,
+        pendingRewardCount: 0,
+      },
     }),
   ),
 
@@ -147,6 +182,39 @@ export const handlers: RequestHandler[] = [
       },
     }),
   ),
+
+  http.post('/api/reward-requests', () =>
+    HttpResponse.json(
+      {
+        data: {
+          id: 1,
+          rewardId: 1,
+          rewardNameSnapshot: "Extra Screen Time",
+          costSnapshot: 20,
+          requestedAt: "2026-03-15T12:00:00",
+          localDate: "2026-03-15",
+          status: "pending",
+          idempotencyKey: "test-key",
+        },
+      },
+      { status: 201 },
+    ),
+  ),
+
+  http.post('/api/reward-requests/:id/cancel', () =>
+    HttpResponse.json({
+      data: {
+        id: 1,
+        rewardId: 1,
+        rewardNameSnapshot: "Extra Screen Time",
+        costSnapshot: 20,
+        requestedAt: "2026-03-15T12:00:00",
+        localDate: "2026-03-15",
+        status: "canceled",
+        idempotencyKey: "test-key",
+      },
+    }),
+  ),
 ];
 
-export { mockRoutines, mockChecklistItems, mockChores, mockChoreTiers };
+export { mockRoutines, mockChecklistItems, mockChores, mockChoreTiers, mockRewards, mockPointsSummary };

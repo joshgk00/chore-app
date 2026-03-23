@@ -1,6 +1,8 @@
 import { Router } from "express";
 import type { RoutineService } from "../services/routineService.js";
 import type { ChoreService } from "../services/choreService.js";
+import type { RewardService } from "../services/rewardService.js";
+import type { PointsService } from "../services/pointsService.js";
 import type { SettingsService } from "../services/settingsService.js";
 import { ValidationError } from "../lib/errors.js";
 import { isRoutineVisible, resolveSlotContext } from "../lib/timeSlots.js";
@@ -8,6 +10,8 @@ import { isRoutineVisible, resolveSlotContext } from "../lib/timeSlots.js";
 export function createChildRoutes(
   routineService: RoutineService,
   choreService: ChoreService,
+  rewardService: RewardService,
+  pointsService: PointsService,
   settingsService: SettingsService,
 ) {
   const router = Router();
@@ -44,6 +48,35 @@ export function createChildRoutes(
     }
   });
 
+  router.get("/rewards", (_req, res, next) => {
+    try {
+      const rewards = rewardService.getActiveRewards();
+      res.json({ data: rewards });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.get("/points/summary", (_req, res, next) => {
+    try {
+      const balance = pointsService.getBalance();
+      res.json({ data: balance });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.get("/points/ledger", (req, res, next) => {
+    try {
+      const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
+      const offset = Math.max(Number(req.query.offset) || 0, 0);
+      const entries = pointsService.getLedger({ limit, offset });
+      res.json({ data: entries });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   router.get("/app/bootstrap", (_req, res, next) => {
     try {
       const routines = routineService.getActiveRoutines();
@@ -54,8 +87,16 @@ export function createChildRoutes(
       );
       const pendingRoutineCount = routineService.getPendingCompletionCount();
       const pendingChoreCount = choreService.getPendingChoreLogCount();
+      const pointsSummary = pointsService.getBalance();
+      const pendingRewardCount = rewardService.getPendingRewardRequestCount();
       res.json({
-        data: { routines: filteredRoutines, pendingRoutineCount, pendingChoreCount },
+        data: {
+          routines: filteredRoutines,
+          pendingRoutineCount,
+          pendingChoreCount,
+          pointsSummary,
+          pendingRewardCount,
+        },
       });
     } catch (err) {
       next(err);

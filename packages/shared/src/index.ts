@@ -18,6 +18,10 @@ export type {
   Chore,
   ChoreTier,
   ChoreLog,
+  Reward,
+  RewardRequest,
+  PointsBalance,
+  LedgerEntry,
   BootstrapData,
 } from "./types.js";
 

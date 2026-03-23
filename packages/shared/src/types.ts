@@ -113,8 +113,8 @@ export interface ChoreLog {
   id: number;
   choreId: number;
   choreNameSnapshot: string;
-  tierId: number | null;
-  tierNameSnapshot: string | null;
+  tierId: number;
+  tierNameSnapshot: string;
   pointsSnapshot: number;
   requiresApprovalSnapshot: boolean;
   loggedAt: string;
@@ -123,8 +123,45 @@ export interface ChoreLog {
   idempotencyKey: string;
 }
 
+export interface Reward {
+  id: number;
+  name: string;
+  pointsCost: number;
+  imageAssetId?: number;
+  sortOrder: number;
+}
+
+export interface RewardRequest {
+  id: number;
+  rewardId: number;
+  rewardNameSnapshot: string;
+  costSnapshot: number;
+  requestedAt: string;
+  localDate: string;
+  status: Status;
+  idempotencyKey: string;
+}
+
+export interface PointsBalance {
+  total: number;
+  reserved: number;
+  available: number;
+}
+
+export interface LedgerEntry {
+  id: number;
+  entryType: string;
+  referenceTable: string | null;
+  referenceId: number | null;
+  amount: number;
+  note: string | null;
+  createdAt: string;
+}
+
 export interface BootstrapData {
   routines?: Routine[];
   pendingRoutineCount?: number;
   pendingChoreCount?: number;
+  pointsSummary?: PointsBalance;
+  pendingRewardCount?: number;
 }
