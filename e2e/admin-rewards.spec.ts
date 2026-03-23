@@ -8,7 +8,10 @@ async function createReward(page: Page, name: string, pointsCost: number) {
   await page.getByLabel("Name").fill(name);
   await page.getByLabel("Points Cost").fill("");
   await page.getByLabel("Points Cost").fill(String(pointsCost));
-  await page.getByRole("button", { name: "Create Reward" }).click();
+  await Promise.all([
+    page.waitForResponse((resp) => resp.url().includes("/api/admin/rewards") && resp.request().method() === "POST"),
+    page.getByRole("button", { name: "Create Reward" }).click(),
+  ]);
   await page.waitForURL(/\/admin\/rewards$/);
   await expect(page.getByRole("link", { name })).toBeVisible();
 }
@@ -28,7 +31,7 @@ async function toggleArchiveStatus(page: Page, row: ReturnType<typeof getRewardR
     page.waitForResponse((resp) => resp.url().includes("/api/admin/rewards/")),
     row.getByRole("button", { name: action }).click(),
   ]);
-  expect(response.ok()).toBe(true);
+  expect(response.ok(), `${action} failed with status ${response.status()}`).toBe(true);
 }
 
 test.describe("Admin Rewards CRUD", () => {
@@ -58,7 +61,7 @@ test.describe("Admin Rewards CRUD", () => {
     await paceForRateLimiter(page);
 
     const name = `Edit Me ${TEST_RUN_SUFFIX}`;
-    const updated = `Updated ${TEST_RUN_SUFFIX}`;
+    const updatedName = `Updated ${TEST_RUN_SUFFIX}`;
     await createReward(page, name, 30);
 
     await page.getByRole("link", { name }).click();
@@ -68,14 +71,14 @@ test.describe("Admin Rewards CRUD", () => {
     await expect(page.getByLabel("Name")).toHaveValue(name);
     await expect(page.getByLabel("Points Cost")).toHaveValue("30");
 
-    await page.getByLabel("Name").fill(updated);
+    await page.getByLabel("Name").fill(updatedName);
     await page.getByLabel("Points Cost").fill("");
     await page.getByLabel("Points Cost").fill("55");
 
     await page.getByRole("button", { name: "Save Changes" }).click();
     await page.waitForURL(/\/admin\/rewards$/);
 
-    const row = getRewardRow(page, updated);
+    const row = getRewardRow(page, updatedName);
     await expect(row).toBeVisible();
     await expect(row.getByRole("cell", { name: "55" })).toBeVisible();
   });
@@ -163,19 +166,19 @@ test.describe("Admin Rewards CRUD", () => {
     await paceForRateLimiter(page);
 
     await page.goto("/admin/rewards");
-    const firstArchiveBtn = page
+    const firstArchiveButton = page
       .locator("tr")
       .filter({ has: page.getByRole("button", { name: /Archive|Unarchive/ }) })
       .first()
       .getByRole("button", { name: /Archive|Unarchive/ });
-    await expect(firstArchiveBtn).toBeVisible();
-    await expect(firstArchiveBtn).toBeEnabled();
+    await expect(firstArchiveButton).toBeVisible();
+    await expect(firstArchiveButton).toBeEnabled();
 
     await page.context().setOffline(true);
-    await expect(firstArchiveBtn).toBeDisabled({ timeout: 5000 });
+    await expect(firstArchiveButton).toBeDisabled({ timeout: 5000 });
 
     await page.context().setOffline(false);
-    await expect(firstArchiveBtn).toBeEnabled({ timeout: 5000 });
+    await expect(firstArchiveButton).toBeEnabled({ timeout: 5000 });
   });
 
   test("double-click on Create does not create duplicate rewards", async () => {
