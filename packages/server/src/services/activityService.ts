@@ -30,23 +30,36 @@ export function createActivityService(db: Database.Database): ActivityService {
   );
 
   function recordActivity(event: ActivityEvent): void {
-    insertStmt.run(
-      event.eventType,
-      event.entityType ?? null,
-      event.entityId ?? null,
-      event.summary ?? null,
-      event.metadata ? JSON.stringify(event.metadata) : null,
-    );
+    try {
+      insertStmt.run(
+        event.eventType,
+        event.entityType ?? null,
+        event.entityId ?? null,
+        event.summary ?? null,
+        event.metadata ? JSON.stringify(event.metadata) : null,
+      );
+    } catch (err) {
+      console.error("Failed to record activity event:", err);
+    }
+  }
+
+  function safeParseJson(raw: string): Record<string, unknown> | undefined {
+    try {
+      return JSON.parse(raw) as Record<string, unknown>;
+    } catch {
+      return undefined;
+    }
   }
 
   function getRecentActivity(limit = 20): ActivityEvent[] {
-    const rows = selectRecentStmt.all(limit) as ActivityRow[];
+    const safeLim = Math.max(1, Math.min(limit, 100));
+    const rows = selectRecentStmt.all(safeLim) as ActivityRow[];
     return rows.map((row) => ({
       eventType: row.event_type,
       entityType: row.entity_type ?? undefined,
       entityId: row.entity_id ?? undefined,
       summary: row.summary ?? undefined,
-      metadata: row.metadata_json ? (JSON.parse(row.metadata_json) as Record<string, unknown>) : undefined,
+      metadata: row.metadata_json ? safeParseJson(row.metadata_json) : undefined,
       createdAt: row.created_at,
     }));
   }

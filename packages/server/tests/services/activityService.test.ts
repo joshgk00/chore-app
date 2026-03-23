@@ -1,12 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type Database from 'better-sqlite3';
 import { createTestDb } from '../db-helpers.js';
-import { createActivityService } from '../../src/services/activityService.js';
+import { createActivityService, type ActivityService } from '../../src/services/activityService.js';
 
 let db: Database.Database;
+let service: ActivityService;
 
 beforeEach(() => {
   db = createTestDb();
+  service = createActivityService(db);
 });
 
 afterEach(() => {
@@ -16,8 +18,6 @@ afterEach(() => {
 describe('activityService', () => {
   describe('recordActivity', () => {
     it('inserts a minimal event with only eventType', () => {
-      const service = createActivityService(db);
-
       service.recordActivity({ eventType: 'test_event' });
 
       const row = db.prepare('SELECT * FROM activity_events').get() as {
@@ -35,8 +35,6 @@ describe('activityService', () => {
     });
 
     it('inserts a full event with all fields', () => {
-      const service = createActivityService(db);
-
       service.recordActivity({
         eventType: 'routine_submitted',
         entityType: 'routine',
@@ -60,8 +58,6 @@ describe('activityService', () => {
     });
 
     it('inserts multiple events independently', () => {
-      const service = createActivityService(db);
-
       service.recordActivity({ eventType: 'event_one' });
       service.recordActivity({ eventType: 'event_two' });
 
@@ -74,13 +70,10 @@ describe('activityService', () => {
 
   describe('getRecentActivity', () => {
     it('returns empty array when no events exist', () => {
-      const service = createActivityService(db);
       expect(service.getRecentActivity()).toEqual([]);
     });
 
     it('returns events in descending creation order', () => {
-      const service = createActivityService(db);
-
       service.recordActivity({ eventType: 'first' });
       service.recordActivity({ eventType: 'second' });
       service.recordActivity({ eventType: 'third' });
@@ -92,8 +85,6 @@ describe('activityService', () => {
     });
 
     it('respects the limit parameter', () => {
-      const service = createActivityService(db);
-
       for (let i = 0; i < 5; i++) {
         service.recordActivity({ eventType: `event_${i}` });
       }
@@ -103,8 +94,6 @@ describe('activityService', () => {
     });
 
     it('defaults to 20 when no limit provided', () => {
-      const service = createActivityService(db);
-
       for (let i = 0; i < 25; i++) {
         service.recordActivity({ eventType: `event_${i}` });
       }
@@ -113,8 +102,6 @@ describe('activityService', () => {
     });
 
     it('maps metadata_json back to an object', () => {
-      const service = createActivityService(db);
-
       service.recordActivity({
         eventType: 'chore_logged',
         metadata: { tier: 'gold', points: 50 },
@@ -125,8 +112,6 @@ describe('activityService', () => {
     });
 
     it('returns undefined for optional fields when null in DB', () => {
-      const service = createActivityService(db);
-
       service.recordActivity({ eventType: 'bare_event' });
 
       const [event] = service.getRecentActivity();
@@ -137,12 +122,10 @@ describe('activityService', () => {
     });
 
     it('includes createdAt timestamp', () => {
-      const service = createActivityService(db);
-
       service.recordActivity({ eventType: 'timestamped' });
 
       const [event] = service.getRecentActivity();
-      expect(event.createdAt).toBeTruthy();
+      expect(event.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}/);
     });
   });
 });
