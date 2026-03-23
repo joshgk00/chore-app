@@ -18,6 +18,7 @@ import { createRoutineService } from "./services/routineService.js";
 import { createChoreService } from "./services/choreService.js";
 import { createRewardService } from "./services/rewardService.js";
 import { createPointsService } from "./services/pointsService.js";
+import { createBadgeService } from "./services/badgeService.js";
 import type { AppConfig } from "./config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -35,8 +36,9 @@ export function createApp(db: Database.Database, config: AppConfig) {
   const authService = createAuthService(db);
   const settingsService = createSettingsService(db);
   const activityService = createActivityService(db);
-  const routineService = createRoutineService(db, activityService);
-  const choreService = createChoreService(db, activityService);
+  const badgeService = createBadgeService(db);
+  const routineService = createRoutineService(db, activityService, badgeService);
+  const choreService = createChoreService(db, activityService, badgeService);
   const rewardService = createRewardService(db, activityService);
   const pointsService = createPointsService(db);
 
@@ -46,7 +48,7 @@ export function createApp(db: Database.Database, config: AppConfig) {
 
   app.use("/api/auth", createAuthRoutes(authService, config));
 
-  app.use("/api", createChildRoutes(routineService, choreService, rewardService, pointsService, settingsService));
+  app.use("/api", createChildRoutes(routineService, choreService, rewardService, pointsService, badgeService, activityService, settingsService));
   app.use("/api", createSubmissionRoutes(routineService, choreService, rewardService, settingsService));
 
   app.use("/api/admin", adminAuth(authService, config));

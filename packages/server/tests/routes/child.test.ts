@@ -351,3 +351,70 @@ describe('reward routes', () => {
     expect(typeof res.body.data.pendingRewardCount).toBe('number');
   });
 });
+
+describe('badge and activity routes', () => {
+  it('GET /api/badges returns empty array initially', async () => {
+    const app = buildApp();
+    const res = await request(app).get('/api/badges');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toBeInstanceOf(Array);
+    expect(res.body.data).toHaveLength(0);
+  });
+
+  it('GET /api/activity/recent returns events in descending order', async () => {
+    const app = buildApp();
+
+    await request(app).post('/api/routine-completions').send({
+      routineId: 3,
+      checklistSnapshot: '[]',
+      idempotencyKey: 'activity-test-1',
+      localDate: '2026-03-15',
+    });
+
+    await request(app).post('/api/chore-logs').send({
+      choreId: 1,
+      tierId: 1,
+      idempotencyKey: 'activity-test-2',
+      localDate: '2026-03-15',
+    });
+
+    const res = await request(app).get('/api/activity/recent');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toBeInstanceOf(Array);
+    expect(res.body.data.length).toBeGreaterThanOrEqual(2);
+    expect(res.body.data[0]).toHaveProperty('eventType');
+
+    const firstEvent = res.body.data[0];
+    const lastEvent = res.body.data[res.body.data.length - 1];
+    expect(firstEvent.eventType).toBe('chore_submitted');
+    expect(lastEvent.eventType).toBe('routine_submitted');
+  });
+
+  it('GET /api/app/bootstrap includes recentBadges', async () => {
+    const app = buildApp();
+    const res = await request(app).get('/api/app/bootstrap');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveProperty('recentBadges');
+    expect(res.body.data.recentBadges).toBeInstanceOf(Array);
+  });
+
+  it('badge awarded after completing a routine that grants immediate points', async () => {
+    const app = buildApp();
+
+    await request(app).post('/api/routine-completions').send({
+      routineId: 3,
+      checklistSnapshot: '[]',
+      idempotencyKey: 'badge-route-test',
+      localDate: '2026-03-15',
+    });
+
+    const res = await request(app).get('/api/badges');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.length).toBeGreaterThan(0);
+    expect(res.body.data.map((b: { badgeKey: string }) => b.badgeKey)).toContain('first_step');
+  });
+});

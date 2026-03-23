@@ -2,6 +2,7 @@ import type Database from "better-sqlite3";
 import type { Chore, ChoreTier, ChoreLog, Status } from "@chore-app/shared";
 import { ConflictError, NotFoundError } from "../lib/errors.js";
 import type { ActivityService } from "./activityService.js";
+import type { BadgeService } from "./badgeService.js";
 
 export interface SubmitChoreLogData {
   choreId: number;
@@ -95,6 +96,7 @@ function mapChoreLogRow(row: ChoreLogRow): ChoreLog {
 export function createChoreService(
   db: Database.Database,
   activityService: ActivityService,
+  badgeService?: BadgeService,
 ): ChoreService {
   const selectActiveChoresStmt = db.prepare(
     `SELECT id, name, requires_approval, active, sort_order, archived_at
@@ -239,6 +241,7 @@ export function createChoreService(
         tier.points,
         `Chore: ${chore.name} (${tier.name})`,
       );
+      badgeService?.evaluateBadges({ type: "chore_log" });
     }
 
     activityService.recordActivityOrThrow({

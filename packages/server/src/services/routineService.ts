@@ -10,6 +10,7 @@ import type {
 import { ConflictError, NotFoundError } from "../lib/errors.js";
 import { getCompletionWindowKey } from "../lib/timeSlots.js";
 import type { ActivityService } from "./activityService.js";
+import type { BadgeService } from "./badgeService.js";
 
 export interface SubmitCompletionData {
   routineId: number;
@@ -113,6 +114,7 @@ function mapCompletionRow(row: CompletionRow): RoutineCompletion {
 export function createRoutineService(
   db: Database.Database,
   activityService: ActivityService,
+  badgeService?: BadgeService,
 ): RoutineService {
   const selectActiveRoutinesStmt = db.prepare(
     `SELECT id, name, time_slot, completion_rule, points, requires_approval,
@@ -286,6 +288,7 @@ export function createRoutineService(
         routine.points,
         "Completed: " + routine.name,
       );
+      badgeService?.evaluateBadges({ type: "routine_completion" });
     }
 
     activityService.recordActivityOrThrow({
