@@ -12,6 +12,11 @@ dist/
 
 # Data directory (runtime)
 data/
+data-e2e/
+
+# Playwright
+test-results/
+playwright-report/
 
 # OS files
 .DS_Store
