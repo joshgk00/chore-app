@@ -8,9 +8,13 @@ import { NotFoundError } from "./lib/errors.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { createAuthRoutes } from "./routes/auth.js";
 import { createAdminRoutes } from "./routes/admin.js";
+import { createChildRoutes } from "./routes/child.js";
+import { createSubmissionRoutes } from "./routes/submissions.js";
 import { adminAuth } from "./middleware/adminAuth.js";
 import { createAuthService } from "./services/authService.js";
 import { createSettingsService } from "./services/settingsService.js";
+import { createActivityService } from "./services/activityService.js";
+import { createRoutineService } from "./services/routineService.js";
 import type { AppConfig } from "./config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -27,12 +31,17 @@ export function createApp(db: Database.Database, config: AppConfig) {
 
   const authService = createAuthService(db);
   const settingsService = createSettingsService(db);
+  const activityService = createActivityService(db);
+  const routineService = createRoutineService(db, activityService);
 
   app.get("/api/health", (_req, res) => {
     res.json({ data: { status: "ok" } });
   });
 
   app.use("/api/auth", createAuthRoutes(authService, config));
+
+  app.use("/api", createChildRoutes(routineService, settingsService));
+  app.use("/api", createSubmissionRoutes(routineService, settingsService));
 
   app.use("/api/admin", adminAuth(authService, config));
   app.use("/api/admin", createAdminRoutes(settingsService));
