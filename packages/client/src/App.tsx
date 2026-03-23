@@ -64,9 +64,9 @@ function AppShell() {
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
-    <div className="rounded-lg bg-white p-6 shadow">
-      <h2 className="text-xl font-semibold">{title}</h2>
-      <p className="mt-2 text-gray-500">Coming soon.</p>
+    <div className="rounded-2xl bg-[var(--color-surface)] p-6 shadow-card">
+      <h2 className="font-display text-xl font-semibold text-[var(--color-text)]">{title}</h2>
+      <p className="mt-2 text-[var(--color-text-muted)]">Coming soon.</p>
     </div>
   );
 }
