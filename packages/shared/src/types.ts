@@ -153,7 +153,6 @@ export interface RewardRequest {
   reviewedAt?: string;
 }
 
-// Approval queue types
 export type ApprovalType = "routine-completion" | "chore-log" | "reward-request";
 
 export interface PendingApprovals {

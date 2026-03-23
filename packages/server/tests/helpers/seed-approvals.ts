@@ -1,9 +1,6 @@
 import type Database from "better-sqlite3";
 
-/**
- * Seeds pending submissions across all three entity types for approval queue testing.
- * Requires seed-routines, seed-chores, and seed-rewards to be run first.
- */
+// Requires seed-routines, seed-chores, and seed-rewards to be run first.
 export function seedPendingSubmissions(db: Database.Database): void {
   // Pending routine completion (routine 2 requires approval)
   db.prepare(
