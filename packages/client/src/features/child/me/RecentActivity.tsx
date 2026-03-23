@@ -21,15 +21,15 @@ export default function RecentActivity({ events }: RecentActivityProps) {
 
   return (
     <ul className="space-y-2" aria-label="Recent activity">
-      {events.map((event, index) => (
+      {events.map((event) => (
         <li
-          key={`${event.entityType}-${event.entityId}-${index}`}
+          key={`${event.eventType}-${event.entityType}-${event.entityId}-${event.createdAt}`}
           className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3"
         >
           <span className="text-sm font-medium text-gray-700">
             {event.summary ?? event.eventType}
           </span>
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-gray-600">
             {formatEventTime(event.createdAt)}
           </span>
         </li>

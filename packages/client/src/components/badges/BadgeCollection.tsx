@@ -6,14 +6,16 @@ interface BadgeCollectionProps {
   earnedBadges: Badge[];
 }
 
-const ALL_BADGE_KEYS = Object.values(BADGE_KEYS);
-
 export default function BadgeCollection({ earnedBadges }: BadgeCollectionProps) {
-  const earnedKeySet = new Set(earnedBadges.map((b) => b.badgeKey));
+  const earnedKeySet = new Set(earnedBadges.map((badge) => badge.badgeKey));
 
   return (
-    <div className="grid grid-cols-4 gap-4">
-      {ALL_BADGE_KEYS.map((key) => (
+    <div
+      className="grid grid-cols-4 gap-4"
+      role="group"
+      aria-label={`Badges: ${earnedBadges.length} of ${Object.keys(BADGE_KEYS).length} earned`}
+    >
+      {Object.values(BADGE_KEYS).map((key) => (
         <BadgeIcon key={key} badgeKey={key} isEarned={earnedKeySet.has(key)} />
       ))}
     </div>

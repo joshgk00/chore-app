@@ -3,22 +3,25 @@ import { renderWithProviders, screen } from '../../test-utils.js';
 import BadgeIcon from '../../../src/components/badges/BadgeIcon.js';
 
 describe('BadgeIcon', () => {
-  it('renders earned badge with full-color styling', () => {
+  it('renders earned badge without grayscale', () => {
     renderWithProviders(<BadgeIcon badgeKey="first_step" isEarned />);
 
     const badge = screen.getByRole('img', { name: /first step.*earned/i });
     expect(badge).toBeInTheDocument();
-    expect(badge.className).not.toContain('grayscale');
-    expect(badge.className).not.toContain('opacity-40');
+
+    const emoji = badge.querySelector('[aria-hidden="true"]')!;
+    expect(emoji.className).not.toContain('grayscale');
   });
 
-  it('renders locked badge with grayscale styling', () => {
+  it('renders locked badge with grayscale on emoji', () => {
     renderWithProviders(<BadgeIcon badgeKey="first_step" isEarned={false} />);
 
     const badge = screen.getByRole('img', { name: /first step.*locked/i });
     expect(badge).toBeInTheDocument();
-    expect(badge.className).toContain('grayscale');
-    expect(badge.className).toContain('opacity-40');
+
+    const emoji = badge.querySelector('[aria-hidden="true"]')!;
+    expect(emoji.className).toContain('grayscale');
+    expect(emoji.className).toContain('opacity-40');
   });
 
   it('displays correct label for known badge', () => {

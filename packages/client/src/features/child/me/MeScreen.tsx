@@ -1,17 +1,18 @@
 import { usePoints } from "../rewards/hooks/usePoints.js";
 import { useBadges } from "./hooks/useBadges.js";
-import { useActivity } from "./hooks/useActivity.js";
+import { useRecentActivity } from "./hooks/useRecentActivity.js";
 import PointsDisplay from "../rewards/PointsDisplay.js";
 import BadgeCollection from "../../../components/badges/BadgeCollection.js";
 import RecentActivity from "./RecentActivity.js";
 import NotificationOptIn from "./NotificationOptIn.js";
 
 export default function MeScreen() {
-  const { data: points, isLoading: isLoadingPoints } = usePoints();
-  const { data: badges, isLoading: isLoadingBadges } = useBadges();
-  const { data: activity, isLoading: isLoadingActivity } = useActivity();
+  const { data: points, isLoading: isLoadingPoints, error: pointsError } = usePoints();
+  const { data: badges, isLoading: isLoadingBadges, error: badgesError } = useBadges();
+  const { data: activity, isLoading: isLoadingActivity, error: activityError } = useRecentActivity();
 
   const isLoading = isLoadingPoints || isLoadingBadges || isLoadingActivity;
+  const error = pointsError || badgesError || activityError;
 
   if (isLoading) {
     return (
@@ -21,6 +22,17 @@ export default function MeScreen() {
           <div className="h-24 rounded-2xl bg-gray-200" />
           <div className="h-32 rounded-2xl bg-gray-200" />
           <div className="h-48 rounded-2xl bg-gray-200" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">
+        <div aria-live="assertive" className="text-center">
+          <p className="text-xl font-bold text-gray-700">Could not load your profile.</p>
+          <p className="mt-2 text-gray-600">Please check your connection and try again.</p>
         </div>
       </div>
     );

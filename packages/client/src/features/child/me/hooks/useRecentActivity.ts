@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../../api/client.js";
 import type { ActivityEvent } from "@chore-app/shared";
 
-export function useActivity(limit = 20) {
+export function useRecentActivity(limit = 20) {
   return useQuery({
     queryKey: ["activity", limit],
     queryFn: async () => {

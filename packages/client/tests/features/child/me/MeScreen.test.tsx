@@ -40,10 +40,12 @@ describe('MeScreen', () => {
     });
 
     const earnedBadge = screen.getByRole('img', { name: /first step.*earned/i });
-    expect(earnedBadge.className).not.toContain('grayscale');
+    const earnedEmoji = earnedBadge.querySelector('[aria-hidden="true"]')!;
+    expect(earnedEmoji.className).not.toContain('grayscale');
 
     const lockedBadge = screen.getByRole('img', { name: /chore champion.*locked/i });
-    expect(lockedBadge.className).toContain('grayscale');
+    const lockedEmoji = lockedBadge.querySelector('[aria-hidden="true"]')!;
+    expect(lockedEmoji.className).toContain('grayscale');
   });
 
   it('renders recent activity feed', async () => {
@@ -72,6 +74,40 @@ describe('MeScreen', () => {
     });
 
     expect(screen.getByText('Coming soon!')).toBeInTheDocument();
+  });
+
+  it('shows error state when API fails', async () => {
+    server.use(
+      http.get('/api/points/summary', () =>
+        HttpResponse.json(
+          { error: { code: 'INTERNAL', message: 'fail' } },
+          { status: 500 },
+        ),
+      ),
+    );
+
+    renderWithProviders(<MeScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/could not load your profile/i)).toBeInTheDocument();
+    });
+  });
+
+  it('shows all badges locked when none earned', async () => {
+    server.use(
+      http.get('/api/badges', () => HttpResponse.json({ data: [] })),
+    );
+
+    renderWithProviders(<MeScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('First Step')).toBeInTheDocument();
+    });
+
+    const allBadges = screen.getAllByRole('img');
+    for (const badge of allBadges) {
+      expect(badge).toHaveAccessibleName(expect.stringContaining('locked'));
+    }
   });
 
   it('shows empty activity state when no events', async () => {

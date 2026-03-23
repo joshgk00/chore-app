@@ -19,14 +19,14 @@ export default function BadgeIcon({ badgeKey, isEarned }: BadgeIconProps) {
 
   return (
     <div
-      className={`flex flex-col items-center gap-1 ${isEarned ? "" : "opacity-40 grayscale"}`}
+      className="flex flex-col items-center gap-1"
       role="img"
       aria-label={`${display.label}${isEarned ? " (earned)" : " (locked)"}`}
     >
-      <span className="text-3xl" aria-hidden="true">
+      <span className={`text-3xl ${isEarned ? "" : "opacity-40 grayscale"}`} aria-hidden="true">
         {display.emoji}
       </span>
-      <span className="text-center text-xs font-medium text-gray-700">
+      <span className={`text-center text-xs font-medium ${isEarned ? "text-gray-700" : "text-gray-500"}`}>
         {display.label}
       </span>
     </div>
