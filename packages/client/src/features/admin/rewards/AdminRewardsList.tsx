@@ -146,7 +146,7 @@ export default function AdminRewardsList() {
                         {reward.name}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 font-body text-[var(--color-text-secondary)]">
+                    <td className="px-4 py-3 font-display font-bold text-[var(--color-amber-700)]">
                       {reward.pointsCost}
                     </td>
                     <td className="px-4 py-3">
