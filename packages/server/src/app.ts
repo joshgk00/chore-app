@@ -11,6 +11,7 @@ import { createAdminRoutes } from "./routes/admin.js";
 import { createAdminRoutinesRoutes } from "./routes/admin-routines.js";
 import { createAdminChoresRoutes } from "./routes/admin-chores.js";
 import { createAdminRewardsRoutes } from "./routes/admin-rewards.js";
+import { createAdminApprovalsRoutes } from "./routes/admin-approvals.js";
 import { createChildRoutes } from "./routes/child.js";
 import { createSubmissionRoutes } from "./routes/submissions.js";
 import { adminAuth } from "./middleware/adminAuth.js";
@@ -20,6 +21,7 @@ import { createActivityService } from "./services/activityService.js";
 import { createRoutineService } from "./services/routineService.js";
 import { createChoreService } from "./services/choreService.js";
 import { createRewardService } from "./services/rewardService.js";
+import { createApprovalService } from "./services/approvalService.js";
 import { createPointsService } from "./services/pointsService.js";
 import { createBadgeService } from "./services/badgeService.js";
 import type { AppConfig } from "./config.js";
@@ -44,6 +46,7 @@ export function createApp(db: Database.Database, config: AppConfig) {
   const choreService = createChoreService(db, activityService, badgeService);
   const rewardService = createRewardService(db, activityService);
   const pointsService = createPointsService(db);
+  const approvalService = createApprovalService(db, activityService, badgeService);
 
   app.get("/api/health", (_req, res) => {
     res.json({ data: { status: "ok" } });
@@ -59,6 +62,7 @@ export function createApp(db: Database.Database, config: AppConfig) {
   app.use("/api/admin", createAdminRoutinesRoutes(routineService));
   app.use("/api/admin", createAdminChoresRoutes(choreService));
   app.use("/api/admin", createAdminRewardsRoutes(rewardService));
+  app.use("/api/admin", createAdminApprovalsRoutes(approvalService));
 
   app.all("/api/*", (_req, _res, next) => {
     next(new NotFoundError("API endpoint not found"));

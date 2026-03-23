@@ -24,6 +24,8 @@ export type {
   LedgerEntry,
   Badge,
   BootstrapData,
+  ApprovalType,
+  PendingApprovals,
 } from "./types.js";
 
 export {

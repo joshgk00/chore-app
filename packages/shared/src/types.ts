@@ -93,6 +93,8 @@ export interface RoutineCompletion {
   localDate: string;
   status: Status;
   idempotencyKey: string;
+  reviewNote?: string;
+  reviewedAt?: string;
 }
 
 export interface ChoreTier {
@@ -125,6 +127,8 @@ export interface ChoreLog {
   localDate: string;
   status: Status;
   idempotencyKey: string;
+  reviewNote?: string;
+  reviewedAt?: string;
 }
 
 export interface Reward {
@@ -145,6 +149,17 @@ export interface RewardRequest {
   localDate: string;
   status: Status;
   idempotencyKey: string;
+  reviewNote?: string;
+  reviewedAt?: string;
+}
+
+// Approval queue types
+export type ApprovalType = "routine-completion" | "chore-log" | "reward-request";
+
+export interface PendingApprovals {
+  routineCompletions: RoutineCompletion[];
+  choreLogs: ChoreLog[];
+  rewardRequests: RewardRequest[];
 }
 
 export interface PointsBalance {
