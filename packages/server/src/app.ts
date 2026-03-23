@@ -10,6 +10,7 @@ import { createAuthRoutes } from "./routes/auth.js";
 import { createAdminRoutes } from "./routes/admin.js";
 import { createAdminRoutinesRoutes } from "./routes/admin-routines.js";
 import { createAdminChoresRoutes } from "./routes/admin-chores.js";
+import { createAdminRewardsRoutes } from "./routes/admin-rewards.js";
 import { createChildRoutes } from "./routes/child.js";
 import { createSubmissionRoutes } from "./routes/submissions.js";
 import { adminAuth } from "./middleware/adminAuth.js";
@@ -57,6 +58,7 @@ export function createApp(db: Database.Database, config: AppConfig) {
   app.use("/api/admin", createAdminRoutes(settingsService));
   app.use("/api/admin", createAdminRoutinesRoutes(routineService));
   app.use("/api/admin", createAdminChoresRoutes(choreService));
+  app.use("/api/admin", createAdminRewardsRoutes(rewardService));
 
   app.all("/api/*", (_req, _res, next) => {
     next(new NotFoundError("API endpoint not found"));
