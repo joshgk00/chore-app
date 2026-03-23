@@ -99,9 +99,8 @@ test.describe("Admin Approval Queue", () => {
     await page.goto("/admin/approvals");
     await expect(page.getByText(routineName)).toBeVisible({ timeout: 10000 });
 
-    const card = page.locator("[data-testid='approval-card']", { hasText: routineName })
-      .or(page.locator("article", { hasText: routineName }))
-      .or(page.locator("div", { hasText: routineName }).filter({ has: page.getByRole("button", { name: "Approve" }) }))
+    const card = page.locator("div", { hasText: routineName })
+      .filter({ has: page.getByRole("button", { name: "Approve" }) })
       .first();
 
     const [response] = await Promise.all([

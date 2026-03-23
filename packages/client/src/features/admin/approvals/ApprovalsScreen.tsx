@@ -10,8 +10,6 @@ import type {
   ApprovalType,
 } from "@chore-app/shared";
 
-// --- Hooks ---
-
 function usePendingApprovals() {
   return useQuery({
     queryKey: ["admin", "approvals"],
@@ -74,16 +72,12 @@ function useRejectItem() {
   });
 }
 
-// --- Helpers ---
-
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
   });
 }
-
-// --- Sub-components ---
 
 function LoadingSkeleton() {
   return (
@@ -225,8 +219,6 @@ function ApprovalSection({ title, borderClass, children }: ApprovalSectionProps)
     </section>
   );
 }
-
-// --- Main Component ---
 
 export default function ApprovalsScreen() {
   const isOnline = useOnline();

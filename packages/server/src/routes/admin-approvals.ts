@@ -27,14 +27,17 @@ export function createAdminApprovalsRoutes(approvalService: ApprovalService) {
         throw new ValidationError("Invalid ID");
       }
 
-      const { reviewNote } = req.body;
-      if (reviewNote !== undefined) {
-        if (typeof reviewNote !== "string") {
+      const { reviewNote: rawNote } = req.body;
+      let reviewNote: string | undefined;
+      if (rawNote !== undefined) {
+        if (typeof rawNote !== "string") {
           throw new ValidationError("reviewNote must be a string");
         }
-        if (reviewNote.length > 500) {
+        const trimmed = rawNote.trim();
+        if (trimmed.length > 500) {
           throw new ValidationError("reviewNote must be 500 characters or fewer");
         }
+        reviewNote = trimmed || undefined;
       }
 
       const id = Number(idParam);
@@ -65,14 +68,17 @@ export function createAdminApprovalsRoutes(approvalService: ApprovalService) {
         throw new ValidationError("Invalid ID");
       }
 
-      const { reviewNote } = req.body;
-      if (reviewNote !== undefined) {
-        if (typeof reviewNote !== "string") {
+      const { reviewNote: rawNote } = req.body;
+      let reviewNote: string | undefined;
+      if (rawNote !== undefined) {
+        if (typeof rawNote !== "string") {
           throw new ValidationError("reviewNote must be a string");
         }
-        if (reviewNote.length > 500) {
+        const trimmed = rawNote.trim();
+        if (trimmed.length > 500) {
           throw new ValidationError("reviewNote must be 500 characters or fewer");
         }
+        reviewNote = trimmed || undefined;
       }
 
       const id = Number(idParam);

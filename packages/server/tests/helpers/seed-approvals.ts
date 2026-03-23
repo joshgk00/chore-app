@@ -75,9 +75,3 @@ export function seedPendingSubmissions(db: Database.Database): void {
   );
 }
 
-export function seedPointsForApprovalTest(db: Database.Database, amount: number): void {
-  db.prepare(
-    `INSERT INTO points_ledger (entry_type, reference_table, reference_id, amount, note)
-     VALUES ('manual', NULL, NULL, ?, 'Test seed points')`,
-  ).run(amount);
-}
