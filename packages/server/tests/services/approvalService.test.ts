@@ -148,9 +148,9 @@ describe("approvalService", () => {
 
       approvalService.approveRoutineCompletion(1);
 
-      const badges = db.prepare(`SELECT * FROM badges_earned`).all();
-      // first_step badge should be evaluated (at least 1 approved routine completion)
-      expect(badges.length).toBeGreaterThanOrEqual(0);
+      const badges = db.prepare(`SELECT * FROM badges_earned`).all() as { badge_key: string }[];
+      expect(badges.length).toBeGreaterThanOrEqual(1);
+      expect(badges.some((b) => b.badge_key === "first_step")).toBe(true);
       db.close();
     });
   });

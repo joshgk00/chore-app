@@ -353,6 +353,32 @@ describe("admin approval routes", () => {
       db.close();
     });
 
+    it("returns 422 for review note exceeding 500 chars", async () => {
+      const { db, app } = await createTestApp();
+      const cookies = await loginAdmin(app);
+
+      const res = await request(app)
+        .post("/api/admin/approvals/routine-completion/1/reject")
+        .set("Cookie", cookies)
+        .send({ reviewNote: "a".repeat(501) });
+
+      expect(res.status).toBe(422);
+      db.close();
+    });
+
+    it("returns 422 for non-string review note", async () => {
+      const { db, app } = await createTestApp();
+      const cookies = await loginAdmin(app);
+
+      const res = await request(app)
+        .post("/api/admin/approvals/routine-completion/1/reject")
+        .set("Cookie", cookies)
+        .send({ reviewNote: 123 });
+
+      expect(res.status).toBe(422);
+      db.close();
+    });
+
     it("returns 401 without session", async () => {
       const { db, app } = await createTestApp();
 
@@ -361,6 +387,21 @@ describe("admin approval routes", () => {
         .send({});
 
       expect(res.status).toBe(401);
+      db.close();
+    });
+  });
+
+  describe("reviewNote validation (approve)", () => {
+    it("returns 422 for non-string review note", async () => {
+      const { db, app } = await createTestApp();
+      const cookies = await loginAdmin(app);
+
+      const res = await request(app)
+        .post("/api/admin/approvals/routine-completion/1/approve")
+        .set("Cookie", cookies)
+        .send({ reviewNote: true });
+
+      expect(res.status).toBe(422);
       db.close();
     });
   });
