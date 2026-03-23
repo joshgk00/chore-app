@@ -40,8 +40,8 @@ export function createAdminChoresRoutes(choreService: ChoreService) {
       if (typeof requiresApproval !== "boolean") {
         throw new ValidationError("requiresApproval must be a boolean");
       }
-      if (typeof sortOrder !== "number" || !Number.isInteger(sortOrder)) {
-        throw new ValidationError("sortOrder must be an integer");
+      if (typeof sortOrder !== "number" || !Number.isInteger(sortOrder) || sortOrder < 0 || sortOrder > 9999) {
+        throw new ValidationError("sortOrder must be an integer between 0 and 9999");
       }
       if (!Array.isArray(tiers) || tiers.length === 0) {
         throw new ValidationError("At least one tier is required");
@@ -59,8 +59,8 @@ export function createAdminChoresRoutes(choreService: ChoreService) {
         if (typeof tier.points !== "number" || !Number.isInteger(tier.points) || tier.points < 0 || tier.points > 10000) {
           throw new ValidationError("Each tier points must be an integer between 0 and 10000");
         }
-        if (typeof tier.sortOrder !== "number" || !Number.isInteger(tier.sortOrder)) {
-          throw new ValidationError("Each tier must have an integer sortOrder");
+        if (typeof tier.sortOrder !== "number" || !Number.isInteger(tier.sortOrder) || tier.sortOrder < 0 || tier.sortOrder > 9999) {
+          throw new ValidationError("Each tier sortOrder must be an integer between 0 and 9999");
         }
       }
 
@@ -99,8 +99,8 @@ export function createAdminChoresRoutes(choreService: ChoreService) {
       if (requiresApproval !== undefined && typeof requiresApproval !== "boolean") {
         throw new ValidationError("requiresApproval must be a boolean");
       }
-      if (sortOrder !== undefined && (typeof sortOrder !== "number" || !Number.isInteger(sortOrder))) {
-        throw new ValidationError("sortOrder must be an integer");
+      if (sortOrder !== undefined && (typeof sortOrder !== "number" || !Number.isInteger(sortOrder) || sortOrder < 0 || sortOrder > 9999)) {
+        throw new ValidationError("sortOrder must be an integer between 0 and 9999");
       }
       if (tiers !== undefined) {
         if (!Array.isArray(tiers)) {
@@ -125,8 +125,8 @@ export function createAdminChoresRoutes(choreService: ChoreService) {
           if (typeof tier.points !== "number" || !Number.isInteger(tier.points) || tier.points < 0 || tier.points > 10000) {
             throw new ValidationError("Each tier points must be an integer between 0 and 10000");
           }
-          if (typeof tier.sortOrder !== "number" || !Number.isInteger(tier.sortOrder)) {
-            throw new ValidationError("Each tier must have an integer sortOrder");
+          if (typeof tier.sortOrder !== "number" || !Number.isInteger(tier.sortOrder) || tier.sortOrder < 0 || tier.sortOrder > 9999) {
+            throw new ValidationError("Each tier sortOrder must be an integer between 0 and 9999");
           }
         }
       }
