@@ -167,7 +167,7 @@ export default function RoutineChecklist() {
             <h1 className="font-display text-xl font-bold text-[var(--color-text)]">{routine.name}</h1>
           </div>
 
-          <span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-bold text-amber-700">
+          <span className="rounded-full bg-[var(--color-amber-100)] px-3 py-1 text-sm font-bold text-[var(--color-amber-700)]">
             {routine.points} {routine.points === 1 ? "pt" : "pts"}
           </span>
         </div>
@@ -182,7 +182,7 @@ export default function RoutineChecklist() {
               type="button"
               onClick={handleShuffle}
               disabled={hasAnyChecked}
-              className="rounded-full bg-[var(--color-sky-100)] px-3 py-1 text-sm font-medium text-[var(--color-sky-700)] transition-all duration-200 enabled:hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-full bg-[var(--color-sky-100)] px-3 py-1 text-sm font-medium text-[var(--color-sky-700)] transition-all duration-200 enabled:hover:bg-[var(--color-sky-100)] disabled:cursor-not-allowed disabled:opacity-40"
               aria-label="Shuffle checklist order"
             >
               Shuffle
@@ -221,7 +221,7 @@ export default function RoutineChecklist() {
 
       <div className="sticky bottom-0 border-t border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_95%,transparent)] p-4 backdrop-blur">
         {!isOnline && (
-          <p className="mb-2 text-center text-sm font-medium text-amber-700">
+          <p className="mb-2 text-center text-sm font-medium text-[var(--color-amber-700)]">
             You're offline -- connect to submit.
           </p>
         )}

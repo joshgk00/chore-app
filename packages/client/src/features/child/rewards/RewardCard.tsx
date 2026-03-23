@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useOnline } from "../../../contexts/OnlineContext.js";
 import { generateIdempotencyKey } from "../../../lib/idempotency.js";
 import { formatLocalDate } from "../../../lib/draft-sync.js";
@@ -17,11 +17,19 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
   const isOnline = useOnline();
   const submitMutation = useSubmitRewardRequest();
   const cancelMutation = useCancelRewardRequest();
+  const confirmDialogRef = useRef<HTMLDivElement>(null);
 
   const isAffordable = availablePoints >= reward.pointsCost;
   const progressPercent = reward.pointsCost === 0
     ? 100
     : Math.min((availablePoints / reward.pointsCost) * 100, 100);
+
+  useEffect(() => {
+    if (isConfirming && confirmDialogRef.current) {
+      const firstButton = confirmDialogRef.current.querySelector<HTMLButtonElement>("button");
+      firstButton?.focus();
+    }
+  }, [isConfirming]);
 
   function handleRequest() {
     submitMutation.mutate(
@@ -47,7 +55,7 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
       <div className="rounded-3xl bg-[var(--color-surface)] p-4 shadow-card ring-1 ring-[var(--color-border)]">
         <div className="flex items-center justify-between">
           <h3 className="font-display font-bold text-[var(--color-text)]">{reward.name}</h3>
-          <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-700">
+          <span className="rounded-full bg-[var(--color-amber-100)] px-2.5 py-0.5 text-xs font-bold text-[var(--color-amber-700)]">
             Pending
           </span>
         </div>
@@ -56,7 +64,7 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
           type="button"
           onClick={handleCancel}
           disabled={cancelMutation.isPending || !isOnline}
-          className="mt-3 text-sm font-medium text-[var(--color-red-600)] hover:text-red-700 disabled:opacity-50"
+          className="mt-3 text-sm font-medium text-[var(--color-red-600)] hover:text-[var(--color-red-600)] disabled:opacity-50"
         >
           {cancelMutation.isPending ? "Canceling..." : "Cancel Request"}
         </button>
@@ -84,7 +92,7 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
       </div>
 
       {isConfirming ? (
-        <div className="mt-3 rounded-xl bg-[var(--color-amber-50)] p-3" role="alertdialog" aria-label="Confirm reward request">
+        <div ref={confirmDialogRef} className="mt-3 rounded-xl bg-[var(--color-amber-50)] p-3" role="alertdialog" aria-label="Confirm reward request">
           <p className="text-sm font-medium text-[var(--color-text-secondary)]">
             Redeem {reward.name} for {reward.pointsCost} points?
           </p>

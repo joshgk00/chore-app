@@ -44,7 +44,7 @@ export default function BadgeIcon({ badgeKey, isEarned }: BadgeIconProps) {
           <span className="absolute inset-[-2px] rounded-[18px] border-2 border-dashed border-[var(--color-border)]" aria-hidden="true" />
         )}
       </div>
-      <span className={`text-center text-[11px] font-semibold leading-tight ${
+      <span className={`text-center text-xs font-semibold leading-tight ${
         isEarned ? "text-[var(--color-text-secondary)]" : "text-[var(--color-text-faint)]"
       }`}>
         {display.label}

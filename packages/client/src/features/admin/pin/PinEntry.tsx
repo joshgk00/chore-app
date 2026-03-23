@@ -36,7 +36,7 @@ export default function PinEntry() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[var(--color-bg)] p-4">
+    <main className="flex min-h-screen items-center justify-center bg-[var(--color-bg)] p-4">
       <div className="w-full max-w-sm text-center">
         <div
           className="mx-auto flex h-16 w-16 items-center justify-center rounded-[20px] text-white"
@@ -95,6 +95,6 @@ export default function PinEntry() {
           &larr; Back to app
         </Link>
       </div>
-    </div>
+    </main>
   );
 }

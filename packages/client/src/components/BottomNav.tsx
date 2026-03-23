@@ -52,7 +52,7 @@ export default function BottomNav() {
             key={tab.to}
             to={tab.to}
             className={({ isActive }) =>
-              `relative flex flex-1 flex-col items-center gap-0.5 pb-3 pt-2 text-[11px] font-semibold ${
+              `relative flex flex-1 flex-col items-center gap-0.5 pb-3 pt-2 text-xs font-semibold ${
                 isActive
                   ? "text-[var(--color-nav-active)]"
                   : "text-[var(--color-nav-inactive)] hover:text-[var(--color-text-secondary)]"

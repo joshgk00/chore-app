@@ -101,7 +101,7 @@ export default function QuickChoreLog() {
       </div>
 
       {!isOnline && (
-        <p className="mt-2 text-sm text-amber-600" aria-live="polite">
+        <p className="mt-2 text-sm text-[var(--color-amber-600)]" aria-live="polite">
           You&apos;re offline. Chore logging is unavailable right now.
         </p>
       )}
@@ -131,7 +131,7 @@ export default function QuickChoreLog() {
               type="button"
               onClick={handleCancelLog}
               disabled={cancelMutation.isPending}
-              className="mt-2 min-h-touch text-sm font-medium text-[var(--color-red-600)] hover:text-red-700 disabled:opacity-50"
+              className="mt-2 min-h-touch text-sm font-medium text-[var(--color-red-600)] hover:text-[var(--color-red-600)] disabled:opacity-50"
             >
               {cancelMutation.isPending ? "Canceling..." : "Cancel"}
             </button>
@@ -169,7 +169,7 @@ export default function QuickChoreLog() {
           <button
             type="button"
             onClick={() => setSelectedChore(null)}
-            className="mb-1 min-h-touch text-sm font-medium text-amber-600 hover:text-amber-700"
+            className="mb-1 min-h-touch text-sm font-medium text-[var(--color-amber-600)] hover:text-[var(--color-amber-700)]"
           >
             &larr; Back to chores
           </button>
@@ -182,7 +182,7 @@ export default function QuickChoreLog() {
               className="flex w-full items-center justify-between rounded-xl bg-[var(--color-surface-muted)] px-4 py-3 text-left transition-all duration-200 hover:bg-[var(--color-emerald-50)] hover:ring-1 hover:ring-[var(--color-emerald-400)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <span className="font-medium text-[var(--color-text-secondary)]">{tier.name}</span>
-              <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-sm font-bold text-amber-700">
+              <span className="rounded-full bg-[var(--color-amber-100)] px-2.5 py-0.5 text-sm font-bold text-[var(--color-amber-700)]">
                 +{tier.points} pts
               </span>
             </button>

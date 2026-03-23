@@ -85,7 +85,7 @@ export default function RoutinesScreen() {
           return (
             <section key={slot} aria-labelledby={`slot-${slot}`}>
               <h2 id={`slot-${slot}`} className="font-display mb-3 text-lg font-semibold text-[var(--color-text-secondary)]">
-                {emoji} {label}
+                <span data-emoji>{emoji}</span> {label}
               </h2>
               <div className="space-y-3">
                 {slotRoutines.map((routine) => (
