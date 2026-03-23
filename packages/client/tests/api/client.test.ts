@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { api } from '../../src/api/client.js';
 import { server } from '../msw/server.js';
@@ -171,7 +171,7 @@ describe('api client', () => {
       expect(capturedRequest!.credentials).toBe('same-origin');
     });
 
-    it('POST without data sends no body', async () => {
+    it('POST without body sends no body', async () => {
       let capturedRequest: Request | undefined;
       server.use(
         http.post('/api/auth/logout', ({ request }) => {
@@ -183,6 +183,30 @@ describe('api client', () => {
       await api.post('/api/auth/logout');
 
       expect(capturedRequest!.body).toBeNull();
+    });
+  });
+
+  describe('timeout', () => {
+    it('returns NETWORK_ERROR when request exceeds timeout', async () => {
+      vi.useFakeTimers();
+
+      server.use(
+        http.get('/api/slow', async () => {
+          await new Promise((resolve) => setTimeout(resolve, 30_000));
+          return HttpResponse.json({ data: null });
+        }),
+      );
+
+      const resultPromise = api.get('/api/slow');
+      await vi.advanceTimersByTimeAsync(11_000);
+      const result = await resultPromise;
+
+      expect(result).toEqual({
+        ok: false,
+        error: { code: 'NETWORK_ERROR', message: 'Unable to reach the server' },
+      });
+
+      vi.useRealTimers();
     });
   });
 });

@@ -28,6 +28,7 @@ packages/server    packages/client
 - Server layers: `routes -> services -> db`. Routes handle HTTP. Services hold business logic. No layer skipping.
 - Route and service modules use factory functions (`createAuthRoutes(db, config)`) for testability.
 - Client uses TanStack React Query for server state management.
+- React context providers should have a single responsibility. Domain logic (draft sync, data fetching) belongs in hooks that consume the context, not inside the provider itself.
 
 ## Coding Standards
 
@@ -53,6 +54,8 @@ packages/server    packages/client
 - Every Express route handler must be wrapped in try-catch with `next(err)`.
 - Never leak stack traces or internal details to clients.
 - Use the discriminated union `ApiResult<T>` pattern on the client (`{ ok: true; data } | { ok: false; error }`).
+- Side-effect operations (activity logging, analytics, notifications) must be wrapped in try-catch -- they should never crash the primary business operation.
+- Client-side IndexedDB operations need try-catch with safe fallbacks. Safari iOS PWA mode has known storage quirks (quota limits, private browsing restrictions, database corruption).
 
 ### Security
 
@@ -75,6 +78,16 @@ packages/server    packages/client
 - Client tests use Testing Library + jsdom. MSW available for API mocking.
 - Extract shared test setup into helper functions at the top of the file or in shared helpers.
 - Test middleware and API client code -- these are critical paths.
+
+### Submission & Data Integrity
+- Every write mutation wraps all steps in a single db.transaction() — from idempotency check through activity event. If any step fails, everything rolls back.
+- Insert ordering: entity record → ledger entry → badge evaluation → activity event.
+- All POST mutations are idempotent via idempotencyKey. Duplicates return the existing record, never error.
+- Snapshot fields capture entity state at submission time and are immutable after that.
+- Point balance is always aggregated live from points_ledger and pending reward_requests — no cached balance.
+- Cancel operations are idempotent: re-canceling returns the existing canceled record.
+- Destructive or costly user actions require confirmation before the POST fires.
+- See package-level CLAUDE.md files for implementation details.
 
 ## Specs & Docs
 

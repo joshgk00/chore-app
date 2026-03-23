@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { api } from "../../../api/client.js";
 
 export default function PinEntry() {
@@ -36,12 +36,24 @@ export default function PinEntry() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-      <div className="w-full max-w-sm">
-        <h1 className="mb-6 text-center text-2xl font-bold text-gray-900">Admin Access</h1>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <main className="flex min-h-screen items-center justify-center bg-[var(--color-bg)] p-4">
+      <div className="w-full max-w-sm text-center">
+        <div
+          className="mx-auto flex h-16 w-16 items-center justify-center rounded-[20px] text-white"
+          style={{ background: "linear-gradient(135deg, var(--color-amber-400), var(--color-amber-600))" }}
+          aria-hidden="true"
+        >
+          <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
+
+        <h1 className="mt-5 font-display text-2xl font-bold text-[var(--color-text)]">Admin Access</h1>
+        <p className="mt-1 text-sm text-[var(--color-text-muted)]">Enter your PIN to manage chores</p>
+
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div>
-            <label htmlFor="pin" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="pin" className="sr-only">
               Enter PIN
             </label>
             <input
@@ -52,29 +64,37 @@ export default function PinEntry() {
               autoComplete="off"
               value={pin}
               onChange={(e) => setPin(e.target.value)}
-              placeholder="Enter your PIN"
+              placeholder="Enter PIN"
               aria-describedby={error ? "pin-error" : undefined}
               aria-invalid={!!error}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-3 text-center text-lg tracking-widest shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="block w-full rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3.5 text-center text-2xl tracking-[8px] text-[var(--color-text)] placeholder:text-base placeholder:tracking-[4px] placeholder:text-[var(--color-text-faint)] focus:border-[var(--color-amber-500)] focus:outline-none"
               minLength={6}
               required
               disabled={loading}
             />
           </div>
           {error && (
-            <p id="pin-error" className="text-center text-sm text-red-600" role="alert">
+            <p id="pin-error" className="text-center text-sm text-[var(--color-red-600)]" role="alert">
               {error}
             </p>
           )}
           <button
             type="submit"
             disabled={loading || pin.length < 6}
-            className="w-full rounded-lg bg-indigo-600 px-4 py-3 font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-xl font-display text-base font-semibold text-white shadow-glow-amber transition-all duration-200 hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ background: "linear-gradient(135deg, var(--color-amber-500), var(--color-amber-600))", padding: "14px" }}
           >
             {loading ? "Verifying..." : "Unlock"}
           </button>
         </form>
+
+        <Link
+          to="/today"
+          className="mt-4 inline-block text-[13px] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
+        >
+          &larr; Back to app
+        </Link>
       </div>
-    </div>
+    </main>
   );
 }

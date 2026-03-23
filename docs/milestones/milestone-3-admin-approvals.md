@@ -229,6 +229,7 @@ Build the settings screen with PIN change, timezone, time slots, and retention.
 - `packages/server/src/services/settingsService.ts`: `getSettings(db)`, `updateSettings(db, updates)`
 - PIN change: hash new PIN, store in settings, invalidate all admin sessions
 - `packages/client/src/features/admin/settings/SettingsScreen.tsx`: forms for each setting group
+- Admin nav/header includes a visible logout button that calls `POST /api/auth/logout` and redirects to `/today`
 
 **Validation**:
 - [ ] `GET /api/admin/settings` returns current settings (timezone, time slots, retention, etc.)
@@ -240,6 +241,8 @@ Build the settings screen with PIN change, timezone, time slots, and retention.
 - [ ] Changing retention days updates the setting
 - [ ] Settings screen UI shows current values and allows editing
 - [ ] All settings endpoints require admin session
+- [ ] Admin logout button visible in admin nav; clicking it destroys the session and redirects to `/today`
+- [ ] After logout, navigating to any `/admin/*` route redirects to `/admin/pin`
 
 ---
 

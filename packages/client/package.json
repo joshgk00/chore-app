@@ -11,7 +11,10 @@
   },
   "dependencies": {
     "@chore-app/shared": "*",
+    "@fontsource-variable/fredoka": "^5.2.10",
+    "@fontsource-variable/inter": "^5.2.8",
     "@tanstack/react-query": "^5.28.0",
+    "idb": "^8.0.3",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "react-router-dom": "^7.0.0"
@@ -24,6 +27,7 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.2.0",
     "autoprefixer": "^10.4.0",
+    "fake-indexeddb": "^6.2.5",
     "jsdom": "^29.0.0",
     "msw": "^2.12.13",
     "postcss": "^8.4.0",

@@ -1,0 +1,161 @@
+import type Database from "better-sqlite3";
+import type { Badge } from "@chore-app/shared";
+import { BADGE_KEYS } from "@chore-app/shared";
+
+export interface BadgeEvaluationContext {
+  type: "routine_completion" | "chore_log";
+}
+
+export interface BadgeService {
+  getEarnedBadges(): Badge[];
+  getRecentBadges(limit?: number): Badge[];
+  evaluateBadges(context: BadgeEvaluationContext): void;
+}
+
+interface BadgeRow {
+  id: number;
+  badge_key: string;
+  earned_at: string;
+}
+
+function mapBadgeRow(row: BadgeRow): Badge {
+  return {
+    id: row.id,
+    badgeKey: row.badge_key,
+    earnedAt: row.earned_at,
+  };
+}
+
+function dayNumber(dateStr: string): number {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return Math.floor(Date.UTC(y, m - 1, d) / 86400000);
+}
+
+export function createBadgeService(db: Database.Database): BadgeService {
+  const selectAllBadgesStmt = db.prepare(
+    `SELECT id, badge_key, earned_at
+     FROM badges_earned
+     ORDER BY earned_at DESC, id DESC`,
+  );
+
+  const selectRecentBadgesStmt = db.prepare(
+    `SELECT id, badge_key, earned_at
+     FROM badges_earned
+     ORDER BY earned_at DESC, id DESC
+     LIMIT ?`,
+  );
+
+  const selectBadgeByKeyStmt = db.prepare(
+    `SELECT id FROM badges_earned WHERE badge_key = ?`,
+  );
+
+  const insertBadgeStmt = db.prepare(
+    `INSERT OR IGNORE INTO badges_earned (badge_key) VALUES (?)`,
+  );
+
+  const countRoutineCompletionsStmt = db.prepare(
+    `SELECT COUNT(*) as count FROM routine_completions WHERE status = 'approved'`,
+  );
+
+  const countChoreLogsStmt = db.prepare(
+    `SELECT COUNT(*) as count FROM chore_logs WHERE status = 'approved'`,
+  );
+
+  const selectConsecutiveDaysStmt = db.prepare(
+    `SELECT DISTINCT local_date
+     FROM routine_completions
+     WHERE status = 'approved'
+     ORDER BY local_date DESC
+     LIMIT 30`,
+  );
+
+  const selectAvailablePointsStmt = db.prepare(
+    `SELECT
+       COALESCE((SELECT SUM(amount) FROM points_ledger), 0)
+       - COALESCE((SELECT SUM(cost_snapshot) FROM reward_requests WHERE status = 'pending'), 0)
+       AS available`,
+  );
+
+  function getEarnedBadges(): Badge[] {
+    const rows = selectAllBadgesStmt.all() as BadgeRow[];
+    return rows.map(mapBadgeRow);
+  }
+
+  function getRecentBadges(limit = 3): Badge[] {
+    const safeLimit = Math.max(1, Math.min(limit, 20));
+    const rows = selectRecentBadgesStmt.all(safeLimit) as BadgeRow[];
+    return rows.map(mapBadgeRow);
+  }
+
+  function hasBadge(key: string): boolean {
+    return selectBadgeByKeyStmt.get(key) !== undefined;
+  }
+
+  function awardBadge(key: string): void {
+    insertBadgeStmt.run(key);
+  }
+
+  function getConsecutiveStreakDays(): number {
+    const rows = selectConsecutiveDaysStmt.all() as { local_date: string }[];
+    if (rows.length === 0) return 0;
+
+    let streak = 1;
+    for (let i = 1; i < rows.length; i++) {
+      const currentDay = dayNumber(rows[i - 1].local_date);
+      const previousDay = dayNumber(rows[i].local_date);
+
+      if (currentDay - previousDay === 1) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    return streak;
+  }
+
+  function evaluateBadges(_context: BadgeEvaluationContext): void {
+    if (!hasBadge(BADGE_KEYS.FIRST_STEP)) {
+      const { count } = countRoutineCompletionsStmt.get() as { count: number };
+      if (count >= 1) {
+        awardBadge(BADGE_KEYS.FIRST_STEP);
+      }
+    }
+
+    // Compute streak once for both streak badges
+    const needsStreakCheck =
+      !hasBadge(BADGE_KEYS.ON_A_ROLL) || !hasBadge(BADGE_KEYS.WEEK_WARRIOR);
+    if (needsStreakCheck) {
+      const streak = getConsecutiveStreakDays();
+      if (!hasBadge(BADGE_KEYS.ON_A_ROLL) && streak >= 3) {
+        awardBadge(BADGE_KEYS.ON_A_ROLL);
+      }
+      if (!hasBadge(BADGE_KEYS.WEEK_WARRIOR) && streak >= 7) {
+        awardBadge(BADGE_KEYS.WEEK_WARRIOR);
+      }
+    }
+
+    if (!hasBadge(BADGE_KEYS.CHORE_CHAMPION)) {
+      const { count } = countChoreLogsStmt.get() as { count: number };
+      if (count >= 10) {
+        awardBadge(BADGE_KEYS.CHORE_CHAMPION);
+      }
+    }
+
+    // Uses available balance (total - pending reservations), not raw total
+    if (!hasBadge(BADGE_KEYS.POINT_HOARDER)) {
+      const { available } = selectAvailablePointsStmt.get() as { available: number };
+      if (available >= 100) {
+        awardBadge(BADGE_KEYS.POINT_HOARDER);
+      }
+    }
+
+    // Deferred to Milestone 3: requires tier-type column (help/alone) not yet in schema
+    // HELPING_HAND: 5 approved chore logs using a "help" tier
+    // SOLO_ACT: 5 approved chore logs using an "alone" tier
+
+    // Deferred to Milestone 3: requires approval service to mark reward as redeemed
+    // BIG_SPENDER: first approved reward redemption
+  }
+
+  return { getEarnedBadges, getRecentBadges, evaluateBadges };
+}

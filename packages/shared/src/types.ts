@@ -25,6 +25,24 @@ export type TimeSlot = "morning" | "afternoon" | "bedtime" | "anytime";
 // Completion rule enum
 export type CompletionRule = "once_per_day" | "once_per_slot" | "unlimited";
 
+export interface SlotConfig {
+  morningStart: string;
+  morningEnd: string;
+  afternoonStart: string;
+  afternoonEnd: string;
+  bedtimeStart: string;
+  bedtimeEnd: string;
+}
+
+export interface ActivityEvent {
+  eventType: string;
+  entityType?: string;
+  entityId?: number;
+  summary?: string;
+  metadata?: Record<string, unknown>;
+  createdAt?: string;
+}
+
 // Asset source
 export type AssetSource = "upload" | "ai_generated";
 
@@ -36,3 +54,121 @@ export type PushRole = "child" | "admin";
 
 // Push subscription status
 export type PushStatus = "active" | "expired" | "failed";
+
+export interface ChecklistItem {
+  id: number;
+  routineId: number;
+  label: string;
+  imageAssetId?: number;
+  sortOrder: number;
+}
+
+export interface Routine {
+  id: number;
+  name: string;
+  timeSlot: TimeSlot;
+  completionRule: CompletionRule;
+  points: number;
+  requiresApproval: boolean;
+  imageAssetId?: number;
+  randomizeItems: boolean;
+  sortOrder: number;
+  items: ChecklistItem[];
+}
+
+export interface RoutineCompletion {
+  id: number;
+  routineId: number;
+  routineNameSnapshot: string;
+  timeSlotSnapshot: string;
+  completionRuleSnapshot: string;
+  pointsSnapshot: number;
+  requiresApprovalSnapshot: boolean;
+  checklistSnapshotJson: string | null;
+  randomizedOrderJson: string | null;
+  completionWindowKey: string | null;
+  completedAt: string;
+  localDate: string;
+  status: Status;
+  idempotencyKey: string;
+}
+
+export interface ChoreTier {
+  id: number;
+  choreId: number;
+  name: string;
+  points: number;
+  sortOrder: number;
+}
+
+export interface Chore {
+  id: number;
+  name: string;
+  requiresApproval: boolean;
+  sortOrder: number;
+  tiers: ChoreTier[];
+}
+
+export interface ChoreLog {
+  id: number;
+  choreId: number;
+  choreNameSnapshot: string;
+  tierId: number;
+  tierNameSnapshot: string;
+  pointsSnapshot: number;
+  requiresApprovalSnapshot: boolean;
+  loggedAt: string;
+  localDate: string;
+  status: Status;
+  idempotencyKey: string;
+}
+
+export interface Reward {
+  id: number;
+  name: string;
+  pointsCost: number;
+  imageAssetId?: number;
+  sortOrder: number;
+}
+
+export interface RewardRequest {
+  id: number;
+  rewardId: number;
+  rewardNameSnapshot: string;
+  costSnapshot: number;
+  requestedAt: string;
+  localDate: string;
+  status: Status;
+  idempotencyKey: string;
+}
+
+export interface PointsBalance {
+  total: number;
+  reserved: number;
+  available: number;
+}
+
+export interface LedgerEntry {
+  id: number;
+  entryType: EntryType;
+  referenceTable: string | null;
+  referenceId: number | null;
+  amount: number;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface Badge {
+  id: number;
+  badgeKey: string;
+  earnedAt: string;
+}
+
+export interface BootstrapData {
+  routines?: Routine[];
+  pendingRoutineCount?: number;
+  pendingChoreCount?: number;
+  pointsSummary?: PointsBalance;
+  pendingRewardCount?: number;
+  recentBadges?: Badge[];
+}
