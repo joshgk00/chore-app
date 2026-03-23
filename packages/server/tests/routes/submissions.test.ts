@@ -5,6 +5,7 @@ import { createTestDb, seedTestData, createTestConfig } from '../db-helpers.js';
 import { createApp } from '../../src/app.js';
 import { seedRoutineData } from '../helpers/seed-routines.js';
 import { seedChoreData } from '../helpers/seed-chores.js';
+import { seedRewardData, seedPointsLedger } from '../helpers/seed-rewards.js';
 
 const testConfig = createTestConfig();
 let db: Database.Database;
@@ -14,6 +15,7 @@ beforeEach(async () => {
   await seedTestData(db);
   seedRoutineData(db);
   seedChoreData(db);
+  seedRewardData(db);
 });
 
 afterEach(() => {
@@ -278,6 +280,107 @@ describe('chore-log submission routes', () => {
   it('cancel nonexistent log returns 404', async () => {
     const app = buildApp();
     const res = await request(app).post('/api/chore-logs/999/cancel');
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('NOT_FOUND');
+  });
+});
+
+const validRewardBody = {
+  rewardId: 1,
+  idempotencyKey: 'reward-sub-key-1',
+  localDate: '2026-03-15',
+};
+
+describe('reward-request submission routes', () => {
+  it('valid reward request returns 201', async () => {
+    seedPointsLedger(db, 100);
+
+    const app = buildApp();
+    const res = await request(app)
+      .post('/api/reward-requests')
+      .send(validRewardBody);
+
+    expect(res.status).toBe(201);
+    expect(res.body.data).toHaveProperty('id');
+    expect(res.body.data.rewardNameSnapshot).toBe('Extra Screen Time');
+    expect(res.body.data.costSnapshot).toBe(20);
+    expect(res.body.data.status).toBe('pending');
+  });
+
+  it('missing rewardId returns 422', async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .post('/api/reward-requests')
+      .send({ ...validRewardBody, rewardId: undefined });
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('missing idempotencyKey returns 422', async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .post('/api/reward-requests')
+      .send({ ...validRewardBody, idempotencyKey: undefined });
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('missing localDate returns 422', async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .post('/api/reward-requests')
+      .send({ ...validRewardBody, localDate: undefined });
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('invalid localDate format returns 422', async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .post('/api/reward-requests')
+      .send({ ...validRewardBody, localDate: '03/15/2026' });
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('idempotencyKey exceeding 255 chars returns 422', async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .post('/api/reward-requests')
+      .send({ ...validRewardBody, idempotencyKey: 'k'.repeat(256) });
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('archived reward returns 409', async () => {
+    seedPointsLedger(db, 100);
+
+    const app = buildApp();
+    const res = await request(app)
+      .post('/api/reward-requests')
+      .send({ ...validRewardBody, rewardId: 3, idempotencyKey: 'archived-test' });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('CONFLICT');
+  });
+
+  it('cancel non-numeric ID returns 422', async () => {
+    const app = buildApp();
+    const res = await request(app).post('/api/reward-requests/abc/cancel');
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('cancel nonexistent request returns 404', async () => {
+    const app = buildApp();
+    const res = await request(app).post('/api/reward-requests/999/cancel');
 
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('NOT_FOUND');

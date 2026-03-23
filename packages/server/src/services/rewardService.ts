@@ -104,8 +104,8 @@ export function createRewardService(
        AS available`,
   );
 
-  const updateRequestStatusStmt = db.prepare(
-    `UPDATE reward_requests SET status = ?, canceled_at = datetime('now') WHERE id = ?`,
+  const cancelRequestStmt = db.prepare(
+    `UPDATE reward_requests SET status = 'canceled', canceled_at = datetime('now') WHERE id = ?`,
   );
 
   const countPendingStmt = db.prepare(
@@ -189,7 +189,7 @@ export function createRewardService(
       throw new ConflictError("cannot_cancel");
     }
 
-    updateRequestStatusStmt.run("canceled", requestId);
+    cancelRequestStmt.run(requestId);
 
     activityService.recordActivityOrThrow({
       eventType: "reward_canceled",

@@ -19,7 +19,9 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
   const cancelMutation = useCancelRewardRequest();
 
   const isAffordable = availablePoints >= reward.pointsCost;
-  const progressPercent = Math.min((availablePoints / reward.pointsCost) * 100, 100);
+  const progressPercent = reward.pointsCost === 0
+    ? 100
+    : Math.min((availablePoints / reward.pointsCost) * 100, 100);
 
   function handleRequest() {
     submitMutation.mutate(
