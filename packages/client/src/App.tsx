@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useSyncOnReconnect } from "./lib/draft-sync.js";
+import { ErrorBoundary } from "./components/ErrorBoundary.js";
 import BottomNav from "./components/BottomNav.js";
 import AdminGuard from "./components/AdminGuard.js";
 import AdminLayout from "./layouts/AdminLayout.js";
@@ -8,6 +9,7 @@ import Today from "./pages/Today.js";
 import Routines from "./pages/Routines.js";
 import Rewards from "./pages/Rewards.js";
 import Me from "./pages/Me.js";
+import RoutineChecklist from "./features/child/routines/RoutineChecklist.js";
 import PinEntry from "./features/admin/pin/PinEntry.js";
 
 const queryClient = new QueryClient({
@@ -16,8 +18,30 @@ const queryClient = new QueryClient({
       staleTime: 30_000,
       retry: 1,
     },
+    mutations: {
+      retry: 2,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10_000),
+    },
   },
 });
+
+function ChildErrorFallback() {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center p-4">
+      <div className="text-center">
+        <p className="text-5xl">&#128517;</p>
+        <h1 className="mt-4 text-xl font-bold text-gray-800">Oops! Something broke.</h1>
+        <p className="mt-2 text-gray-600">Let's go back and try again.</p>
+        <a
+          href="/today"
+          className="mt-6 inline-block rounded-full bg-emerald-500 px-6 py-3 font-bold text-white shadow-md"
+        >
+          Go Home
+        </a>
+      </div>
+    </div>
+  );
+}
 
 function AppShell() {
   return (
@@ -29,7 +53,9 @@ function AppShell() {
         Skip to main content
       </a>
       <main id="main-content">
-        <Outlet />
+        <ErrorBoundary fallback={<ChildErrorFallback />}>
+          <Outlet />
+        </ErrorBoundary>
       </main>
       <BottomNav />
     </div>
@@ -59,6 +85,7 @@ export default function App() {
           <Route element={<AppShell />}>
             <Route path="/today" element={<Today />} />
             <Route path="/routines" element={<Routines />} />
+            <Route path="/routines/:id" element={<RoutineChecklist />} />
             <Route path="/rewards" element={<Rewards />} />
             <Route path="/me" element={<Me />} />
           </Route>

@@ -3,6 +3,14 @@ import { getDraftsWithFailedSubmission, deleteDraft } from "./draft.js";
 import { api } from "../api/client.js";
 import { useOnline } from "../contexts/OnlineContext.js";
 
+export function formatLocalDate(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export async function syncFailedDrafts(): Promise<void> {
   const drafts = await getDraftsWithFailedSubmission();
   if (drafts.length === 0) return;
@@ -15,9 +23,12 @@ export async function syncFailedDrafts(): Promise<void> {
     try {
       const result = await api.post("/api/routine-completions", {
         routineId: draft.routineId,
-        items: draft.items,
-        startedAt: draft.startedAt,
+        checklistSnapshot: JSON.stringify(
+          draft.items.map((item) => ({ itemId: item.itemId, isChecked: item.isChecked })),
+        ),
+        randomizedOrder: null,
         idempotencyKey: draft.idempotencyKey,
+        localDate: formatLocalDate(),
       });
 
       if (result.ok || (!result.ok && result.error.code === "CONFLICT")) {
