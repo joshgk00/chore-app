@@ -120,7 +120,10 @@ export default function AdminChoreForm() {
         }));
 
       const removedTiers = (existing?.tiers ?? [])
-        .filter((orig) => !orig.archivedAt && !data.tiers.some((d) => d.serverId === orig.id))
+        .filter((orig) => !orig.archivedAt && (
+          !data.tiers.some((d) => d.serverId === orig.id) ||
+          data.tiers.some((d) => d.serverId === orig.id && !d.name.trim())
+        ))
         .map((orig) => ({
           id: orig.id,
           name: orig.name,
@@ -267,6 +270,7 @@ export default function AdminChoreForm() {
                 <input
                   id="chore-name"
                   type="text"
+                  autoFocus
                   value={form.name}
                   onChange={(e) => updateField("name", e.target.value)}
                   aria-describedby={errors.name ? "name-error" : undefined}

@@ -438,6 +438,9 @@ export function createChoreService(
       if (tier.name.trim().length === 0) {
         throw new ValidationError("Tier name is required");
       }
+      if (typeof tier.points !== "number" || !Number.isFinite(tier.points) || !Number.isInteger(tier.points)) {
+        throw new ValidationError("Tier points must be a finite integer");
+      }
       if (tier.points < 0) {
         throw new ValidationError("Tier points must be >= 0");
       }
@@ -491,6 +494,12 @@ export function createChoreService(
           if (tier.shouldArchive) {
             archiveTierStmt.run(tier.id, id);
           } else {
+            if (!tier.name || tier.name.trim().length === 0) {
+              throw new ValidationError("Each tier must have a non-empty name");
+            }
+            if (typeof tier.points !== "number" || !Number.isInteger(tier.points) || tier.points < 0) {
+              throw new ValidationError("Each tier must have points >= 0");
+            }
             updateTierStmt.run(tier.name.trim(), tier.points, tier.sortOrder, tier.id, id);
           }
         } else {
