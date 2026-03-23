@@ -248,6 +248,33 @@ describe('routineService', () => {
       ).toThrow('archived');
     });
 
+    it('returns existing row when insert hits UNIQUE constraint on idempotency_key', () => {
+      const key = 'race-condition-key';
+
+      // Insert a completion row directly via SQL, bypassing the idempotency check
+      db.prepare(
+        `INSERT INTO routine_completions
+           (routine_id, routine_name_snapshot, time_slot_snapshot, completion_rule_snapshot,
+            points_snapshot, requires_approval_snapshot, checklist_snapshot_json,
+            randomized_order_json, completion_window_key, local_date, status, idempotency_key)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(1, 'Morning Routine', 'morning', 'once_per_day', 5, 0, '[]', null, null, '2026-03-15', 'approved', key);
+
+      const existing = db.prepare(
+        'SELECT id FROM routine_completions WHERE idempotency_key = ?',
+      ).get(key) as { id: number };
+
+      // Re-create the service so the idempotency check SELECT runs fresh
+      const freshService = createRoutineService(db, activityService);
+      const result = freshService.submitCompletion({
+        ...baseSubmission,
+        idempotencyKey: key,
+      });
+
+      expect(result.id).toBe(existing.id);
+      expect(result.idempotencyKey).toBe(key);
+    });
+
     it('snapshot fields match routine state at submission time, not after subsequent edit', () => {
       const completion = service.submitCompletion(baseSubmission);
 

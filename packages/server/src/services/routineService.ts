@@ -248,22 +248,37 @@ export function createRoutineService(
 
     const status = routine.requires_approval === 1 ? "pending" : "approved";
 
-    const result = insertCompletionStmt.run(
-      data.routineId,
-      routine.name,
-      routine.time_slot,
-      routine.completion_rule,
-      routine.points,
-      routine.requires_approval,
-      data.checklistSnapshot,
-      data.randomizedOrder,
-      windowKey,
-      data.localDate,
-      status,
-      data.idempotencyKey,
-    );
-
-    const completionId = Number(result.lastInsertRowid);
+    let completionId: number;
+    try {
+      const result = insertCompletionStmt.run(
+        data.routineId,
+        routine.name,
+        routine.time_slot,
+        routine.completion_rule,
+        routine.points,
+        routine.requires_approval,
+        data.checklistSnapshot,
+        data.randomizedOrder,
+        windowKey,
+        data.localDate,
+        status,
+        data.idempotencyKey,
+      );
+      completionId = Number(result.lastInsertRowid);
+    } catch (err: unknown) {
+      const sqliteErr = err as { code?: string; message?: string };
+      if (
+        (sqliteErr.code === "SQLITE_CONSTRAINT_UNIQUE" ||
+          sqliteErr.code === "SQLITE_CONSTRAINT") &&
+        sqliteErr.message?.includes("idempotency_key")
+      ) {
+        const existing = selectCompletionByKeyStmt.get(
+          data.idempotencyKey,
+        ) as CompletionRow;
+        return mapCompletionRow(existing);
+      }
+      throw err;
+    }
 
     if (status === "approved") {
       insertLedgerStmt.run(

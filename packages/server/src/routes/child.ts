@@ -21,8 +21,11 @@ export function createChildRoutes(
 
   router.get("/routines/:id", (req, res, next) => {
     try {
-      const id = parseInt(req.params.id, 10);
-      if (isNaN(id)) throw new ValidationError("Invalid routine ID");
+      const idParam = req.params.id;
+      if (!/^\d+$/.test(idParam)) {
+        throw new ValidationError("Invalid routine ID");
+      }
+      const id = Number(idParam);
       const routine = routineService.getRoutineById(id);
       res.json({ data: routine });
     } catch (err) {
