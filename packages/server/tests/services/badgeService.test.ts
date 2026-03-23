@@ -202,7 +202,7 @@ describe('badgeService', () => {
       expect(badges).toEqual([]);
     });
 
-    it('runs atomically with parent transaction', () => {
+    it('awards multiple badges in a single submission when thresholds crossed', () => {
       db.prepare(
         `INSERT INTO points_ledger (entry_type, amount, note) VALUES ('manual', 99, 'seed')`,
       ).run();

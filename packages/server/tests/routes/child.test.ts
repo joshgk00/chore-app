@@ -372,12 +372,24 @@ describe('badge and activity routes', () => {
       localDate: '2026-03-15',
     });
 
+    await request(app).post('/api/chore-logs').send({
+      choreId: 1,
+      tierId: 1,
+      idempotencyKey: 'activity-test-2',
+      localDate: '2026-03-15',
+    });
+
     const res = await request(app).get('/api/activity/recent');
 
     expect(res.status).toBe(200);
     expect(res.body.data).toBeInstanceOf(Array);
-    expect(res.body.data.length).toBeGreaterThan(0);
+    expect(res.body.data.length).toBeGreaterThanOrEqual(2);
     expect(res.body.data[0]).toHaveProperty('eventType');
+
+    const firstEvent = res.body.data[0];
+    const lastEvent = res.body.data[res.body.data.length - 1];
+    expect(firstEvent.eventType).toBe('chore_submitted');
+    expect(lastEvent.eventType).toBe('routine_submitted');
   });
 
   it('GET /api/app/bootstrap includes recentBadges', async () => {
