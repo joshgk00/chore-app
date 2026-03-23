@@ -10,7 +10,7 @@ import type {
   ApprovalType,
 } from "@chore-app/shared";
 
-function usePendingApprovals() {
+function usePendingApprovals(isOnline: boolean) {
   return useQuery({
     queryKey: ["admin", "approvals"],
     queryFn: async () => {
@@ -18,7 +18,8 @@ function usePendingApprovals() {
       if (!result.ok) throw result.error;
       return result.data;
     },
-    refetchInterval: 30_000,
+    refetchInterval: isOnline ? 30_000 : false,
+    enabled: isOnline,
   });
 }
 
@@ -73,7 +74,10 @@ function useRejectItem() {
 }
 
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString(undefined, {
+  // SQLite datetime('now') produces "YYYY-MM-DD HH:MM:SS" which Safari can't parse.
+  // Replace the space with "T" to ensure ISO-8601 compatibility across all browsers.
+  const normalized = dateStr.includes("T") ? dateStr : dateStr.replace(" ", "T");
+  return new Date(normalized).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
   });
@@ -222,7 +226,7 @@ function ApprovalSection({ title, borderClass, children }: ApprovalSectionProps)
 
 export default function ApprovalsScreen() {
   const isOnline = useOnline();
-  const { data, isLoading, error, refetch } = usePendingApprovals();
+  const { data, isLoading, error, refetch } = usePendingApprovals(isOnline);
   const approveMutation = useApproveItem();
   const rejectMutation = useRejectItem();
 

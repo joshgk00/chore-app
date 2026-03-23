@@ -43,24 +43,6 @@ async function submitRoutineAsChild(page: Page, routineName: string) {
   ]);
 }
 
-async function createChoreWithApproval(page: Page, name: string) {
-  await page.goto("/admin/chores/new");
-  await page.getByLabel("Name").fill(name);
-  await page.getByLabel("Requires Approval").check();
-  const tierNameInput = page.getByLabel("Tier Name").or(page.getByLabel("Tier 1 Name")).first();
-  await tierNameInput.fill("Standard");
-  const tierPointsInput = page.getByLabel("Tier Points").or(page.getByLabel("Tier 1 Points")).first();
-  await tierPointsInput.fill("");
-  await tierPointsInput.fill("8");
-  await Promise.all([
-    page.waitForResponse((resp) =>
-      resp.url().includes("/api/admin/chores") && resp.request().method() === "POST",
-    ),
-    page.getByRole("button", { name: "Create Chore" }).click(),
-  ]);
-  await page.waitForURL(/\/admin\/chores$/);
-}
-
 test.describe("Admin Approval Queue", () => {
   test.describe.configure({ mode: "serial" });
 
@@ -113,10 +95,9 @@ test.describe("Admin Approval Queue", () => {
     await expect(page.getByText(routineName)).not.toBeVisible({ timeout: 10000 });
   });
 
-  test("double-approve returns 409", async () => {
+  test("approved item no longer appears in pending queue", async () => {
     await paceForRateLimiter(page);
 
-    // The routine we just approved — try to approve again via API
     const approvalsRes = await page.request.get("/api/admin/approvals");
     const body = await approvalsRes.json();
     const routineNames = body.data.routineCompletions.map((c: { routineNameSnapshot: string }) => c.routineNameSnapshot);

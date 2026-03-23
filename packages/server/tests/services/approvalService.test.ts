@@ -241,6 +241,13 @@ describe("approvalService", () => {
         `SELECT * FROM activity_events WHERE event_type = 'chore_approved'`,
       ).all();
       expect(events.length).toBe(1);
+
+      // chore_champion requires 10 approvals so won't trigger here,
+      // but badge evaluation ran without error (verified by transaction completing)
+      const result = db.prepare(
+        `SELECT * FROM chore_logs WHERE id = 1`,
+      ).get() as { status: string };
+      expect(result.status).toBe("approved");
       db.close();
     });
   });
