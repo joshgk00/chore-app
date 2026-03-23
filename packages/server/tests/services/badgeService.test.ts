@@ -8,6 +8,7 @@ import { createRoutineService, type RoutineService } from '../../src/services/ro
 import { createChoreService, type ChoreService } from '../../src/services/choreService.js';
 import { seedRoutineData } from '../helpers/seed-routines.js';
 import { seedChoreData } from '../helpers/seed-chores.js';
+import { seedRewardData } from '../helpers/seed-rewards.js';
 
 let db: Database.Database;
 let badgeService: BadgeService;
@@ -19,6 +20,7 @@ beforeEach(async () => {
   await seedTestData(db);
   seedRoutineData(db);
   seedChoreData(db);
+  seedRewardData(db);
   badgeService = createBadgeService(db);
   const activityService = createActivityService(db);
   routineService = createRoutineService(db, activityService, badgeService);
@@ -122,6 +124,16 @@ describe('badgeService', () => {
       expect(badges.map((b) => b.badgeKey)).toContain(BADGE_KEYS.WEEK_WARRIOR);
     });
 
+    it('does not award week_warrior for only 6 consecutive days', () => {
+      for (let i = 0; i < 6; i++) {
+        const date = `2026-03-${String(10 + i).padStart(2, '0')}`;
+        submitRoutineCompletion(date, `six-day-${i}`);
+      }
+
+      const badges = badgeService.getEarnedBadges();
+      expect(badges.map((b) => b.badgeKey)).not.toContain(BADGE_KEYS.WEEK_WARRIOR);
+    });
+
     it('awards chore_champion after 10 approved chore logs', () => {
       for (let i = 0; i < 10; i++) {
         submitChoreLog(`chore-champ-${i}`);
@@ -131,7 +143,16 @@ describe('badgeService', () => {
       expect(badges.map((b) => b.badgeKey)).toContain(BADGE_KEYS.CHORE_CHAMPION);
     });
 
-    it('awards point_hoarder when total crosses 100', () => {
+    it('does not award chore_champion for only 9 chore logs', () => {
+      for (let i = 0; i < 9; i++) {
+        submitChoreLog(`chore-nine-${i}`);
+      }
+
+      const badges = badgeService.getEarnedBadges();
+      expect(badges.map((b) => b.badgeKey)).not.toContain(BADGE_KEYS.CHORE_CHAMPION);
+    });
+
+    it('awards point_hoarder when available points cross 100', () => {
       db.prepare(
         `INSERT INTO points_ledger (entry_type, amount, note) VALUES ('manual', 99, 'seed')`,
       ).run();
@@ -142,32 +163,20 @@ describe('badgeService', () => {
       expect(badges.map((b) => b.badgeKey)).toContain(BADGE_KEYS.POINT_HOARDER);
     });
 
-    it('awards big_spender when total crosses 500', () => {
-      db.prepare(
-        `INSERT INTO points_ledger (entry_type, amount, note) VALUES ('manual', 498, 'seed')`,
-      ).run();
-
-      submitChoreLog('cross-500');
-
-      const badges = badgeService.getEarnedBadges();
-      expect(badges.map((b) => b.badgeKey)).toContain(BADGE_KEYS.BIG_SPENDER);
-    });
-
-    it('runs atomically with parent transaction — rollback leaves no partial badge', () => {
+    it('does not award point_hoarder when points are reserved', () => {
       db.prepare(
         `INSERT INTO points_ledger (entry_type, amount, note) VALUES ('manual', 99, 'seed')`,
       ).run();
 
-      submitRoutineCompletion('2026-03-15', 'atomic-key');
+      db.prepare(
+        `INSERT INTO reward_requests (reward_id, reward_name_snapshot, cost_snapshot, local_date, status, idempotency_key)
+         VALUES (1, 'Test', 50, '2026-03-15', 'pending', 'reserve-key')`,
+      ).run();
+
+      submitRoutineCompletion('2026-03-15', 'reserved-test');
 
       const badges = badgeService.getEarnedBadges();
-      expect(badges.map((b) => b.badgeKey)).toContain(BADGE_KEYS.FIRST_STEP);
-      expect(badges.map((b) => b.badgeKey)).toContain(BADGE_KEYS.POINT_HOARDER);
-
-      const completions = db
-        .prepare('SELECT COUNT(*) as count FROM routine_completions')
-        .get() as { count: number };
-      expect(completions.count).toBe(1);
+      expect(badges.map((b) => b.badgeKey)).not.toContain(BADGE_KEYS.POINT_HOARDER);
     });
 
     it('badge evaluation via chore log on approved path', () => {
@@ -191,6 +200,44 @@ describe('badgeService', () => {
 
       const badges = badgeService.getEarnedBadges();
       expect(badges).toEqual([]);
+    });
+
+    it('runs atomically with parent transaction', () => {
+      db.prepare(
+        `INSERT INTO points_ledger (entry_type, amount, note) VALUES ('manual', 99, 'seed')`,
+      ).run();
+
+      submitRoutineCompletion('2026-03-15', 'atomic-key');
+
+      const badges = badgeService.getEarnedBadges();
+      expect(badges.map((b) => b.badgeKey)).toContain(BADGE_KEYS.FIRST_STEP);
+      expect(badges.map((b) => b.badgeKey)).toContain(BADGE_KEYS.POINT_HOARDER);
+
+      const completions = db
+        .prepare('SELECT COUNT(*) as count FROM routine_completions')
+        .get() as { count: number };
+      expect(completions.count).toBe(1);
+    });
+
+    it('deferred badges are not awarded: helping_hand, solo_act, big_spender', () => {
+      db.prepare(
+        `INSERT INTO points_ledger (entry_type, amount, note) VALUES ('manual', 999, 'seed')`,
+      ).run();
+
+      for (let i = 0; i < 15; i++) {
+        submitChoreLog(`deferred-chore-${i}`);
+      }
+      for (let i = 0; i < 7; i++) {
+        const date = `2026-03-${String(10 + i).padStart(2, '0')}`;
+        submitRoutineCompletion(date, `deferred-routine-${i}`);
+      }
+
+      const badges = badgeService.getEarnedBadges();
+      const keys = badges.map((b) => b.badgeKey);
+
+      expect(keys).not.toContain(BADGE_KEYS.HELPING_HAND);
+      expect(keys).not.toContain(BADGE_KEYS.SOLO_ACT);
+      expect(keys).not.toContain(BADGE_KEYS.BIG_SPENDER);
     });
   });
 });

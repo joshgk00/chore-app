@@ -26,6 +26,11 @@ function mapBadgeRow(row: BadgeRow): Badge {
   };
 }
 
+function dayNumber(dateStr: string): number {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return Math.floor(Date.UTC(y, m - 1, d) / 86400000);
+}
+
 export function createBadgeService(db: Database.Database): BadgeService {
   const selectAllBadgesStmt = db.prepare(
     `SELECT id, badge_key, earned_at
@@ -60,11 +65,15 @@ export function createBadgeService(db: Database.Database): BadgeService {
     `SELECT DISTINCT local_date
      FROM routine_completions
      WHERE status = 'approved'
-     ORDER BY local_date DESC`,
+     ORDER BY local_date DESC
+     LIMIT 30`,
   );
 
-  const selectTotalPointsStmt = db.prepare(
-    `SELECT COALESCE(SUM(amount), 0) as total FROM points_ledger`,
+  const selectAvailablePointsStmt = db.prepare(
+    `SELECT
+       COALESCE((SELECT SUM(amount) FROM points_ledger), 0)
+       - COALESCE((SELECT SUM(cost_snapshot) FROM reward_requests WHERE status = 'pending'), 0)
+       AS available`,
   );
 
   function getEarnedBadges(): Badge[] {
@@ -92,12 +101,10 @@ export function createBadgeService(db: Database.Database): BadgeService {
 
     let streak = 1;
     for (let i = 1; i < rows.length; i++) {
-      const current = new Date(rows[i - 1].local_date + "T00:00:00");
-      const previous = new Date(rows[i].local_date + "T00:00:00");
-      const diffMs = current.getTime() - previous.getTime();
-      const diffDays = diffMs / (1000 * 60 * 60 * 24);
+      const currentDay = dayNumber(rows[i - 1].local_date);
+      const previousDay = dayNumber(rows[i].local_date);
 
-      if (diffDays === 1) {
+      if (currentDay - previousDay === 1) {
         streak++;
       } else {
         break;
@@ -106,29 +113,7 @@ export function createBadgeService(db: Database.Database): BadgeService {
     return streak;
   }
 
-  function checkPerfectWeek(): boolean {
-    const rows = selectConsecutiveDaysStmt.all() as { local_date: string }[];
-    if (rows.length < 7) return false;
-
-    let consecutiveDays = 1;
-    for (let i = 1; i < rows.length; i++) {
-      const current = new Date(rows[i - 1].local_date + "T00:00:00");
-      const previous = new Date(rows[i].local_date + "T00:00:00");
-      const diffMs = current.getTime() - previous.getTime();
-      const diffDays = diffMs / (1000 * 60 * 60 * 24);
-
-      if (diffDays === 1) {
-        consecutiveDays++;
-        if (consecutiveDays >= 7) return true;
-      } else {
-        consecutiveDays = 1;
-      }
-    }
-    return consecutiveDays >= 7;
-  }
-
   function evaluateBadges(_context: BadgeEvaluationContext): void {
-    // FIRST_STEP: first approved routine completion
     if (!hasBadge(BADGE_KEYS.FIRST_STEP)) {
       const { count } = countRoutineCompletionsStmt.get() as { count: number };
       if (count >= 1) {
@@ -136,30 +121,19 @@ export function createBadgeService(db: Database.Database): BadgeService {
       }
     }
 
-    // ON_A_ROLL: 3 consecutive days with a routine completion
-    if (!hasBadge(BADGE_KEYS.ON_A_ROLL)) {
+    // Compute streak once for both streak badges
+    const needsStreakCheck =
+      !hasBadge(BADGE_KEYS.ON_A_ROLL) || !hasBadge(BADGE_KEYS.WEEK_WARRIOR);
+    if (needsStreakCheck) {
       const streak = getConsecutiveStreakDays();
-      if (streak >= 3) {
+      if (!hasBadge(BADGE_KEYS.ON_A_ROLL) && streak >= 3) {
         awardBadge(BADGE_KEYS.ON_A_ROLL);
       }
-    }
-
-    // WEEK_WARRIOR: 7 consecutive days with a routine completion
-    if (!hasBadge(BADGE_KEYS.WEEK_WARRIOR)) {
-      const streak = getConsecutiveStreakDays();
-      if (streak >= 7) {
+      if (!hasBadge(BADGE_KEYS.WEEK_WARRIOR) && streak >= 7) {
         awardBadge(BADGE_KEYS.WEEK_WARRIOR);
       }
     }
 
-    // SOLO_ACT: perfect week (7 consecutive days)
-    if (!hasBadge(BADGE_KEYS.SOLO_ACT)) {
-      if (checkPerfectWeek()) {
-        awardBadge(BADGE_KEYS.SOLO_ACT);
-      }
-    }
-
-    // CHORE_CHAMPION: 10+ approved chore logs
     if (!hasBadge(BADGE_KEYS.CHORE_CHAMPION)) {
       const { count } = countChoreLogsStmt.get() as { count: number };
       if (count >= 10) {
@@ -167,35 +141,20 @@ export function createBadgeService(db: Database.Database): BadgeService {
       }
     }
 
-    // HELPING_HAND: 5+ distinct days with approved chore logs
-    if (!hasBadge(BADGE_KEYS.HELPING_HAND)) {
-      const { count } = db
-        .prepare(
-          `SELECT COUNT(DISTINCT local_date) as count
-           FROM chore_logs
-           WHERE status = 'approved'`,
-        )
-        .get() as { count: number };
-      if (count >= 5) {
-        awardBadge(BADGE_KEYS.HELPING_HAND);
-      }
-    }
-
-    // POINT_HOARDER: total points crosses 100
+    // Uses available balance (total - pending reservations), not raw total
     if (!hasBadge(BADGE_KEYS.POINT_HOARDER)) {
-      const { total } = selectTotalPointsStmt.get() as { total: number };
-      if (total >= 100) {
+      const { available } = selectAvailablePointsStmt.get() as { available: number };
+      if (available >= 100) {
         awardBadge(BADGE_KEYS.POINT_HOARDER);
       }
     }
 
-    // BIG_SPENDER: total points crosses 500
-    if (!hasBadge(BADGE_KEYS.BIG_SPENDER)) {
-      const { total } = selectTotalPointsStmt.get() as { total: number };
-      if (total >= 500) {
-        awardBadge(BADGE_KEYS.BIG_SPENDER);
-      }
-    }
+    // Deferred to Milestone 3: requires tier-type column (help/alone) not yet in schema
+    // HELPING_HAND: 5 approved chore logs using a "help" tier
+    // SOLO_ACT: 5 approved chore logs using an "alone" tier
+
+    // Deferred to Milestone 3: requires approval service to mark reward as redeemed
+    // BIG_SPENDER: first approved reward redemption
   }
 
   return { getEarnedBadges, getRecentBadges, evaluateBadges };
