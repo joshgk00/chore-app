@@ -264,6 +264,19 @@ describe("admin routines routes", () => {
       expect(res.status).toBe(404);
       db.close();
     });
+
+    it("returns 409 for archived routine", async () => {
+      const { db, app } = await createTestApp();
+      const cookies = await loginAdmin(app);
+
+      const res = await request(app)
+        .put("/api/admin/routines/4")
+        .set("Cookie", cookies)
+        .send({ name: "Updated" });
+
+      expect(res.status).toBe(409);
+      db.close();
+    });
   });
 
   describe("POST /api/admin/routines/:id/archive", () => {

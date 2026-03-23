@@ -137,6 +137,23 @@ export default function AdminRoutineForm() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: FormState) => {
+      const activeItems = data.items
+        .filter((item) => item.label.trim())
+        .map((item, idx) => ({
+          id: item.serverId,
+          label: item.label.trim(),
+          sortOrder: idx,
+        }));
+
+      const removedItems = (existing?.items ?? [])
+        .filter((orig) => !orig.archivedAt && !data.items.some((d) => d.serverId === orig.id))
+        .map((orig) => ({
+          id: orig.id,
+          label: orig.label,
+          sortOrder: orig.sortOrder,
+          shouldArchive: true,
+        }));
+
       const result = await api.put<Routine>(`/api/admin/routines/${id}`, {
         name: data.name.trim(),
         timeSlot: data.timeSlot,
@@ -145,13 +162,7 @@ export default function AdminRoutineForm() {
         requiresApproval: data.requiresApproval,
         randomizeItems: data.randomizeItems,
         sortOrder: data.sortOrder,
-        items: data.items
-          .filter((item) => item.label.trim())
-          .map((item, idx) => ({
-            id: item.serverId,
-            label: item.label.trim(),
-            sortOrder: idx,
-          })),
+        items: [...activeItems, ...removedItems],
       });
       if (!result.ok) throw result.error;
       return result.data;
