@@ -69,6 +69,28 @@ const mockRewards = [
 
 const mockPointsSummary = { total: 100, reserved: 0, available: 100 };
 
+const mockBadges = [
+  { id: 1, badgeKey: "first_step", earnedAt: "2026-03-15T12:00:00" },
+  { id: 2, badgeKey: "on_a_roll", earnedAt: "2026-03-17T12:00:00" },
+];
+
+const mockActivity = [
+  {
+    eventType: "chore_submitted",
+    entityType: "chore_log",
+    entityId: 2,
+    summary: "Logged Clean Kitchen (Quick Clean) for 3 points",
+    createdAt: "2026-03-15T14:00:00",
+  },
+  {
+    eventType: "routine_submitted",
+    entityType: "routine_completion",
+    entityId: 1,
+    summary: "Completed Morning Routine for 5 points",
+    createdAt: "2026-03-15T12:00:00",
+  },
+];
+
 export const handlers: RequestHandler[] = [
   http.get('/api/auth/session', () =>
     HttpResponse.json(
@@ -108,6 +130,14 @@ export const handlers: RequestHandler[] = [
     HttpResponse.json({ data: [] }),
   ),
 
+  http.get('/api/badges', () =>
+    HttpResponse.json({ data: mockBadges }),
+  ),
+
+  http.get('/api/activity/recent', () =>
+    HttpResponse.json({ data: mockActivity }),
+  ),
+
   http.get('/api/app/bootstrap', () =>
     HttpResponse.json({
       data: {
@@ -116,6 +146,7 @@ export const handlers: RequestHandler[] = [
         pendingChoreCount: 0,
         pointsSummary: mockPointsSummary,
         pendingRewardCount: 0,
+        recentBadges: mockBadges.slice(0, 3),
       },
     }),
   ),
@@ -217,4 +248,4 @@ export const handlers: RequestHandler[] = [
   ),
 ];
 
-export { mockRoutines, mockChecklistItems, mockChores, mockChoreTiers, mockRewards, mockPointsSummary };
+export { mockRoutines, mockChecklistItems, mockChores, mockChoreTiers, mockRewards, mockPointsSummary, mockBadges, mockActivity };
