@@ -224,6 +224,21 @@ describe("admin rewards routes", () => {
       db.close();
     });
 
+    it("returns 200 with unchanged data when body is empty", async () => {
+      const { db, app } = await createTestApp();
+      const cookies = await loginAdmin(app);
+
+      const res = await request(app)
+        .put("/api/admin/rewards/1")
+        .set("Cookie", cookies)
+        .send({});
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.name).toBe("Extra Screen Time");
+      expect(res.body.data.pointsCost).toBe(20);
+      db.close();
+    });
+
     it("returns 404 for nonexistent reward", async () => {
       const { db, app } = await createTestApp();
       const cookies = await loginAdmin(app);

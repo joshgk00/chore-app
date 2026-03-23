@@ -42,11 +42,11 @@ function validate(form: FormState): FormErrors {
   } else if (form.name.trim().length > 200) {
     errors.name = "Name must be 200 characters or fewer";
   }
-  if (form.pointsCost < 0 || form.pointsCost > 10000) {
-    errors.pointsCost = "Points cost must be between 0 and 10,000";
+  if (!Number.isInteger(form.pointsCost) || form.pointsCost < 0 || form.pointsCost > 10000) {
+    errors.pointsCost = "Points cost must be a whole number between 0 and 10,000";
   }
-  if (form.sortOrder < 0 || form.sortOrder > 9999) {
-    errors.sortOrder = "Sort order must be between 0 and 9,999";
+  if (!Number.isInteger(form.sortOrder) || form.sortOrder < 0 || form.sortOrder > 9999) {
+    errors.sortOrder = "Sort order must be a whole number between 0 and 9,999";
   }
   return errors;
 }
