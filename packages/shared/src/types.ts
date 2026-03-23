@@ -150,7 +150,7 @@ export interface PointsBalance {
 
 export interface LedgerEntry {
   id: number;
-  entryType: string;
+  entryType: EntryType;
   referenceTable: string | null;
   referenceId: number | null;
   amount: number;

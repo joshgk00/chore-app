@@ -73,10 +73,10 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
             className="h-full rounded-full bg-amber-400 transition-all duration-300"
             style={{ width: `${progressPercent}%` }}
             role="progressbar"
-            aria-valuenow={availablePoints}
+            aria-valuenow={Math.min(availablePoints, reward.pointsCost)}
             aria-valuemin={0}
             aria-valuemax={reward.pointsCost}
-            aria-label={`${availablePoints} of ${reward.pointsCost} points`}
+            aria-label={`${Math.min(availablePoints, reward.pointsCost)} of ${reward.pointsCost} points`}
           />
         </div>
       </div>

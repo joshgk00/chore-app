@@ -1,5 +1,5 @@
 import type Database from "better-sqlite3";
-import type { PointsBalance, LedgerEntry } from "@chore-app/shared";
+import type { PointsBalance, LedgerEntry, EntryType } from "@chore-app/shared";
 
 export interface PointsService {
   getBalance(): PointsBalance;
@@ -19,7 +19,7 @@ interface LedgerRow {
 function mapLedgerRow(row: LedgerRow): LedgerEntry {
   return {
     id: row.id,
-    entryType: row.entry_type,
+    entryType: row.entry_type as EntryType,
     referenceTable: row.reference_table,
     referenceId: row.reference_id,
     amount: row.amount,
