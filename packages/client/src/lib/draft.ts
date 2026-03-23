@@ -15,6 +15,8 @@ export interface Draft {
   startedAt: string;
   idempotencyKey: string;
   hasSubmissionFailed?: boolean;
+  localDate?: string;
+  randomizedOrder?: number[];
 }
 
 let dbPromise: Promise<IDBPDatabase> | null = null;

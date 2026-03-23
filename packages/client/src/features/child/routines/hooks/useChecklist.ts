@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getDraft, saveDraft, deleteDraft } from "../../../../lib/draft.js";
 import { generateIdempotencyKey } from "../../../../lib/idempotency.js";
+import { formatLocalDate } from "../../../../lib/draft-sync.js";
 import type { DraftItem } from "../../../../lib/draft.js";
 import type { Routine } from "@chore-app/shared";
 
@@ -22,6 +23,9 @@ export function useChecklist(routine: Routine | undefined) {
   const [isDraftInitialized, setIsDraftInitialized] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const startedAtRef = useRef<string>(new Date().toISOString());
+  const localDateRef = useRef<string>(formatLocalDate());
+  const randomizedOrderRef = useRef<number[] | null>(null);
 
   const routineId = routine?.id;
 
@@ -43,8 +47,10 @@ export function useChecklist(routine: Routine | undefined) {
       saveDraft({
         routineId,
         items: nextItems,
-        startedAt: new Date().toISOString(),
+        startedAt: startedAtRef.current,
         idempotencyKey,
+        localDate: localDateRef.current,
+        randomizedOrder: randomizedOrderRef.current ?? undefined,
       }).catch(() => {});
     },
     [routineId, idempotencyKey],
@@ -58,9 +64,10 @@ export function useChecklist(routine: Routine | undefined) {
     }
 
     async function initializeDraft() {
+      const r = routine!;
       try {
-        const draft = await getDraft(routine!.id);
-        const routineItemIds = new Set(routine!.items.map((item) => item.id));
+        const draft = await getDraft(r.id);
+        const routineItemIds = new Set(r.items.map((item) => item.id));
 
         if (draft) {
           const draftItemIds = new Set(draft.items.map((item) => item.itemId));
@@ -69,6 +76,9 @@ export function useChecklist(routine: Routine | undefined) {
             [...draftItemIds].every((id) => routineItemIds.has(id));
 
           if (idsMatch) {
+            startedAtRef.current = draft.startedAt;
+            localDateRef.current = draft.localDate ?? formatLocalDate();
+            randomizedOrderRef.current = draft.randomizedOrder ?? null;
             setDraftItems(draft.items);
             setIdempotencyKey(draft.idempotencyKey);
             setIsLoadingDraft(false);
@@ -76,35 +86,51 @@ export function useChecklist(routine: Routine | undefined) {
             return;
           }
 
-          await deleteDraft(routine!.id);
+          await deleteDraft(r.id);
           showToast("Routine items changed -- starting fresh.");
         }
 
         const newKey = generateIdempotencyKey();
-        let newItems = routine!.items.map((item) => ({
+        const now = new Date().toISOString();
+        const localDate = formatLocalDate();
+        let newItems = r.items.map((item) => ({
           itemId: item.id,
           isChecked: false,
         }));
 
-        if (routine!.randomizeItems) {
+        if (r.randomizeItems) {
           newItems = shuffleArray(newItems);
         }
 
+        const randomizedOrder = r.randomizeItems
+          ? newItems.map((item) => item.itemId)
+          : null;
+
+        startedAtRef.current = now;
+        localDateRef.current = localDate;
+        randomizedOrderRef.current = randomizedOrder;
+
         await saveDraft({
-          routineId: routine!.id,
+          routineId: r.id,
           items: newItems,
-          startedAt: new Date().toISOString(),
+          startedAt: now,
           idempotencyKey: newKey,
+          localDate,
+          randomizedOrder: randomizedOrder ?? undefined,
         });
 
         setDraftItems(newItems);
         setIdempotencyKey(newKey);
       } catch {
-        const newItems = routine!.items.map((item) => ({
+        const newItems = r.items.map((item) => ({
           itemId: item.id,
           isChecked: false,
         }));
-        setDraftItems(routine!.randomizeItems ? shuffleArray(newItems) : newItems);
+        const shuffled = r.randomizeItems ? shuffleArray(newItems) : newItems;
+        randomizedOrderRef.current = r.randomizeItems
+          ? shuffled.map((item) => item.itemId)
+          : null;
+        setDraftItems(shuffled);
         setIdempotencyKey(generateIdempotencyKey());
       }
 
@@ -153,5 +179,7 @@ export function useChecklist(routine: Routine | undefined) {
     checkedCount,
     isAllChecked,
     hasAnyChecked,
+    localDate: localDateRef.current,
+    randomizedOrder: randomizedOrderRef.current,
   };
 }

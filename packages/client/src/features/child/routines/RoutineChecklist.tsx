@@ -1,11 +1,10 @@
-import { useCallback } from "react";
+import { useCallback, useRef, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useRoutine } from "./hooks/useRoutine.js";
 import { useSubmitRoutine } from "./hooks/useSubmitRoutine.js";
 import { useChecklist } from "./hooks/useChecklist.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
 import { saveDraft, deleteDraft } from "../../../lib/draft.js";
-import { formatLocalDate } from "../../../lib/draft-sync.js";
 import ChecklistItem from "./ChecklistItem.js";
 
 const NAVIGATION_DELAY_MS = 1500;
@@ -15,6 +14,7 @@ export default function RoutineChecklist() {
   const routineId = id ? Number(id) : undefined;
   const navigate = useNavigate();
   const isOnline = useOnline();
+  const navigationTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   const { data: routine, isLoading: isRoutineLoading, error: routineError } = useRoutine(routineId);
   const submitRoutine = useSubmitRoutine();
@@ -30,7 +30,15 @@ export default function RoutineChecklist() {
     checkedCount,
     isAllChecked,
     hasAnyChecked,
+    localDate,
+    randomizedOrder,
   } = useChecklist(routine);
+
+  useEffect(() => {
+    return () => {
+      if (navigationTimeoutRef.current) clearTimeout(navigationTimeoutRef.current);
+    };
+  }, []);
 
   const handleSubmit = useCallback(async () => {
     if (!routine || !isAllChecked || !isOnline || submitRoutine.isPending) return;
@@ -42,17 +50,17 @@ export default function RoutineChecklist() {
       })),
     );
 
-    const randomizedOrder = routine.randomizeItems
-      ? JSON.stringify(draftItems.map((item) => item.itemId))
+    const randomizedOrderPayload = randomizedOrder
+      ? JSON.stringify(randomizedOrder)
       : null;
 
     submitRoutine.mutate(
       {
         routineId: routine.id,
         checklistSnapshot,
-        randomizedOrder,
+        randomizedOrder: randomizedOrderPayload,
         idempotencyKey,
-        localDate: formatLocalDate(),
+        localDate,
       },
       {
         onSuccess: async () => {
@@ -60,19 +68,21 @@ export default function RoutineChecklist() {
           navigate("/routines");
         },
         onError: async (error: unknown) => {
-          const apiError = error as { code?: string; message?: string };
+          const apiError = error && typeof error === "object" && "code" in error
+            ? (error as { code?: string; message?: string })
+            : null;
 
-          if (apiError.code === "CONFLICT") {
+          if (apiError?.code === "CONFLICT") {
             if (apiError.message?.includes("archived")) {
               try { await deleteDraft(routine.id); } catch { /* IndexedDB unavailable */ }
               showToast("This routine has been archived.");
-              setTimeout(() => navigate("/routines"), NAVIGATION_DELAY_MS);
+              navigationTimeoutRef.current = setTimeout(() => navigate("/routines"), NAVIGATION_DELAY_MS);
               return;
             }
             if (apiError.message?.includes("already_completed")) {
               try { await deleteDraft(routine.id); } catch { /* IndexedDB unavailable */ }
               showToast("You already completed this routine!");
-              setTimeout(() => navigate("/routines"), NAVIGATION_DELAY_MS);
+              navigationTimeoutRef.current = setTimeout(() => navigate("/routines"), NAVIGATION_DELAY_MS);
               return;
             }
           }
@@ -92,9 +102,26 @@ export default function RoutineChecklist() {
         },
       },
     );
-  }, [routine, draftItems, isAllChecked, isOnline, idempotencyKey, submitRoutine, navigate, showToast]);
+  }, [routine, draftItems, isAllChecked, isOnline, idempotencyKey, localDate, randomizedOrder, submitRoutine, navigate, showToast]);
 
-  if (isRoutineLoading || isLoadingDraft) {
+  if (routineError) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">
+        <div aria-live="assertive" className="text-center">
+          <p className="text-xl font-bold text-gray-700">Oops! Could not load this routine.</p>
+          <p className="mt-2 text-gray-500">Please try again in a moment.</p>
+          <Link
+            to="/routines"
+            className="mt-6 inline-block rounded-full bg-amber-400 px-6 py-3 font-bold text-white shadow-md transition-all duration-200 hover:bg-amber-500"
+          >
+            Go Back
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (isRoutineLoading || isLoadingDraft || !routine) {
     return (
       <div className="min-h-screen bg-gray-50 p-4">
         <div aria-live="polite" className="sr-only">Loading routine...</div>
@@ -108,23 +135,6 @@ export default function RoutineChecklist() {
               <div key={i} className="h-16 rounded-2xl bg-gray-200" />
             ))}
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (routineError || !routine) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">
-        <div aria-live="assertive" className="text-center">
-          <p className="text-xl font-bold text-gray-700">Oops! Could not load this routine.</p>
-          <p className="mt-2 text-gray-500">Please try again in a moment.</p>
-          <Link
-            to="/routines"
-            className="mt-6 inline-block rounded-full bg-amber-400 px-6 py-3 font-bold text-white shadow-md transition-all duration-200 hover:bg-amber-500"
-          >
-            Go Back
-          </Link>
         </div>
       </div>
     );

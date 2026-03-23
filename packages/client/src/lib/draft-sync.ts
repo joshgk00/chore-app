@@ -26,9 +26,9 @@ export async function syncFailedDrafts(): Promise<void> {
         checklistSnapshot: JSON.stringify(
           draft.items.map((item) => ({ itemId: item.itemId, isChecked: item.isChecked })),
         ),
-        randomizedOrder: null,
+        randomizedOrder: draft.randomizedOrder ? JSON.stringify(draft.randomizedOrder) : null,
         idempotencyKey: draft.idempotencyKey,
-        localDate: formatLocalDate(),
+        localDate: draft.localDate ?? formatLocalDate(),
       });
 
       if (result.ok || (!result.ok && result.error.code === "CONFLICT")) {

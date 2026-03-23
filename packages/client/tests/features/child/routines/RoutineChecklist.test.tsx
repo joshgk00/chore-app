@@ -260,9 +260,7 @@ describe("RoutineChecklist", () => {
     expect(screen.getByText("Loading routine...")).toBeInTheDocument();
   });
 
-  it("remains in loading state when API returns 500", async () => {
-    // Draft init requires routine data, so isLoadingDraft stays true and
-    // masks the error state when the routine query fails.
+  it("shows error state when API returns 500", async () => {
     server.use(
       http.get("/api/routines/:id", () =>
         HttpResponse.json(
@@ -275,7 +273,7 @@ describe("RoutineChecklist", () => {
     renderChecklist(1);
 
     await waitFor(() => {
-      expect(screen.getByText("Loading routine...")).toBeInTheDocument();
+      expect(screen.getByText(/could not load this routine/i)).toBeInTheDocument();
     });
   });
 
