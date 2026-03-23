@@ -67,7 +67,7 @@ export default function QuickChoreLog() {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-300 bg-white px-4 py-4 font-semibold text-gray-600 transition-all duration-200 hover:border-amber-400 hover:bg-amber-50 hover:text-amber-700"
+        className="flex w-full items-center justify-center gap-2 rounded-3xl border-2 border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-4 font-semibold text-[var(--color-text-muted)] transition-all duration-200 hover:border-amber-400 hover:bg-amber-50 hover:text-amber-700"
         aria-label="Log a chore"
       >
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -80,18 +80,18 @@ export default function QuickChoreLog() {
 
   return (
     <div
-      className="rounded-2xl bg-white p-4 shadow-lg ring-1 ring-gray-200"
+      className="rounded-3xl bg-[var(--color-surface)] p-4 shadow-card ring-1 ring-[var(--color-border)]"
       role="dialog"
       aria-label="Log a chore"
     >
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold text-gray-800">
+        <h3 className="font-display text-lg font-bold text-[var(--color-text)]">
           {selectedChore ? selectedChore.name : "Pick a Chore"}
         </h3>
         <button
           type="button"
           onClick={handleClose}
-          className="flex min-h-touch min-w-touch items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+          className="flex min-h-touch min-w-touch items-center justify-center rounded-full text-[var(--color-text-faint)] transition-colors hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text-muted)]"
           aria-label="Close chore log"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -110,7 +110,7 @@ export default function QuickChoreLog() {
         <div className="mt-3 space-y-2" aria-live="polite">
           <div className="sr-only">Loading chores...</div>
           {[1, 2].map((i) => (
-            <div key={i} className="h-12 animate-pulse rounded-xl bg-gray-100" />
+            <div key={i} className="h-12 animate-pulse rounded-xl bg-[var(--color-surface-muted)]" />
           ))}
         </div>
       )}
@@ -142,7 +142,7 @@ export default function QuickChoreLog() {
       {chores && !selectedChore && !recentLog && (
         <div className="mt-3 space-y-2">
           {chores.length === 0 ? (
-            <p className="py-4 text-center text-gray-500" aria-live="polite">
+            <p className="py-4 text-center text-[var(--color-text-muted)]" aria-live="polite">
               No chores available yet.
             </p>
           ) : (
@@ -152,10 +152,10 @@ export default function QuickChoreLog() {
                 type="button"
                 onClick={() => handleChoreSelect(chore)}
                 disabled={!isOnline}
-                className="flex w-full items-center justify-between rounded-xl bg-gray-50 px-4 py-3 text-left font-medium text-gray-700 transition-all duration-200 hover:bg-amber-50 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full items-center justify-between rounded-xl bg-[var(--color-surface-muted)] px-4 py-3 text-left font-medium text-[var(--color-text-secondary)] transition-all duration-200 hover:bg-amber-50 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <span>{chore.name}</span>
-                <span className="text-sm text-gray-400">
+                <span className="text-sm text-[var(--color-text-faint)]">
                   {chore.tiers.length} {chore.tiers.length === 1 ? "tier" : "tiers"}
                 </span>
               </button>
@@ -179,9 +179,9 @@ export default function QuickChoreLog() {
               type="button"
               onClick={() => handleTierSelect(tier)}
               disabled={!isOnline || submitMutation.isPending}
-              className="flex w-full items-center justify-between rounded-xl bg-gray-50 px-4 py-3 text-left transition-all duration-200 hover:bg-green-50 hover:ring-1 hover:ring-green-300 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex w-full items-center justify-between rounded-xl bg-[var(--color-surface-muted)] px-4 py-3 text-left transition-all duration-200 hover:bg-green-50 hover:ring-1 hover:ring-green-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <span className="font-medium text-gray-700">{tier.name}</span>
+              <span className="font-medium text-[var(--color-text-secondary)]">{tier.name}</span>
               <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-sm font-bold text-amber-700">
                 +{tier.points} pts
               </span>
@@ -189,7 +189,7 @@ export default function QuickChoreLog() {
           ))}
 
           {submitMutation.isPending && (
-            <p className="text-center text-sm text-gray-500" aria-live="polite">
+            <p className="text-center text-sm text-[var(--color-text-muted)]" aria-live="polite">
               Logging...
             </p>
           )}

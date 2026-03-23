@@ -10,10 +10,17 @@ function formatEventTime(createdAt?: string): string {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+function getDotColor(eventType: string): string {
+  if (eventType.startsWith("routine")) return "bg-sky-500";
+  if (eventType.startsWith("chore")) return "bg-amber-500";
+  if (eventType.startsWith("reward")) return "bg-violet-500";
+  return "bg-[var(--color-text-faint)]";
+}
+
 export default function RecentActivity({ events }: RecentActivityProps) {
   if (events.length === 0) {
     return (
-      <p className="py-4 text-center text-gray-500" aria-live="polite">
+      <p className="py-4 text-center text-[var(--color-text-muted)]" aria-live="polite">
         No recent activity yet.
       </p>
     );
@@ -24,12 +31,13 @@ export default function RecentActivity({ events }: RecentActivityProps) {
       {events.map((event) => (
         <li
           key={`${event.eventType}-${event.entityType}-${event.entityId}-${event.createdAt}`}
-          className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3"
+          className="flex items-center gap-3 rounded-[14px] bg-[var(--color-surface)] px-4 py-3 shadow-card"
         >
-          <span className="text-sm font-medium text-gray-700">
+          <span className={`h-2 w-2 shrink-0 rounded-full ${getDotColor(event.eventType)}`} aria-hidden="true" />
+          <span className="flex-1 text-sm font-medium text-[var(--color-text-secondary)]">
             {event.summary ?? event.eventType}
           </span>
-          <span className="text-xs text-gray-600">
+          <span className="text-xs text-[var(--color-text-muted)]">
             {formatEventTime(event.createdAt)}
           </span>
         </li>

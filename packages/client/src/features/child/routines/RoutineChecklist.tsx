@@ -106,13 +106,13 @@ export default function RoutineChecklist() {
 
   if (routineError) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-bg)] p-4">
         <div aria-live="assertive" className="text-center">
-          <p className="text-xl font-bold text-gray-700">Oops! Could not load this routine.</p>
-          <p className="mt-2 text-gray-500">Please try again in a moment.</p>
+          <p className="text-xl font-bold text-[var(--color-text-secondary)]">Oops! Could not load this routine.</p>
+          <p className="mt-2 text-[var(--color-text-muted)]">Please try again in a moment.</p>
           <Link
             to="/routines"
-            className="mt-6 inline-block rounded-full bg-amber-400 px-6 py-3 font-bold text-white shadow-md transition-all duration-200 hover:bg-amber-500"
+            className="mt-6 inline-block rounded-full bg-amber-400 px-6 py-3 font-display font-bold text-white shadow-card transition-all duration-200 hover:bg-amber-500 dark:bg-amber-600 dark:hover:bg-amber-500"
           >
             Go Back
           </Link>
@@ -123,16 +123,16 @@ export default function RoutineChecklist() {
 
   if (isRoutineLoading || isLoadingDraft || !routine) {
     return (
-      <div className="min-h-screen bg-gray-50 p-4">
+      <div className="min-h-screen bg-[var(--color-bg)] p-4">
         <div aria-live="polite" className="sr-only">Loading routine...</div>
         <div className="animate-pulse space-y-4">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-gray-200" />
-            <div className="h-8 w-48 rounded-lg bg-gray-200" />
+            <div className="h-10 w-10 rounded-full bg-[var(--color-border)]" />
+            <div className="h-8 w-48 rounded-lg bg-[var(--color-border)]" />
           </div>
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 rounded-2xl bg-gray-200" />
+              <div key={i} className="h-16 rounded-3xl bg-[var(--color-border)]" />
             ))}
           </div>
         </div>
@@ -143,7 +143,7 @@ export default function RoutineChecklist() {
   const routineItemsById = new Map(routine.items.map((item) => [item.id, item]));
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50">
+    <div className="flex min-h-screen flex-col bg-[var(--color-bg)]">
       <div aria-live="assertive" role="status" className="fixed left-4 right-4 top-4 z-50 pointer-events-none">
         {toastMessage && (
           <div className="rounded-2xl bg-gray-800 px-4 py-3 text-center font-medium text-white shadow-lg pointer-events-auto">
@@ -152,19 +152,19 @@ export default function RoutineChecklist() {
         )}
       </div>
 
-      <header className="sticky top-0 z-10 border-b border-gray-100 bg-white/95 px-4 py-3 backdrop-blur">
+      <header className="sticky top-0 z-10 border-b border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_95%,transparent)] px-4 py-3 backdrop-blur">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
               to="/routines"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-all duration-200 hover:bg-gray-200"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] transition-all duration-200 hover:bg-[var(--color-border)]"
               aria-label="Back to routines"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
             </Link>
-            <h1 className="text-xl font-bold text-gray-800">{routine.name}</h1>
+            <h1 className="font-display text-xl font-bold text-[var(--color-text)]">{routine.name}</h1>
           </div>
 
           <span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-bold text-amber-700">
@@ -173,7 +173,7 @@ export default function RoutineChecklist() {
         </div>
 
         <div className="mt-2 flex items-center justify-between">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-[var(--color-text-muted)]">
             {checkedCount} of {draftItems.length} completed
           </p>
 
@@ -190,7 +190,7 @@ export default function RoutineChecklist() {
           )}
         </div>
 
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-200">
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--color-border)]">
           <div
             className="h-full rounded-full bg-emerald-400 transition-all duration-300"
             style={{ width: draftItems.length > 0 ? `${(checkedCount / draftItems.length) * 100}%` : "0%" }}
@@ -219,7 +219,7 @@ export default function RoutineChecklist() {
         })}
       </div>
 
-      <div className="sticky bottom-0 border-t border-gray-100 bg-white/95 p-4 backdrop-blur">
+      <div className="sticky bottom-0 border-t border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_95%,transparent)] p-4 backdrop-blur">
         {!isOnline && (
           <p className="mb-2 text-center text-sm font-medium text-amber-700">
             You're offline -- connect to submit.
@@ -229,7 +229,7 @@ export default function RoutineChecklist() {
           type="button"
           onClick={handleSubmit}
           disabled={!isAllChecked || !isOnline || submitRoutine.isPending}
-          className="w-full rounded-full bg-emerald-500 px-6 py-4 text-lg font-bold text-white shadow-md transition-all duration-200 enabled:hover:bg-emerald-600 enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+          className="w-full rounded-full bg-emerald-500 px-6 py-4 text-lg font-bold text-white shadow-card transition-all duration-200 enabled:hover:bg-emerald-600 enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {submitRoutine.isPending ? "Submitting..." : "Complete Routine!"}
         </button>

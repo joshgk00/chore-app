@@ -16,12 +16,12 @@ export default function MeScreen() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-4">
+      <div className="min-h-screen bg-[var(--color-bg)] p-4">
         <div aria-live="polite" className="sr-only">Loading your profile...</div>
         <div className="animate-pulse space-y-4">
-          <div className="h-24 rounded-2xl bg-gray-200" />
-          <div className="h-32 rounded-2xl bg-gray-200" />
-          <div className="h-48 rounded-2xl bg-gray-200" />
+          <div className="h-28 rounded-3xl bg-[var(--color-surface-muted)]" />
+          <div className="h-36 rounded-3xl bg-[var(--color-surface-muted)]" />
+          <div className="h-48 rounded-3xl bg-[var(--color-surface-muted)]" />
         </div>
       </div>
     );
@@ -29,10 +29,17 @@ export default function MeScreen() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-bg)] p-4">
         <div aria-live="assertive" className="text-center">
-          <p className="text-xl font-bold text-gray-700">Could not load your profile.</p>
-          <p className="mt-2 text-gray-600">Please check your connection and try again.</p>
+          <p className="font-display text-xl font-bold text-[var(--color-text)]">Could not load your profile.</p>
+          <p className="mt-2 text-[var(--color-text-muted)]">Please check your connection and try again.</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-6 rounded-full bg-amber-500 px-6 py-3 font-display font-bold text-white shadow-md transition-all duration-200 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     );
@@ -43,35 +50,37 @@ export default function MeScreen() {
   const recentEvents = activity ?? [];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <h1 className="text-2xl font-bold text-gray-800">Me</h1>
+    <div className="min-h-screen bg-[var(--color-bg)] p-4">
+      <h1 className="font-display text-2xl font-bold text-[var(--color-text)]">Me</h1>
 
       <div className="mt-4">
         <PointsDisplay balance={balance} />
       </div>
 
-      <div className="mt-6">
-        <h2 className="text-lg font-semibold text-gray-700">Badges</h2>
-        <div className="mt-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-200">
+      <div className="mt-8">
+        <h2 className="font-display text-lg font-semibold text-[var(--color-text-secondary)]">Badges</h2>
+        <div className="mt-3 rounded-3xl bg-[var(--color-surface)] p-4 shadow-card">
           <BadgeCollection earnedBadges={earnedBadges} />
         </div>
       </div>
 
-      <div className="mt-6 flex items-center justify-center rounded-2xl bg-amber-50 p-6">
-        <div className="text-center">
-          <p className="text-5xl" aria-hidden="true">{"\uD83E\uDD16"}</p>
-          <p className="mt-2 text-sm font-medium text-amber-700">Mascot coming soon!</p>
+      <div className="mt-8">
+        <div className="flex items-center justify-center rounded-3xl border-[1.5px] border-[var(--color-amber-100)] bg-[var(--color-amber-50)] p-6">
+          <div className="text-center">
+            <p className="text-[56px] leading-none" data-emoji aria-hidden="true">{"\uD83E\uDD16"}</p>
+            <p className="mt-2 font-display text-sm font-medium text-[var(--color-amber-700)]">Mascot coming soon!</p>
+          </div>
         </div>
       </div>
 
-      <div className="mt-6">
-        <h2 className="text-lg font-semibold text-gray-700">Recent Activity</h2>
+      <div className="mt-8">
+        <h2 className="font-display text-lg font-semibold text-[var(--color-text-secondary)]">Recent Activity</h2>
         <div className="mt-3">
           <RecentActivity events={recentEvents} />
         </div>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-8">
         <NotificationOptIn />
       </div>
     </div>

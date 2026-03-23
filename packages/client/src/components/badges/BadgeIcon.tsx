@@ -19,14 +19,34 @@ export default function BadgeIcon({ badgeKey, isEarned }: BadgeIconProps) {
 
   return (
     <div
-      className="flex flex-col items-center gap-1"
+      className="flex flex-col items-center gap-1.5"
       role="img"
       aria-label={`${display.label}${isEarned ? " (earned)" : " (locked)"}`}
     >
-      <span className={`text-3xl ${isEarned ? "" : "opacity-40 grayscale"}`} aria-hidden="true">
-        {display.emoji}
-      </span>
-      <span className={`text-center text-xs font-medium ${isEarned ? "text-gray-700" : "text-gray-500"}`}>
+      <div
+        className={`relative flex h-[52px] w-[52px] items-center justify-center rounded-2xl text-2xl ${
+          isEarned
+            ? "bg-gradient-to-br from-violet-100 to-violet-50 shadow-glow-violet dark:from-violet-900/50 dark:to-violet-800/30"
+            : "bg-[var(--color-surface-muted)]"
+        }`}
+      >
+        <span
+          className={isEarned ? "" : "opacity-40 grayscale"}
+          data-emoji
+          aria-hidden="true"
+        >
+          {display.emoji}
+        </span>
+        {isEarned && (
+          <span className="absolute inset-[-2px] rounded-[18px] border-2 border-violet-400/50 dark:border-violet-500/40" aria-hidden="true" />
+        )}
+        {!isEarned && (
+          <span className="absolute inset-[-2px] rounded-[18px] border-2 border-dashed border-[var(--color-border)]" aria-hidden="true" />
+        )}
+      </div>
+      <span className={`text-center text-[11px] font-semibold leading-tight ${
+        isEarned ? "text-[var(--color-text-secondary)]" : "text-[var(--color-text-faint)]"
+      }`}>
         {display.label}
       </span>
     </div>

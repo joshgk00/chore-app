@@ -27,14 +27,14 @@ const queryClient = new QueryClient({
 
 function ChildErrorFallback() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-bg)] p-4">
       <div className="text-center">
-        <p className="text-5xl">&#128517;</p>
-        <h1 className="mt-4 text-xl font-bold text-gray-800">Oops! Something broke.</h1>
-        <p className="mt-2 text-gray-600">Let's go back and try again.</p>
+        <p className="text-5xl" data-emoji>&#128517;</p>
+        <h1 className="mt-4 text-xl font-bold text-[var(--color-text)]">Oops! Something broke.</h1>
+        <p className="mt-2 text-[var(--color-text-muted)]">Let's go back and try again.</p>
         <a
           href="/today"
-          className="mt-6 inline-block rounded-full bg-emerald-500 px-6 py-3 font-bold text-white shadow-md"
+          className="mt-6 inline-block rounded-full bg-emerald-500 px-6 py-3 font-display font-bold text-white shadow-card"
         >
           Go Home
         </a>

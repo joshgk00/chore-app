@@ -6,14 +6,28 @@ interface PointsDisplayProps {
 
 export default function PointsDisplay({ balance }: PointsDisplayProps) {
   return (
-    <div className="rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 p-4 text-white shadow-md">
-      <div className="text-center">
-        <p className="text-sm font-medium text-white">Available Points</p>
-        <p className="text-4xl font-bold" data-testid="available-points">
+    <div
+      className="relative overflow-hidden rounded-3xl p-6 text-white shadow-glow-amber"
+      style={{ background: `linear-gradient(135deg, var(--gradient-points-from), var(--gradient-points-to))` }}
+    >
+      <div
+        className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full opacity-15"
+        style={{ background: "radial-gradient(circle, white 0%, transparent 70%)" }}
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute -bottom-16 -left-6 h-32 w-32 rounded-full opacity-10"
+        style={{ background: "radial-gradient(circle, white 0%, transparent 70%)" }}
+        aria-hidden="true"
+      />
+
+      <div className="relative text-center">
+        <p className="text-sm font-medium text-white/90">Available Points</p>
+        <p className="font-display text-5xl font-bold" data-testid="available-points">
           {balance.available}
         </p>
       </div>
-      <div className="mt-3 flex justify-center gap-6 text-sm text-white/80">
+      <div className="relative mt-2 flex justify-center gap-6 text-sm text-white/75">
         <span>Total: {balance.total}</span>
         {balance.reserved > 0 && <span>Reserved: {balance.reserved}</span>}
       </div>
