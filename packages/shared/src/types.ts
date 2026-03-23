@@ -61,6 +61,7 @@ export interface ChecklistItem {
   label: string;
   imageAssetId?: number;
   sortOrder: number;
+  archivedAt?: string;
 }
 
 export interface Routine {
@@ -74,6 +75,7 @@ export interface Routine {
   randomizeItems: boolean;
   sortOrder: number;
   items: ChecklistItem[];
+  archivedAt?: string;
 }
 
 export interface RoutineCompletion {

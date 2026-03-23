@@ -3,7 +3,7 @@ import type Database from 'better-sqlite3';
 import { createTestDb, seedTestData } from '../db-helpers.js';
 import { createRoutineService, type RoutineService } from '../../src/services/routineService.js';
 import { createActivityService, type ActivityService } from '../../src/services/activityService.js';
-import { ConflictError, NotFoundError } from '../../src/lib/errors.js';
+import { ConflictError, NotFoundError, ValidationError } from '../../src/lib/errors.js';
 import type { TimeSlot } from '@chore-app/shared';
 import { seedRoutineData } from '../helpers/seed-routines.js';
 
@@ -313,6 +313,217 @@ describe('routineService', () => {
       });
 
       expect(service.getPendingCompletionCount()).toBe(1);
+    });
+  });
+
+  describe('admin CRUD', () => {
+    describe('listRoutinesAdmin', () => {
+      it('returns all routines including archived', () => {
+        const routines = service.listRoutinesAdmin();
+
+        expect(routines).toHaveLength(5);
+        const ids = routines.map((r) => r.id);
+        expect(ids).toContain(4);
+      });
+
+      it('includes archivedAt field on archived routines', () => {
+        const routines = service.listRoutinesAdmin();
+        const archived = routines.find((r) => r.id === 4)!;
+        expect(archived.archivedAt).toBeDefined();
+      });
+
+      it('includes archived checklist items with archivedAt', () => {
+        const routines = service.listRoutinesAdmin();
+        const routine1 = routines.find((r) => r.id === 1)!;
+        expect(routine1.items).toHaveLength(3);
+        const archivedItem = routine1.items.find((i) => i.label === 'Old task');
+        expect(archivedItem).toBeDefined();
+        expect(archivedItem!.archivedAt).toBeDefined();
+      });
+    });
+
+    describe('getRoutineAdmin', () => {
+      it('returns any routine including archived', () => {
+        const routine = service.getRoutineAdmin(4);
+        expect(routine.id).toBe(4);
+        expect(routine.name).toBe('Old Routine');
+        expect(routine.archivedAt).toBeDefined();
+      });
+
+      it('includes all checklist items including archived', () => {
+        const routine = service.getRoutineAdmin(1);
+        expect(routine.items).toHaveLength(3);
+        const archivedItem = routine.items.find((i) => i.label === 'Old task');
+        expect(archivedItem).toBeDefined();
+        expect(archivedItem!.archivedAt).toBeDefined();
+      });
+
+      it('throws NotFoundError for nonexistent routine', () => {
+        expect(() => service.getRoutineAdmin(999)).toThrow(NotFoundError);
+      });
+    });
+
+    describe('createRoutine', () => {
+      it('creates routine with items', () => {
+        const routine = service.createRoutine({
+          name: 'Test Routine',
+          timeSlot: 'morning',
+          completionRule: 'once_per_day',
+          points: 10,
+          requiresApproval: false,
+          randomizeItems: true,
+          sortOrder: 10,
+          items: [
+            { label: 'Item A', sortOrder: 1 },
+            { label: 'Item B', sortOrder: 2 },
+          ],
+        });
+
+        expect(routine.name).toBe('Test Routine');
+        expect(routine.points).toBe(10);
+        expect(routine.randomizeItems).toBe(true);
+        expect(routine.items).toHaveLength(2);
+        expect(routine.items[0].label).toBe('Item A');
+        expect(routine.items[1].label).toBe('Item B');
+      });
+
+      it('throws ValidationError for empty name', () => {
+        expect(() =>
+          service.createRoutine({
+            name: '',
+            timeSlot: 'morning',
+            completionRule: 'once_per_day',
+            points: 5,
+            requiresApproval: false,
+            randomizeItems: false,
+            sortOrder: 1,
+            items: [{ label: 'A', sortOrder: 1 }],
+          }),
+        ).toThrow(ValidationError);
+      });
+
+      it('throws ValidationError for negative points', () => {
+        expect(() =>
+          service.createRoutine({
+            name: 'Bad Points',
+            timeSlot: 'morning',
+            completionRule: 'once_per_day',
+            points: -1,
+            requiresApproval: false,
+            randomizeItems: false,
+            sortOrder: 1,
+            items: [{ label: 'A', sortOrder: 1 }],
+          }),
+        ).toThrow(ValidationError);
+      });
+
+      it('throws ValidationError for once_per_slot with anytime', () => {
+        expect(() =>
+          service.createRoutine({
+            name: 'Bad Combo',
+            timeSlot: 'anytime',
+            completionRule: 'once_per_slot',
+            points: 5,
+            requiresApproval: false,
+            randomizeItems: false,
+            sortOrder: 1,
+            items: [{ label: 'A', sortOrder: 1 }],
+          }),
+        ).toThrow(ValidationError);
+      });
+
+      it('throws ValidationError for no items', () => {
+        expect(() =>
+          service.createRoutine({
+            name: 'No Items',
+            timeSlot: 'morning',
+            completionRule: 'once_per_day',
+            points: 5,
+            requiresApproval: false,
+            randomizeItems: false,
+            sortOrder: 1,
+            items: [],
+          }),
+        ).toThrow(ValidationError);
+      });
+    });
+
+    describe('updateRoutine', () => {
+      it('updates routine fields', () => {
+        const routine = service.updateRoutine(1, { name: 'Updated', points: 20 });
+        expect(routine.name).toBe('Updated');
+        expect(routine.points).toBe(20);
+      });
+
+      it('adds new checklist items', () => {
+        const routine = service.updateRoutine(1, {
+          items: [{ label: 'New item', sortOrder: 10 }],
+        });
+        const labels = routine.items.map((i) => i.label);
+        expect(labels).toContain('New item');
+      });
+
+      it('updates existing checklist items', () => {
+        const routine = service.updateRoutine(1, {
+          items: [{ id: 1, label: 'Updated label', sortOrder: 1 }],
+        });
+        const item = routine.items.find((i) => i.id === 1)!;
+        expect(item.label).toBe('Updated label');
+      });
+
+      it('archives checklist items', () => {
+        const routine = service.updateRoutine(1, {
+          items: [{ id: 1, label: 'Brush teeth', sortOrder: 1, shouldArchive: true }],
+        });
+        const item = routine.items.find((i) => i.id === 1)!;
+        expect(item.archivedAt).toBeDefined();
+      });
+
+      it('throws NotFoundError for nonexistent routine', () => {
+        expect(() => service.updateRoutine(999, { name: 'Ghost' })).toThrow(NotFoundError);
+      });
+
+      it('throws ConflictError for archived routine', () => {
+        expect(() => service.updateRoutine(4, { name: 'Updated' })).toThrow(ConflictError);
+      });
+
+      it('validates combined fields after merge', () => {
+        expect(() =>
+          service.updateRoutine(2, { timeSlot: 'anytime' }),
+        ).toThrow(ValidationError);
+      });
+    });
+
+    describe('archiveRoutine', () => {
+      it('sets archived_at on active routine', () => {
+        service.archiveRoutine(1);
+        const routine = service.getRoutineAdmin(1);
+        expect(routine.archivedAt).toBeDefined();
+      });
+
+      it('throws NotFoundError for already archived routine', () => {
+        expect(() => service.archiveRoutine(4)).toThrow(NotFoundError);
+      });
+
+      it('throws NotFoundError for nonexistent routine', () => {
+        expect(() => service.archiveRoutine(999)).toThrow(NotFoundError);
+      });
+    });
+
+    describe('unarchiveRoutine', () => {
+      it('clears archived_at on archived routine', () => {
+        service.unarchiveRoutine(4);
+        const routine = service.getRoutineAdmin(4);
+        expect(routine.archivedAt).toBeUndefined();
+      });
+
+      it('throws NotFoundError for non-archived routine', () => {
+        expect(() => service.unarchiveRoutine(1)).toThrow(NotFoundError);
+      });
+
+      it('throws NotFoundError for nonexistent routine', () => {
+        expect(() => service.unarchiveRoutine(999)).toThrow(NotFoundError);
+      });
     });
   });
 });

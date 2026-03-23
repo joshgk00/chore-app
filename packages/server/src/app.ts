@@ -8,6 +8,7 @@ import { NotFoundError } from "./lib/errors.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { createAuthRoutes } from "./routes/auth.js";
 import { createAdminRoutes } from "./routes/admin.js";
+import { createAdminRoutinesRoutes } from "./routes/admin-routines.js";
 import { createChildRoutes } from "./routes/child.js";
 import { createSubmissionRoutes } from "./routes/submissions.js";
 import { adminAuth } from "./middleware/adminAuth.js";
@@ -53,6 +54,7 @@ export function createApp(db: Database.Database, config: AppConfig) {
 
   app.use("/api/admin", adminAuth(authService, config));
   app.use("/api/admin", createAdminRoutes(settingsService));
+  app.use("/api/admin", createAdminRoutinesRoutes(routineService));
 
   app.all("/api/*", (_req, _res, next) => {
     next(new NotFoundError("API endpoint not found"));
