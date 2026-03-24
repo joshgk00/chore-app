@@ -49,6 +49,9 @@ export const ACTIVITY_EVENT_TYPES = [
   "reward_rejected",
   "reward_canceled",
   "manual_adjustment",
+  "asset_uploaded",
+  "asset_generated",
+  "asset_archived",
 ] as const;
 
 // Rate limiting (submission endpoints: POST /routine-completions, /chore-logs, /reward-requests)

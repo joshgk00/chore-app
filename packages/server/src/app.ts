@@ -14,6 +14,7 @@ import { createAdminChoresRoutes } from "./routes/admin-chores.js";
 import { createAdminRewardsRoutes } from "./routes/admin-rewards.js";
 import { createAdminApprovalsRoutes } from "./routes/admin-approvals.js";
 import { createAdminLedgerRoutes } from "./routes/admin-ledger.js";
+import { createAdminAssetsRoutes } from "./routes/admin-assets.js";
 import { createChildRoutes } from "./routes/child.js";
 import { createSubmissionRoutes } from "./routes/submissions.js";
 import { adminAuth } from "./middleware/adminAuth.js";
@@ -26,6 +27,7 @@ import { createRewardService } from "./services/rewardService.js";
 import { createApprovalService } from "./services/approvalService.js";
 import { createPointsService } from "./services/pointsService.js";
 import { createBadgeService } from "./services/badgeService.js";
+import { createAssetService } from "./services/assetService.js";
 import type { AppConfig } from "./config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -40,6 +42,9 @@ export function createApp(db: Database.Database, config: AppConfig) {
   app.use(express.json({ limit: "1mb" }));
   app.use(cookieParser());
 
+  // Static asset serving (before API routes, no auth required)
+  app.use("/assets", express.static(path.resolve(config.dataDir, "assets"), { maxAge: "7d" }));
+
   const authService = createAuthService(db);
   const settingsService = createSettingsService(db);
   const activityService = createActivityService(db);
@@ -49,6 +54,7 @@ export function createApp(db: Database.Database, config: AppConfig) {
   const rewardService = createRewardService(db, activityService);
   const pointsService = createPointsService(db, activityService);
   const approvalService = createApprovalService(db, activityService, badgeService);
+  const assetService = createAssetService(db, config.dataDir, activityService);
 
   app.get("/api/health", (_req, res) => {
     res.json({ data: { status: "ok" } });
@@ -67,6 +73,7 @@ export function createApp(db: Database.Database, config: AppConfig) {
   app.use("/api/admin", createAdminRewardsRoutes(rewardService));
   app.use("/api/admin", createAdminApprovalsRoutes(approvalService));
   app.use("/api/admin", createAdminLedgerRoutes(pointsService));
+  app.use("/api/admin", createAdminAssetsRoutes(assetService, config.dataDir, config.imageGenApiKey));
 
   app.all("/api/*", (_req, _res, next) => {
     next(new NotFoundError("API endpoint not found"));
