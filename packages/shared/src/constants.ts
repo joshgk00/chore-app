@@ -35,6 +35,22 @@ export const COOLDOWN_ESCALATION_MINUTES = [15, 30, 60] as const;
 // EntryType in types.ts is derived from this array — add new types here
 export const ENTRY_TYPES = ["routine", "chore", "reward", "manual"] as const;
 
+// Activity event types used for logging and filtering
+export const ACTIVITY_EVENT_TYPES = [
+  "routine_submitted",
+  "routine_approved",
+  "routine_rejected",
+  "chore_submitted",
+  "chore_approved",
+  "chore_rejected",
+  "chore_canceled",
+  "reward_requested",
+  "reward_approved",
+  "reward_rejected",
+  "reward_canceled",
+  "manual_adjustment",
+] as const;
+
 // Rate limiting (submission endpoints: POST /routine-completions, /chore-logs, /reward-requests)
 export const SUBMISSION_RATE_LIMIT_MAX = 10;
 export const SUBMISSION_RATE_LIMIT_WINDOW_SECONDS = 10;

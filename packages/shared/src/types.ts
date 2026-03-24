@@ -17,8 +17,9 @@ export type ApiResponse<T> = ApiSuccess<T> | ApiError;
 export type Status = "pending" | "approved" | "rejected" | "canceled";
 
 // Derived from ENTRY_TYPES constant so the type and runtime array stay in sync
-import type { ENTRY_TYPES } from "./constants.js";
+import type { ENTRY_TYPES, ACTIVITY_EVENT_TYPES } from "./constants.js";
 export type EntryType = (typeof ENTRY_TYPES)[number];
+export type ActivityEventType = (typeof ACTIVITY_EVENT_TYPES)[number];
 
 // Time slot enum
 export type TimeSlot = "morning" | "afternoon" | "bedtime" | "anytime";
@@ -42,6 +43,16 @@ export interface ActivityEvent {
   summary?: string;
   metadata?: Record<string, unknown>;
   createdAt?: string;
+}
+
+export interface ActivityLogEntry {
+  id: number;
+  eventType: ActivityEventType;
+  entityType?: string;
+  entityId?: number;
+  summary?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
 }
 
 // Asset source

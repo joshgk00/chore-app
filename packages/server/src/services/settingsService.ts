@@ -1,9 +1,32 @@
 import type Database from "better-sqlite3";
-import { DEFAULT_TIME_SLOTS } from "@chore-app/shared";
+import { DEFAULT_TIME_SLOTS, PIN_MIN_LENGTH } from "@chore-app/shared";
 import { hashPin } from "../lib/crypto.js";
+import { ValidationError } from "../lib/errors.js";
 import type { AppConfig } from "../config.js";
 
 const SENSITIVE_KEYS = new Set(["admin_pin_hash"]);
+
+const UPDATABLE_KEYS = new Set([
+  "timezone",
+  "activity_retention_days",
+  "morning_start",
+  "morning_end",
+  "afternoon_start",
+  "afternoon_end",
+  "bedtime_start",
+  "bedtime_end",
+]);
+
+const TIME_SLOT_KEYS = new Set([
+  "morning_start",
+  "morning_end",
+  "afternoon_start",
+  "afternoon_end",
+  "bedtime_start",
+  "bedtime_end",
+]);
+
+const TIME_FORMAT = /^\d{2}:\d{2}$/;
 
 export interface SettingsService {
   bootstrapSettings(config: AppConfig): Promise<void>;
@@ -11,6 +34,8 @@ export interface SettingsService {
   getPublicSettings(): Record<string, string>;
   getSetting(key: string): string | undefined;
   setSetting(key: string, value: string): void;
+  updateSettings(updates: Record<string, string>): Record<string, string>;
+  updatePin(newPin: string): Promise<void>;
 }
 
 export function createSettingsService(db: Database.Database): SettingsService {
@@ -76,5 +101,66 @@ export function createSettingsService(db: Database.Database): SettingsService {
     console.log("Settings bootstrapped.");
   }
 
-  return { bootstrapSettings, getAllSettings, getPublicSettings, getSetting, setSetting };
+  function updateSettings(updates: Record<string, string>): Record<string, string> {
+    const unknownKeys = Object.keys(updates).filter((k) => !UPDATABLE_KEYS.has(k));
+    if (unknownKeys.length > 0) {
+      throw new ValidationError(`Unknown settings keys: ${unknownKeys.join(", ")}`);
+    }
+
+    const fieldErrors: Record<string, string> = {};
+
+    for (const [key, value] of Object.entries(updates)) {
+      if (TIME_SLOT_KEYS.has(key)) {
+        if (typeof value !== "string" || !TIME_FORMAT.test(value)) {
+          fieldErrors[key] = "Must be in HH:MM format";
+        } else {
+          const [hours, minutes] = value.split(":").map(Number);
+          if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+            fieldErrors[key] = "Hours must be 00-23 and minutes 00-59";
+          }
+        }
+      } else if (key === "timezone") {
+        if (typeof value !== "string" || value.trim().length === 0) {
+          fieldErrors[key] = "Timezone must be a non-empty string";
+        }
+      } else if (key === "activity_retention_days") {
+        const parsed = Number(value);
+        if (!Number.isInteger(parsed) || parsed < 1) {
+          fieldErrors[key] = "Must be a positive integer";
+        }
+      }
+    }
+
+    if (Object.keys(fieldErrors).length > 0) {
+      throw new ValidationError("Invalid settings values", fieldErrors);
+    }
+
+    const applyUpdates = db.transaction(() => {
+      for (const [key, value] of Object.entries(updates)) {
+        setSetting(key, value);
+      }
+    });
+    applyUpdates();
+
+    return getPublicSettings();
+  }
+
+  async function updatePin(newPin: string): Promise<void> {
+    if (!newPin || typeof newPin !== "string" || newPin.length < PIN_MIN_LENGTH) {
+      throw new ValidationError(`PIN must be at least ${PIN_MIN_LENGTH} digits`);
+    }
+
+    const hash = await hashPin(newPin);
+    setSetting("admin_pin_hash", hash);
+  }
+
+  return {
+    bootstrapSettings,
+    getAllSettings,
+    getPublicSettings,
+    getSetting,
+    setSetting,
+    updateSettings,
+    updatePin,
+  };
 }

@@ -1,4 +1,6 @@
-import { NavLink, Outlet, Link } from "react-router-dom";
+import { NavLink, Outlet, Link, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { api } from "../api/client.js";
 
 const adminLinks = [
   { to: "/admin", label: "Dashboard", end: true },
@@ -7,10 +9,24 @@ const adminLinks = [
   { to: "/admin/rewards", label: "Rewards" },
   { to: "/admin/approvals", label: "Approvals" },
   { to: "/admin/ledger", label: "Ledger" },
+  { to: "/admin/activity", label: "Activity" },
   { to: "/admin/settings", label: "Settings" },
 ];
 
 export default function AdminLayout() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  async function handleLogout() {
+    try {
+      await api.post("/api/auth/logout");
+    } catch {
+      // Server session may remain but client state should still clear
+    }
+    queryClient.clear();
+    navigate("/today");
+  }
+
   return (
     <div className="min-h-screen bg-[var(--color-bg)]">
       <a
@@ -54,6 +70,13 @@ export default function AdminLayout() {
           >
             Exit Admin
           </Link>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="shrink-0 rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--color-red-600)] transition-colors hover:bg-[var(--color-surface-muted)]"
+          >
+            Logout
+          </button>
         </div>
       </nav>
       <main id="main-content" className="mx-auto max-w-5xl p-6">
