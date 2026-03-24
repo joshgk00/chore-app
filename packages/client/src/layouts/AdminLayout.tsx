@@ -1,5 +1,6 @@
-import { NavLink, Outlet, Link, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { ErrorBoundary } from "../components/ErrorBoundary.js";
 import { api } from "../api/client.js";
 
 const adminLinks = [
@@ -13,9 +14,31 @@ const adminLinks = [
   { to: "/admin/settings", label: "Settings" },
 ];
 
+function AdminErrorFallback() {
+  return (
+    <div className="rounded-2xl bg-[var(--color-surface)] p-8 text-center shadow-card">
+      <p className="text-4xl" data-emoji>&#128679;</p>
+      <h2 className="mt-4 font-display text-xl font-bold text-[var(--color-text)]">
+        Something went wrong
+      </h2>
+      <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+        This admin page hit an unexpected error.
+      </p>
+      <button
+        type="button"
+        onClick={() => window.location.reload()}
+        className="mt-6 min-h-touch rounded-xl bg-[var(--color-amber-500)] px-6 py-2 font-display font-bold text-white shadow-card transition-colors hover:bg-[var(--color-amber-600)]"
+      >
+        Reload Page
+      </button>
+    </div>
+  );
+}
+
 export default function AdminLayout() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const location = useLocation();
 
   async function handleLogout() {
     try {
@@ -80,7 +103,9 @@ export default function AdminLayout() {
         </div>
       </nav>
       <main id="main-content" className="mx-auto max-w-5xl p-6">
-        <Outlet />
+        <ErrorBoundary key={location.pathname} fallback={<AdminErrorFallback />}>
+          <Outlet />
+        </ErrorBoundary>
       </main>
     </div>
   );
