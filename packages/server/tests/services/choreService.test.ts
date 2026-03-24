@@ -3,7 +3,7 @@ import type Database from 'better-sqlite3';
 import { createTestDb, seedTestData } from '../db-helpers.js';
 import { createChoreService, type ChoreService } from '../../src/services/choreService.js';
 import { createActivityService, type ActivityService } from '../../src/services/activityService.js';
-import { ConflictError, NotFoundError } from '../../src/lib/errors.js';
+import { ConflictError, NotFoundError, ValidationError } from '../../src/lib/errors.js';
 import { seedChoreData } from '../helpers/seed-chores.js';
 
 const baseSubmission = {
@@ -315,6 +315,166 @@ describe('choreService', () => {
       });
 
       expect(service.getPendingChoreLogCount()).toBe(1);
+    });
+  });
+
+  describe('admin CRUD', () => {
+    describe('listChoresAdmin', () => {
+      it('returns all chores including archived', () => {
+        const chores = service.listChoresAdmin();
+
+        expect(chores).toHaveLength(4);
+        const ids = chores.map((c) => c.id);
+        expect(ids).toContain(3);
+      });
+
+      it('includes archivedAt field on archived chores', () => {
+        const chores = service.listChoresAdmin();
+        const archived = chores.find((c) => c.id === 3)!;
+        expect(archived.archivedAt).toBeDefined();
+      });
+
+      it('includes archived tiers with archivedAt', () => {
+        const chores = service.listChoresAdmin();
+        const laundry = chores.find((c) => c.id === 4)!;
+        expect(laundry.tiers).toHaveLength(2);
+        const archivedTier = laundry.tiers.find((t) => t.name === 'Old Tier');
+        expect(archivedTier).toBeDefined();
+        expect(archivedTier!.archivedAt).toBeDefined();
+      });
+    });
+
+    describe('getChoreAdmin', () => {
+      it('returns any chore including archived', () => {
+        const chore = service.getChoreAdmin(3);
+        expect(chore.id).toBe(3);
+        expect(chore.name).toBe('Old Chore');
+        expect(chore.archivedAt).toBeDefined();
+      });
+
+      it('includes all tiers including archived', () => {
+        const chore = service.getChoreAdmin(4);
+        expect(chore.tiers).toHaveLength(2);
+        const archivedTier = chore.tiers.find((t) => t.name === 'Old Tier');
+        expect(archivedTier).toBeDefined();
+        expect(archivedTier!.archivedAt).toBeDefined();
+      });
+
+      it('throws NotFoundError for nonexistent chore', () => {
+        expect(() => service.getChoreAdmin(999)).toThrow(NotFoundError);
+      });
+    });
+
+    describe('createChore', () => {
+      it('creates chore with tiers', () => {
+        const chore = service.createChore({
+          name: 'Test Chore',
+          requiresApproval: false,
+          sortOrder: 10,
+          tiers: [
+            { name: 'Easy', points: 3, sortOrder: 1 },
+            { name: 'Hard', points: 7, sortOrder: 2 },
+          ],
+        });
+
+        expect(chore.name).toBe('Test Chore');
+        expect(chore.requiresApproval).toBe(false);
+        expect(chore.tiers).toHaveLength(2);
+        expect(chore.tiers[0].name).toBe('Easy');
+        expect(chore.tiers[0].points).toBe(3);
+        expect(chore.tiers[1].name).toBe('Hard');
+        expect(chore.tiers[1].points).toBe(7);
+      });
+
+      it('throws ValidationError for empty name', () => {
+        expect(() =>
+          service.createChore({
+            name: '',
+            requiresApproval: false,
+            sortOrder: 1,
+            tiers: [{ name: 'A', points: 1, sortOrder: 1 }],
+          }),
+        ).toThrow(ValidationError);
+      });
+
+      it('throws ValidationError for no tiers', () => {
+        expect(() =>
+          service.createChore({
+            name: 'No Tiers',
+            requiresApproval: false,
+            sortOrder: 1,
+            tiers: [],
+          }),
+        ).toThrow(ValidationError);
+      });
+    });
+
+    describe('updateChore', () => {
+      it('updates chore fields', () => {
+        const chore = service.updateChore(1, { name: 'Updated Kitchen', requiresApproval: true });
+        expect(chore.name).toBe('Updated Kitchen');
+        expect(chore.requiresApproval).toBe(true);
+      });
+
+      it('handles tier add/update/archive', () => {
+        const chore = service.updateChore(1, {
+          tiers: [
+            { id: 1, name: 'Quick Clean (updated)', points: 4, sortOrder: 1 },
+            { id: 2, name: 'Deep Clean', points: 5, sortOrder: 2, shouldArchive: true },
+            { name: 'New Tier', points: 8, sortOrder: 3 },
+          ],
+        });
+
+        const updated = chore.tiers.find((t) => t.id === 1)!;
+        expect(updated.name).toBe('Quick Clean (updated)');
+        expect(updated.points).toBe(4);
+
+        const archived = chore.tiers.find((t) => t.id === 2)!;
+        expect(archived.archivedAt).toBeDefined();
+
+        const names = chore.tiers.map((t) => t.name);
+        expect(names).toContain('New Tier');
+      });
+
+      it('throws NotFoundError for nonexistent chore', () => {
+        expect(() => service.updateChore(999, { name: 'Ghost' })).toThrow(NotFoundError);
+      });
+
+      it('throws ConflictError for archived chore', () => {
+        expect(() => service.updateChore(3, { name: 'Updated' })).toThrow(ConflictError);
+      });
+    });
+
+    describe('archiveChore', () => {
+      it('archives active chore', () => {
+        service.archiveChore(1);
+        const chore = service.getChoreAdmin(1);
+        expect(chore.archivedAt).toBeDefined();
+      });
+
+      it('throws NotFoundError for already archived chore', () => {
+        expect(() => service.archiveChore(3)).toThrow(NotFoundError);
+      });
+
+      it('throws NotFoundError for nonexistent chore', () => {
+        expect(() => service.archiveChore(999)).toThrow(NotFoundError);
+      });
+    });
+
+    describe('unarchiveChore', () => {
+      it('restores archived chore', () => {
+        service.unarchiveChore(3);
+        const chore = service.getChoreAdmin(3);
+        expect(chore.archivedAt).toBeUndefined();
+      });
+
+      it('throws NotFoundError for non-archived chore', () => {
+        expect(() => service.unarchiveChore(1)).toThrow(NotFoundError);
+      });
+
+      it('throws NotFoundError for nonexistent chore', () => {
+        expect(() => service.unarchiveChore(999)).toThrow(NotFoundError);
+      });
     });
   });
 });

@@ -1,5 +1,5 @@
 import type Database from "better-sqlite3";
-import type { ActivityEvent } from "@chore-app/shared";
+import type { ActivityEvent, ActivityLogEntry, ActivityEventType } from "@chore-app/shared";
 
 interface ActivityRow {
   id: number;
@@ -11,10 +11,24 @@ interface ActivityRow {
   created_at: string;
 }
 
+export interface ActivityLogFilters {
+  startDate?: string;
+  endDate?: string;
+  eventType?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface ActivityLogResult {
+  events: ActivityLogEntry[];
+  total: number;
+}
+
 export interface ActivityService {
   recordActivity(event: ActivityEvent): void;
   recordActivityOrThrow(event: ActivityEvent): void;
   getRecentActivity(limit?: number): ActivityEvent[];
+  getActivityLog(filters: ActivityLogFilters): ActivityLogResult;
 }
 
 export function createActivityService(db: Database.Database): ActivityService {
@@ -76,5 +90,56 @@ export function createActivityService(db: Database.Database): ActivityService {
     );
   }
 
-  return { recordActivity, recordActivityOrThrow, getRecentActivity };
+  function mapRowToLogEntry(row: ActivityRow): ActivityLogEntry {
+    return {
+      id: row.id,
+      eventType: row.event_type as ActivityEventType,
+      entityType: row.entity_type ?? undefined,
+      entityId: row.entity_id ?? undefined,
+      summary: row.summary ?? undefined,
+      metadata: row.metadata_json ? safeParseJson(row.metadata_json) : undefined,
+      createdAt: row.created_at,
+    };
+  }
+
+  // Dynamic WHERE clause prevents caching a single prepared statement — better-sqlite3
+  // caches compiled statements internally so repeated prepare() calls are near-free.
+  function getActivityLog(filters: ActivityLogFilters): ActivityLogResult {
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+
+    if (filters.eventType) {
+      conditions.push("event_type = ?");
+      params.push(filters.eventType);
+    }
+    if (filters.startDate) {
+      conditions.push("created_at >= ?");
+      params.push(filters.startDate + " 00:00:00");
+    }
+    if (filters.endDate) {
+      conditions.push("created_at <= ?");
+      params.push(filters.endDate + " 23:59:59");
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const limit = Math.max(1, Math.min(filters.limit ?? 50, 200));
+    const offset = Math.max(0, (filters.page ?? 0) * limit);
+
+    const countRow = db
+      .prepare(`SELECT COUNT(*) as total FROM activity_events ${where}`)
+      .get(...params) as { total: number };
+
+    const rows = db
+      .prepare(
+        `SELECT id, event_type, entity_type, entity_id, summary, metadata_json, created_at
+         FROM activity_events ${where}
+         ORDER BY created_at DESC, id DESC
+         LIMIT ? OFFSET ?`,
+      )
+      .all(...params, limit, offset) as ActivityRow[];
+
+    return { events: rows.map(mapRowToLogEntry), total: countRow.total };
+  }
+
+  return { recordActivity, recordActivityOrThrow, getRecentActivity, getActivityLog };
 }

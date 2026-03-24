@@ -11,6 +11,16 @@ import Rewards from "./pages/Rewards.js";
 import Me from "./pages/Me.js";
 import RoutineChecklist from "./features/child/routines/RoutineChecklist.js";
 import PinEntry from "./features/admin/pin/PinEntry.js";
+import AdminRoutinesList from "./features/admin/routines/AdminRoutinesList.js";
+import AdminRoutineForm from "./features/admin/routines/AdminRoutineForm.js";
+import AdminChoresList from "./features/admin/chores/AdminChoresList.js";
+import AdminChoreForm from "./features/admin/chores/AdminChoreForm.js";
+import AdminRewardsList from "./features/admin/rewards/AdminRewardsList.js";
+import AdminRewardForm from "./features/admin/rewards/AdminRewardForm.js";
+import ApprovalsScreen from "./features/admin/approvals/ApprovalsScreen.js";
+import LedgerScreen from "./features/admin/ledger/LedgerScreen.js";
+import ActivityLogScreen from "./features/admin/activity/ActivityLogScreen.js";
+import SettingsScreen from "./features/admin/settings/SettingsScreen.js";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -93,11 +103,19 @@ export default function App() {
           <Route element={<AdminGuard />}>
             <Route element={<AdminLayout />}>
               <Route path="/admin" element={<AdminPlaceholder title="Admin Dashboard" />} />
-              <Route path="/admin/routines" element={<AdminPlaceholder title="Routines" />} />
-              <Route path="/admin/chores" element={<AdminPlaceholder title="Chores" />} />
-              <Route path="/admin/rewards" element={<AdminPlaceholder title="Rewards" />} />
-              <Route path="/admin/approvals" element={<AdminPlaceholder title="Approvals" />} />
-              <Route path="/admin/settings" element={<AdminPlaceholder title="Settings" />} />
+              <Route path="/admin/routines" element={<AdminRoutinesList />} />
+              <Route path="/admin/routines/new" element={<AdminRoutineForm />} />
+              <Route path="/admin/routines/:id/edit" element={<AdminRoutineForm />} />
+              <Route path="/admin/chores" element={<AdminChoresList />} />
+              <Route path="/admin/chores/new" element={<AdminChoreForm />} />
+              <Route path="/admin/chores/:id/edit" element={<AdminChoreForm />} />
+              <Route path="/admin/rewards" element={<AdminRewardsList />} />
+              <Route path="/admin/rewards/new" element={<AdminRewardForm />} />
+              <Route path="/admin/rewards/:id/edit" element={<AdminRewardForm />} />
+              <Route path="/admin/approvals" element={<ApprovalsScreen />} />
+              <Route path="/admin/ledger" element={<LedgerScreen />} />
+              <Route path="/admin/activity" element={<ActivityLogScreen />} />
+              <Route path="/admin/settings" element={<SettingsScreen />} />
             </Route>
           </Route>
         </Routes>

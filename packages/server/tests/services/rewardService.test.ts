@@ -3,7 +3,7 @@ import type Database from 'better-sqlite3';
 import { createTestDb, seedTestData } from '../db-helpers.js';
 import { createRewardService, type RewardService } from '../../src/services/rewardService.js';
 import { createActivityService, type ActivityService } from '../../src/services/activityService.js';
-import { ConflictError, NotFoundError } from '../../src/lib/errors.js';
+import { ConflictError, NotFoundError, ValidationError } from '../../src/lib/errors.js';
 import { seedRewardData, seedPointsLedger } from '../helpers/seed-rewards.js';
 
 const baseRequest = {
@@ -263,6 +263,142 @@ describe('rewardService', () => {
       service.submitRequest(baseRequest);
 
       expect(service.getPendingRewardRequestCount()).toBe(1);
+    });
+  });
+
+  describe('admin CRUD', () => {
+    describe('listRewardsAdmin', () => {
+      it('returns all rewards including archived', () => {
+        const rewards = service.listRewardsAdmin();
+
+        expect(rewards).toHaveLength(3);
+        const ids = rewards.map((r) => r.id);
+        expect(ids).toContain(3);
+      });
+
+      it('ordered by sort_order', () => {
+        const rewards = service.listRewardsAdmin();
+        const sortOrders = rewards.map((r) => r.sortOrder);
+        expect(sortOrders).toEqual([...sortOrders].sort((a, b) => a - b));
+      });
+
+      it('includes archivedAt field on archived rewards', () => {
+        const rewards = service.listRewardsAdmin();
+        const archived = rewards.find((r) => r.id === 3)!;
+        expect(archived.archivedAt).toBeDefined();
+      });
+    });
+
+    describe('getRewardAdmin', () => {
+      it('returns reward by id', () => {
+        const reward = service.getRewardAdmin(1);
+        expect(reward.id).toBe(1);
+        expect(reward.name).toBe('Extra Screen Time');
+        expect(reward.pointsCost).toBe(20);
+        expect(reward.sortOrder).toBe(1);
+      });
+
+      it('returns archived reward with archivedAt', () => {
+        const reward = service.getRewardAdmin(3);
+        expect(reward.id).toBe(3);
+        expect(reward.archivedAt).toBeDefined();
+      });
+
+      it('throws NotFoundError for nonexistent reward', () => {
+        expect(() => service.getRewardAdmin(999)).toThrow(NotFoundError);
+      });
+    });
+
+    describe('createReward', () => {
+      it('creates reward with correct fields', () => {
+        const reward = service.createReward({
+          name: 'New Reward',
+          pointsCost: 30,
+          sortOrder: 10,
+        });
+
+        expect(reward.name).toBe('New Reward');
+        expect(reward.pointsCost).toBe(30);
+        expect(reward.sortOrder).toBe(10);
+        expect(reward.archivedAt).toBeUndefined();
+      });
+
+      it('throws ValidationError for empty name', () => {
+        expect(() =>
+          service.createReward({
+            name: '',
+            pointsCost: 10,
+            sortOrder: 1,
+          }),
+        ).toThrow(ValidationError);
+      });
+
+      it('trims whitespace-only name and throws ValidationError', () => {
+        expect(() =>
+          service.createReward({
+            name: '   ',
+            pointsCost: 10,
+            sortOrder: 1,
+          }),
+        ).toThrow(ValidationError);
+      });
+    });
+
+    describe('updateReward', () => {
+      it('updates name', () => {
+        const reward = service.updateReward(1, { name: 'Updated Screen Time' });
+        expect(reward.name).toBe('Updated Screen Time');
+      });
+
+      it('updates pointsCost', () => {
+        const reward = service.updateReward(1, { pointsCost: 99 });
+        expect(reward.pointsCost).toBe(99);
+      });
+
+      it('updates sortOrder', () => {
+        const reward = service.updateReward(1, { sortOrder: 50 });
+        expect(reward.sortOrder).toBe(50);
+      });
+
+      it('throws NotFoundError for nonexistent reward', () => {
+        expect(() => service.updateReward(999, { name: 'Ghost' })).toThrow(NotFoundError);
+      });
+
+      it('throws ConflictError for archived reward', () => {
+        expect(() => service.updateReward(3, { name: 'Updated' })).toThrow(ConflictError);
+      });
+    });
+
+    describe('archiveReward', () => {
+      it('sets archivedAt', () => {
+        service.archiveReward(1);
+        const reward = service.getRewardAdmin(1);
+        expect(reward.archivedAt).toBeDefined();
+      });
+
+      it('throws NotFoundError for nonexistent reward', () => {
+        expect(() => service.archiveReward(999)).toThrow(NotFoundError);
+      });
+
+      it('throws ConflictError if already archived', () => {
+        expect(() => service.archiveReward(3)).toThrow(ConflictError);
+      });
+    });
+
+    describe('unarchiveReward', () => {
+      it('clears archivedAt', () => {
+        service.unarchiveReward(3);
+        const reward = service.getRewardAdmin(3);
+        expect(reward.archivedAt).toBeUndefined();
+      });
+
+      it('throws NotFoundError for nonexistent reward', () => {
+        expect(() => service.unarchiveReward(999)).toThrow(NotFoundError);
+      });
+
+      it('throws ConflictError if not archived', () => {
+        expect(() => service.unarchiveReward(1)).toThrow(ConflictError);
+      });
     });
   });
 });

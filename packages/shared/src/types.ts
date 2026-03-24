@@ -16,8 +16,10 @@ export type ApiResponse<T> = ApiSuccess<T> | ApiError;
 // Status enum for approvals
 export type Status = "pending" | "approved" | "rejected" | "canceled";
 
-// Entry types for points ledger
-export type EntryType = "routine" | "chore" | "reward" | "manual";
+// Derived from ENTRY_TYPES constant so the type and runtime array stay in sync
+import type { ENTRY_TYPES, ACTIVITY_EVENT_TYPES } from "./constants.js";
+export type EntryType = (typeof ENTRY_TYPES)[number];
+export type ActivityEventType = (typeof ACTIVITY_EVENT_TYPES)[number];
 
 // Time slot enum
 export type TimeSlot = "morning" | "afternoon" | "bedtime" | "anytime";
@@ -43,6 +45,16 @@ export interface ActivityEvent {
   createdAt?: string;
 }
 
+export interface ActivityLogEntry {
+  id: number;
+  eventType: ActivityEventType;
+  entityType?: string;
+  entityId?: number;
+  summary?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
 // Asset source
 export type AssetSource = "upload" | "ai_generated";
 
@@ -61,6 +73,7 @@ export interface ChecklistItem {
   label: string;
   imageAssetId?: number;
   sortOrder: number;
+  archivedAt?: string;
 }
 
 export interface Routine {
@@ -74,6 +87,7 @@ export interface Routine {
   randomizeItems: boolean;
   sortOrder: number;
   items: ChecklistItem[];
+  archivedAt?: string;
 }
 
 export interface RoutineCompletion {
@@ -91,6 +105,8 @@ export interface RoutineCompletion {
   localDate: string;
   status: Status;
   idempotencyKey: string;
+  reviewNote?: string;
+  reviewedAt?: string;
 }
 
 export interface ChoreTier {
@@ -99,6 +115,7 @@ export interface ChoreTier {
   name: string;
   points: number;
   sortOrder: number;
+  archivedAt?: string;
 }
 
 export interface Chore {
@@ -107,6 +124,7 @@ export interface Chore {
   requiresApproval: boolean;
   sortOrder: number;
   tiers: ChoreTier[];
+  archivedAt?: string;
 }
 
 export interface ChoreLog {
@@ -121,6 +139,8 @@ export interface ChoreLog {
   localDate: string;
   status: Status;
   idempotencyKey: string;
+  reviewNote?: string;
+  reviewedAt?: string;
 }
 
 export interface Reward {
@@ -129,6 +149,7 @@ export interface Reward {
   pointsCost: number;
   imageAssetId?: number;
   sortOrder: number;
+  archivedAt?: string;
 }
 
 export interface RewardRequest {
@@ -140,6 +161,16 @@ export interface RewardRequest {
   localDate: string;
   status: Status;
   idempotencyKey: string;
+  reviewNote?: string;
+  reviewedAt?: string;
+}
+
+export type ApprovalType = "routine-completion" | "chore-log" | "reward-request";
+
+export interface PendingApprovals {
+  routineCompletions: RoutineCompletion[];
+  choreLogs: ChoreLog[];
+  rewardRequests: RewardRequest[];
 }
 
 export interface PointsBalance {

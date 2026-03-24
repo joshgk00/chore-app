@@ -2,29 +2,69 @@
 
 **Scope**: Large
 **Depends on**: Milestone 2 (Child Flows)
-**Goal**: Build admin content management, the approval queue with transactional approve/reject, badge evaluation, and the activity log. At the end of this milestone the parent can fully manage routines, chores, and rewards, and approve or reject child submissions.
+**Goal**: Build admin content management, the approval queue with transactional approve/reject, remaining badge rules, and the activity/settings UI. At the end of this milestone the parent can fully manage routines, chores, and rewards, and approve or reject child submissions.
+
+## Existing Infrastructure (from M1/M2)
+
+Before planning, note what already exists:
+- **badgeService.ts** (162 lines): `evaluateBadges()` with 5 of 8 rules (first_step, on_a_roll, week_warrior, chore_champion, point_hoarder). Already wired into submission services. Deferred: big_spender, helping_hand, solo_act.
+- **settingsService.ts** (80 lines): `bootstrapSettings()`, `getAllSettings()`, `getPublicSettings()`, `getSetting()`, `setSetting()`. Fully functional.
+- **activityService.ts** (80 lines): `recordActivity()`, `getRecentActivity()`. Called from submissions and badges.
+- **admin.ts routes** (16 lines): Stub with `GET /api/admin/settings` only.
+- **AdminLayout.tsx**: Nav already links to Dashboard, Routines, Chores, Rewards, Approvals, Settings.
+- **DB schema**: All tables (routine_completions, chore_logs, reward_requests, points_ledger, badges_earned, activity_events) exist with status tracking, snapshot fields, and indexes.
 
 ---
 
-## Tasks
+## PR Plan
 
-### 3.1 Admin Routines CRUD
+Six PRs, each self-contained with server + client + tests. Admin routes split into separate files per domain to avoid merge conflicts.
+
+Each PR ships with unit tests (Vitest) AND E2E tests (Playwright). E2E specs live in `e2e/` following the conventions in CLAUDE.md. The full verification suite (`typecheck`, `lint`, `test --run`, `test:e2e`) must pass before merging.
+
+### Dependency Graph
+
+```
+      ┌── PR 1 (Routines CRUD)
+      ├── PR 2 (Chores CRUD)
+M2 ──┤── PR 3 (Rewards CRUD)
+      ├── PR 4 (Approval Queue)──── PR 5 (Remaining Badges + Ledger Admin)
+      └── PR 6 (Activity Log + Settings + Logout)
+```
+
+PRs 1-3 are independent but should merge sequentially (shared admin route wiring in app.ts). PR 4 depends on M2 only. PR 5 depends on PR 4. PR 6 is independent.
+
+**Recommended merge order**: 1 → 2 → 3 → 4 → 5 → 6
+
+---
+
+## PR 1: Admin Routines CRUD
 
 Build create, read, update, and archive for routines and their checklist items.
 
-**Work**:
-- `packages/server/src/routes/admin.ts`:
+**Server**:
+- `packages/server/src/routes/adminRoutines.ts` (new file):
   - `GET /api/admin/routines`: list all routines (including archived, with `archived_at` flag)
   - `GET /api/admin/routines/:id`: single routine with checklist items
   - `POST /api/admin/routines`: create routine with checklist items
   - `PUT /api/admin/routines/:id`: update routine fields and checklist items
   - `POST /api/admin/routines/:id/archive`: set `archived_at`
   - `POST /api/admin/routines/:id/unarchive`: clear `archived_at`
-- Checklist item operations within routine create/update:
-  - Add new items, update existing items, archive items
-  - Maintain `sort_order`
+- `packages/server/src/services/routineService.ts` (additions): admin CRUD methods — `createRoutine()`, `updateRoutine()`, `archiveRoutine()`, `unarchiveRoutine()`, `getRoutineAdmin()`, `listRoutinesAdmin()`
+- Checklist item operations within routine create/update: add, update, archive, maintain `sort_order`
+- Wire `adminRoutines` into `app.ts` behind `adminAuth` middleware
+
+**Client**:
 - `packages/client/src/features/admin/routines/AdminRoutinesList.tsx`: list with archive/unarchive toggle
 - `packages/client/src/features/admin/routines/AdminRoutineForm.tsx`: form with inline checklist item editor
+
+**Tests** (ship with this PR):
+- `packages/server/tests/routes/adminRoutines.test.ts`: CRUD routes + 401 without session
+- `packages/server/tests/services/routineService.test.ts` (additions): admin CRUD methods
+- `packages/client/tests/features/admin/routines/AdminRoutineForm.test.tsx`: form + checklist editor
+
+**E2E Tests** (ship with this PR):
+- `e2e/admin-routines.spec.ts`: serial CRUD lifecycle (create with checklist items, edit, archive, unarchive), offline submit disabled, archived routine hidden from child
 
 **Validation**:
 - [ ] `POST /api/admin/routines` creates a routine with checklist items — returns `201`
@@ -43,20 +83,31 @@ Build create, read, update, and archive for routines and their checklist items.
 
 ---
 
-### 3.2 Admin Chores CRUD
+## PR 2: Admin Chores CRUD
 
 Build create, read, update, and archive for chores and their tiers.
 
-**Work**:
-- `packages/server/src/routes/admin.ts`:
+**Server**:
+- `packages/server/src/routes/adminChores.ts` (new file):
   - `GET /api/admin/chores`: list all chores with tiers
   - `POST /api/admin/chores`: create chore with tiers
   - `PUT /api/admin/chores/:id`: update chore and its tiers
   - `POST /api/admin/chores/:id/archive`: archive
   - `POST /api/admin/chores/:id/unarchive`: unarchive
+- `packages/server/src/services/choreService.ts` (additions): admin CRUD methods
 - Tier operations within chore create/update: add, update, archive, reorder
+
+**Client**:
 - `packages/client/src/features/admin/chores/AdminChoresList.tsx`
 - `packages/client/src/features/admin/chores/AdminChoreForm.tsx`: form with inline tier editor
+
+**Tests** (ship with this PR):
+- `packages/server/tests/routes/adminChores.test.ts`
+- `packages/server/tests/services/choreService.test.ts` (additions)
+- `packages/client/tests/features/admin/chores/AdminChoreForm.test.tsx`
+
+**E2E Tests** (ship with this PR):
+- `e2e/admin-chores.spec.ts`: serial CRUD lifecycle (create with tiers, edit, archive, unarchive), archived chore hidden from child, offline submit disabled
 
 **Validation**:
 - [ ] Creating a chore with tiers returns `201`
@@ -68,21 +119,41 @@ Build create, read, update, and archive for chores and their tiers.
 - [ ] Pending chore logs for archived chores remain reviewable in the approval queue
 - [ ] Admin UI shows chores with tiers, supports create/edit/archive
 
+### Cross-Domain Fixes (identified during PR 2 review)
+
+The following pre-existing issues were found during code quality review. They don't belong in PR 2's scope but should be addressed in the listed PRs:
+
+- **PR 1 (Routines CRUD)**: Rename `adminRoutines.test.ts` → `admin-routines.test.ts` (kebab-case per project convention). Add `autoFocus` on routine form name input.
+- **PR 3 (Rewards CRUD)**: Apply same sortOrder range bounds (0-9999) pattern from PR 2 to reward routes.
+- **PR 6 (Activity + Settings)**: Add admin error boundary in `AdminLayout.tsx`. Add activity events for admin CRUD operations (create/update/archive chore, routine, reward).
+- **All CRUD PRs**: Consolidate duplicated route/service validation into shared helpers (e.g., `validateName()`, `validateSortOrder()`). Can be done as a follow-up after all CRUD PRs merge.
+
 ---
 
-### 3.3 Admin Rewards CRUD
+## PR 3: Admin Rewards CRUD
 
-Build create, read, update, and archive for rewards.
+Build create, read, update, and archive for rewards. Simplest of the three CRUD PRs — rewards have no nested items (no tiers or checklist items).
 
-**Work**:
-- `packages/server/src/routes/admin.ts`:
+**Server**:
+- `packages/server/src/routes/adminRewards.ts` (new file):
   - `GET /api/admin/rewards`: list all rewards
   - `POST /api/admin/rewards`: create reward
   - `PUT /api/admin/rewards/:id`: update reward
   - `POST /api/admin/rewards/:id/archive`: archive
   - `POST /api/admin/rewards/:id/unarchive`: unarchive
+- `packages/server/src/services/rewardService.ts` (additions): admin CRUD methods
+
+**Client**:
 - `packages/client/src/features/admin/rewards/AdminRewardsList.tsx`
 - `packages/client/src/features/admin/rewards/AdminRewardForm.tsx`
+
+**Tests** (ship with this PR):
+- `packages/server/tests/routes/adminRewards.test.ts`
+- `packages/server/tests/services/rewardService.test.ts` (additions)
+- `packages/client/tests/features/admin/rewards/AdminRewardForm.test.tsx`
+
+**E2E Tests** (ship with this PR):
+- `e2e/admin-rewards.spec.ts`: serial CRUD lifecycle (create, edit, archive, unarchive), archived reward hidden from child API, 409 on editing archived reward, offline submit/archive disabled, double-click idempotency
 
 **Validation**:
 - [ ] Creating a reward returns `201`
@@ -94,24 +165,47 @@ Build create, read, update, and archive for rewards.
 
 ---
 
-### 3.4 Approval Queue
+## PR 4: Approval Queue
 
-Build the unified approval queue with approve/reject actions.
+Build the unified approval queue with approve/reject actions. Badge evaluation is already wired from M2 — the approval service calls the existing `evaluateBadges()` inside its transactions.
 
-**Work**:
-- `packages/server/src/routes/admin.ts`:
-  - `GET /api/admin/approvals`: returns three arrays — pending routines, pending chores, pending rewards
-  - `POST /api/admin/approvals/:type/:id/approve`: body `{ note? }`
-  - `POST /api/admin/approvals/:type/:id/reject`: body `{ note? }`
-- `packages/server/src/services/approvalService.ts`:
+**Server**:
+- `packages/server/src/services/approvalService.ts` (new file):
+  - `getPendingApprovals(db)`: returns three arrays — pending routines, pending chores, pending rewards
   - `approveRoutineCompletion(db, id, note?)`: transaction — update status, create positive ledger entry, evaluate badges, log activity
   - `rejectRoutineCompletion(db, id, note?)`: transaction — update status, log activity
   - `approveChoreLog(db, id, note?)`: same pattern as routine
   - `rejectChoreLog(db, id, note?)`: same pattern
   - `approveRewardRequest(db, id, note?)`: transaction — update status, create negative ledger entry for cost_snapshot, log activity
   - `rejectRewardRequest(db, id, note?)`: transaction — update status (reservation released by status change), log activity
-- `packages/client/src/features/admin/approvals/ApprovalsScreen.tsx`: three sections
+- `packages/server/src/routes/adminApprovals.ts` (new file):
+  - `GET /api/admin/approvals`: returns grouped pending items
+  - `POST /api/admin/approvals/:type/:id/approve`: body `{ note? }`
+  - `POST /api/admin/approvals/:type/:id/reject`: body `{ note? }`
+
+**Client**:
+- `packages/client/src/features/admin/approvals/ApprovalsScreen.tsx`: three sections (routines, chores, rewards)
 - `packages/client/src/features/admin/approvals/ApprovalCard.tsx`: snapshot data + approve/reject buttons + optional note
+
+**Tests** (ship with this PR):
+- `packages/server/tests/services/approvalService.test.ts`:
+  - `approveRoutineCompletion` changes status + creates positive ledger entry matching `points_snapshot`
+  - `rejectRoutineCompletion` changes status, NO ledger entry
+  - Double-tap safety: approving already-approved throws `ConflictError`
+  - `approveChoreLog` creates positive ledger entry
+  - `rejectChoreLog` with note stores the note
+  - `approveRewardRequest` creates NEGATIVE ledger entry for `cost_snapshot`
+  - `rejectRewardRequest` releases reservation
+  - Transaction atomicity: if badge evaluation throws, ledger entry rolls back
+  - Rejecting once_per_day routine makes the window available again
+- `packages/server/tests/routes/adminApprovals.test.ts`: route-level tests
+- `packages/client/tests/features/admin/approvals/ApprovalCard.test.tsx`:
+  - Renders snapshot data
+  - Approve/reject call correct endpoints
+  - Double-clicking approve only sends one request
+
+**E2E Tests** (ship with this PR):
+- `e2e/admin-approvals.spec.ts`: submit a routine/chore/reward as child, approve and reject through admin UI, verify points ledger updates, verify 409 on double-approve, verify cards removed from queue after action
 
 **Validation**:
 - [ ] `GET /api/admin/approvals` returns pending items grouped by type
@@ -123,9 +217,8 @@ Build the unified approval queue with approve/reject actions.
 - [ ] Approving a chore log: same as routine — positive ledger entry
 - [ ] Approving a reward request: status changes to `approved`, NEGATIVE ledger entry for `cost_snapshot` amount
 - [ ] After reward approval, `reserved` points decrease (pending request no longer counted)
-- [ ] Rejecting a reward request: status changes to `rejected`, reservation released (`reserved` decreases, `available` increases)
-- [ ] Double-tap safety: approving an already-approved item returns `409` (not a duplicate ledger entry)
-- [ ] Double-tap safety: rejecting an already-rejected item returns `409`
+- [ ] Rejecting a reward request: status changes to `rejected`, reservation released
+- [ ] Double-tap safety: approving/rejecting already-processed items returns `409`
 - [ ] All approve/reject operations run in SQLite transactions
 - [ ] Admin UI shows approval cards with snapshot data and action buttons
 - [ ] After approval/rejection, the card is removed from the queue (UI updates)
@@ -134,201 +227,102 @@ Build the unified approval queue with approve/reject actions.
 
 ---
 
-### 3.5 Badge Evaluation Engine
+## PR 5: Remaining Badges + Points Ledger Admin
 
-Implement the 8 badge rules that run after every approval.
+Add the 3 deferred badge rules and build the admin ledger view with manual adjustments.
 
-**Work**:
-- `packages/server/src/services/badgeService.ts`:
-  - `evaluate(db)`: check all badge rules, insert newly earned badges, return list of new badges
-  - Badge rules (all count only `approved` items):
-    1. `first_step`: ≥1 approved routine completion
-    2. `on_a_roll`: approved routine completions on 3 consecutive days
-    3. `week_warrior`: ≥1 approved routine completion on each of 7 consecutive days
-    4. `chore_champion`: ≥10 approved chore logs
-    5. `big_spender`: ≥1 approved reward redemption
-    6. `point_hoarder`: available points ≥ 100 at evaluation time
-    7. `helping_hand`: ≥5 approved chore logs using a tier containing "help" (or a designated help flag)
-    8. `solo_act`: ≥5 approved chore logs using a tier containing "alone" (or a designated solo flag)
-- Badge evaluation is called inside approval transactions
-- `badges_earned` has `UNIQUE` on `badge_key` — duplicate insert is a no-op
+**Badge rules to add** (5 of 8 already exist in badgeService.ts):
+- `big_spender`: ≥1 approved reward redemption
+- `helping_hand`: ≥5 approved chore logs using a tier containing "help" (or a designated help flag)
+- `solo_act`: ≥5 approved chore logs using a tier containing "alone" (or a designated solo flag)
 
-**Validation**:
-- [ ] First approved routine completion earns `first_step` badge
-- [ ] Second approved routine completion does NOT re-earn `first_step` (already earned)
-- [ ] `on_a_roll`: approved routine completions on 3 consecutive `local_date` values earns the badge
-- [ ] `on_a_roll`: a gap day breaks the streak — badge not earned with days 1, 2, 4
-- [ ] `week_warrior`: 7 consecutive days with at least one approved routine each day
-- [ ] `chore_champion`: exactly 10 approved chore logs triggers the badge
-- [ ] `big_spender`: first approved reward request earns the badge
-- [ ] `point_hoarder`: available points reaching 100 earns the badge (even if they drop below later)
-- [ ] `helping_hand` and `solo_act`: tier-based badges count correctly
-- [ ] Badges are permanent — admin correcting a past approval does NOT revoke earned badges
-- [ ] `GET /api/badges` returns all earned badges with `earned_at` timestamps
-- [ ] Newly earned badges are included in the approval response for notification purposes
-- [ ] Streak logic uses the household timezone (not UTC) for day boundaries
-
----
-
-### 3.6 Points Ledger Admin View
-
-Build the admin-facing ledger view with manual adjustments.
-
-**Work**:
-- `packages/server/src/routes/admin.ts`:
+**Server**:
+- `packages/server/src/services/badgeService.ts` (additions): add 3 remaining badge evaluation rules
+- `packages/server/src/services/pointsService.ts` (additions): `createAdjustment(db, { amount, note })` — insert ledger entry with `entry_type = 'manual'`, record activity event
+- `packages/server/src/routes/adminLedger.ts` (new file):
   - `GET /api/admin/points/ledger`: paginated ledger with entry type filters
   - `POST /api/admin/points/adjust`: body `{ amount, note }` — note is required
-- `packages/server/src/services/pointsService.ts`: `createAdjustment(db, { amount, note })`: insert ledger entry with `entry_type = 'manual'`
+
+**Client**:
 - `packages/client/src/features/admin/ledger/LedgerScreen.tsx`: balance header + paginated table
 - `packages/client/src/features/admin/ledger/AdjustmentForm.tsx`: amount input + required note
 
+**Tests** (ship with this PR):
+- `packages/server/tests/services/badgeService.test.ts` (additions):
+  - `big_spender` earned on first approved reward
+  - `helping_hand` earned with 5 help-tier chore logs
+  - `solo_act` earned with 5 alone-tier chore logs
+  - Badges are permanent — correcting an approval does not revoke badge
+- `packages/server/tests/services/pointsService.test.ts` (additions):
+  - `createAdjustment` with positive/negative amount
+  - `createAdjustment` without note throws `ValidationError`
+  - Negative adjustment can make `available_points` negative
+  - When `available_points` is negative, new reward requests are blocked
+- `packages/server/tests/routes/adminLedger.test.ts`
+
+**E2E Tests** (ship with this PR):
+- `e2e/admin-ledger.spec.ts`: create manual adjustment via admin UI, verify balance updates, verify negative adjustment blocks new reward requests, verify adjustment note required
+
 **Validation**:
+- [ ] `big_spender`: first approved reward request earns the badge
+- [ ] `helping_hand` and `solo_act`: tier-based badges count correctly
+- [ ] Badges are permanent — admin correcting a past approval does NOT revoke earned badges
+- [ ] Newly earned badges are included in the approval response for notification purposes
 - [ ] Admin ledger shows all ledger entries with type, amount, note, date
 - [ ] Pagination works: first page shows latest entries
 - [ ] Balance header shows total, reserved, available
-- [ ] Creating a positive adjustment: ledger entry created, total increases
-- [ ] Creating a negative adjustment: ledger entry created, total decreases
+- [ ] Creating a positive adjustment increases total; negative decreases total
 - [ ] Adjustment without a note returns `422` validation error
 - [ ] Negative adjustment can make `available_points` negative
 - [ ] When `available_points` is negative, child cannot create new reward requests
-- [ ] Existing pending reward requests remain reviewable when available is negative
 - [ ] Manual adjustment creates an activity event
 
 ---
 
-### 3.7 Activity Log
+## PR 6: Activity Log + Admin Settings + Logout
 
-Build the admin activity log with filters.
+Build the admin activity log with filters, settings management UI, and logout. These are the lightest remaining features — activityService and settingsService already exist, so this PR adds routes, filtering, and client UI.
 
-**Work**:
-- `packages/server/src/routes/admin.ts`:
+**Server**:
+- `packages/server/src/services/activityService.ts` (additions): `getActivityLog(db, { startDate?, endDate?, eventType?, page?, limit? })` — paginated query with optional filters
+- `packages/server/src/routes/adminActivity.ts` (new file):
   - `GET /api/admin/activity-log`: paginated with `?start_date=`, `?end_date=`, `?event_type=` filters
-- `packages/server/src/services/activityService.ts`: `getActivityLog(db, filters)` — query with optional date range and event type filters
-- Verify all events from spec §11.8 are being logged by services built so far
+- `packages/server/src/routes/adminSettings.ts` (new file, replaces the settings stub in admin.ts):
+  - `GET /api/admin/settings`: return all settings
+  - `PUT /api/admin/settings`: update settings (PIN change, timezone, time slots, retention)
+- `packages/server/src/services/settingsService.ts` (additions): `updateSettings(db, updates)` — handle PIN hashing and session invalidation for PIN changes
+- `packages/server/src/services/authService.ts` (additions): `invalidateAllSessions(db)` — called when PIN changes
+- Remove the settings stub from `admin.ts` (or remove `admin.ts` entirely if empty)
+
+**Client**:
 - `packages/client/src/features/admin/activity/ActivityLogScreen.tsx`: table with date range picker + event type dropdown
+- `packages/client/src/features/admin/settings/SettingsScreen.tsx`: forms for PIN change, timezone, time slots, retention
+- Admin nav/header: visible logout button that calls `POST /api/auth/logout` and redirects to `/today`
+
+**Tests** (ship with this PR):
+- `packages/server/tests/routes/adminActivity.test.ts`: filter combinations, pagination
+- `packages/server/tests/routes/adminSettings.test.ts`: settings update, PIN change + session invalidation, validation
+- `packages/client/tests/features/admin/settings/SettingsScreen.test.tsx`
+
+**E2E Tests** (ship with this PR):
+- `e2e/admin-settings.spec.ts`: change admin PIN via UI, verify old PIN rejected and new PIN works, verify session invalidation forces re-login
+- `e2e/admin-activity.spec.ts`: verify activity events appear after admin actions, verify date range and event type filters work
+- `e2e/admin-logout.spec.ts`: logout via nav button, verify redirect to `/today`, verify `/admin/*` redirects to PIN entry
 
 **Validation**:
-- [ ] Activity log shows all tracked event types that have occurred
-- [ ] Date range filter works: only events within the range are shown
-- [ ] Event type filter works: selecting "routine_approved" shows only those events
+- [ ] Activity log shows all tracked event types
+- [ ] Date range filter works: only events within the range shown
+- [ ] Event type filter works: selecting "routine_approved" shows only those
 - [ ] Combined filters work: date range + event type together
 - [ ] Pagination works for large activity logs
 - [ ] Events include: routine submitted/approved/rejected, chore logged/approved/rejected, reward requested/approved/rejected/canceled, manual adjustment, badge unlocked
 - [ ] Each event shows summary text, timestamp, and relevant entity info
-
----
-
-### 3.8 Admin Settings Screen (Partial)
-
-Build the settings screen with PIN change, timezone, time slots, and retention.
-
-**Work**:
-- `packages/server/src/routes/settings.ts`:
-  - `GET /api/admin/settings`: return all settings
-  - `PUT /api/admin/settings`: update settings (PIN change, timezone, time slots, retention)
-- `packages/server/src/services/settingsService.ts`: `getSettings(db)`, `updateSettings(db, updates)`
-- PIN change: hash new PIN, store in settings, invalidate all admin sessions
-- `packages/client/src/features/admin/settings/SettingsScreen.tsx`: forms for each setting group
-- Admin nav/header includes a visible logout button that calls `POST /api/auth/logout` and redirects to `/today`
-
-**Validation**:
-- [ ] `GET /api/admin/settings` returns current settings (timezone, time slots, retention, etc.)
-- [ ] `PUT /api/admin/settings` with new timezone updates the setting
-- [ ] Changing admin PIN: new PIN is hashed and stored, old PIN no longer works
-- [ ] Changing admin PIN: all existing sessions are invalidated (admin is forced to re-login)
-- [ ] PIN must be at least 6 digits — shorter PIN returns `422`
-- [ ] Changing time slot windows updates the values used by time slot logic
-- [ ] Changing retention days updates the setting
+- [ ] `GET /api/admin/settings` returns current settings
+- [ ] `PUT /api/admin/settings` updates timezone, time slots, retention
+- [ ] Changing admin PIN: new PIN hashed and stored, old PIN no longer works
+- [ ] Changing admin PIN: all sessions invalidated (forced re-login)
+- [ ] PIN must be at least 6 digits — shorter returns `422`
 - [ ] Settings screen UI shows current values and allows editing
-- [ ] All settings endpoints require admin session
-- [ ] Admin logout button visible in admin nav; clicking it destroys the session and redirects to `/today`
-- [ ] After logout, navigating to any `/admin/*` route redirects to `/admin/pin`
-
----
-
-### 3.9 Unit + Integration Tests — Admin + Approvals
-
-Write automated tests for admin CRUD, approval transactions, and badge evaluation.
-
-**Work**:
-
-**Server unit tests** (in-memory SQLite):
-
-- `packages/server/tests/services/approvalService.test.ts`:
-  - Test: `approveRoutineCompletion` changes status to `approved` and creates positive ledger entry
-  - Test: `approveRoutineCompletion` ledger entry amount matches `points_snapshot`
-  - Test: `rejectRoutineCompletion` changes status to `rejected`, NO ledger entry created
-  - Test: `approveRoutineCompletion` on already-approved item throws `ConflictError` (double-tap safe)
-  - Test: `approveChoreLog` creates positive ledger entry with correct amount
-  - Test: `rejectChoreLog` with note stores the note on the record
-  - Test: `approveRewardRequest` creates NEGATIVE ledger entry for `cost_snapshot`
-  - Test: `approveRewardRequest` after approval, `reserved` decreases (pending → approved)
-  - Test: `rejectRewardRequest` releases reservation (`reserved` decreases, `available` increases)
-  - Test: approval transaction is atomic (if badge evaluation throws, ledger entry is also rolled back)
-  - Test: rejecting a once_per_day routine makes the window available again
-
-- `packages/server/tests/services/badgeService.test.ts`:
-  - Test: `evaluate` returns empty array when no badges can be earned
-  - Test: `first_step` earned after first approved routine completion
-  - Test: `first_step` not re-earned on second approval (already earned)
-  - Test: `on_a_roll` earned with 3 consecutive days of approved routines
-  - Test: `on_a_roll` NOT earned with gap (days 1, 2, 4)
-  - Test: `week_warrior` earned with 7 consecutive days
-  - Test: `chore_champion` earned at exactly 10 approved chore logs
-  - Test: `chore_champion` NOT earned at 9 approved logs
-  - Test: `big_spender` earned on first approved reward
-  - Test: `point_hoarder` earned when available points reach 100
-  - Test: `point_hoarder` remains earned even if points drop below 100 later
-  - Test: `helping_hand` earned with 5 help-tier chore logs
-  - Test: `solo_act` earned with 5 alone-tier chore logs
-  - Test: streak calculation uses household timezone for day boundaries
-  - Test: badge is permanent — correcting an approval does not revoke badge
-
-- `packages/server/tests/services/pointsService.test.ts` (additions):
-  - Test: `createAdjustment` with positive amount increases total
-  - Test: `createAdjustment` with negative amount decreases total
-  - Test: `createAdjustment` without note throws `ValidationError`
-  - Test: negative adjustment can make `available_points` negative
-  - Test: when `available_points` is negative, new reward requests are blocked
-
-**Server integration tests** (supertest):
-
-- `packages/server/tests/routes/admin.test.ts`:
-  - Test: all admin endpoints return `401` without session
-  - Test: `POST /api/admin/routines` creates routine with checklist items
-  - Test: `PUT /api/admin/routines/:id` updates routine
-  - Test: `POST /api/admin/routines/:id/archive` archives routine
-  - Test: same patterns for chores and rewards
-  - Test: `GET /api/admin/approvals` returns grouped pending items
-  - Test: `POST /api/admin/approvals/routine-completion/:id/approve` returns `200`
-  - Test: `POST /api/admin/approvals/routine-completion/:id/approve` on already-approved returns `409`
-  - Test: `POST /api/admin/points/adjust` creates adjustment
-  - Test: `POST /api/admin/points/adjust` without note returns `422`
-  - Test: `GET /api/admin/activity-log` returns events with filters
-  - Test: `PUT /api/admin/settings` updates settings
-  - Test: changing PIN invalidates all sessions
-
-**Client component tests** (Vitest + React Testing Library + MSW):
-
-- `packages/client/tests/features/admin/approvals/ApprovalCard.test.tsx`:
-  - Test: renders snapshot data (name, points, time slot)
-  - Test: approve button calls the correct API endpoint
-  - Test: reject button opens note input, then calls API
-  - Test: after approval, card is removed from the list
-  - Test: double-clicking approve only sends one request
-
-- `packages/client/tests/features/admin/routines/AdminRoutineForm.test.tsx`:
-  - Test: renders form fields for routine
-  - Test: inline checklist item editor supports add/remove/reorder
-  - Test: submit calls create endpoint for new routine
-  - Test: submit calls update endpoint for existing routine
-  - Test: validation: name required, once_per_slot rejected for "Any Time"
-
-**Validation**:
-- [ ] `npm run test -- --run` passes with all tests green
-- [ ] Approval tests verify transactional atomicity (both status + ledger or neither)
-- [ ] Badge tests cover all 8 badges with positive and negative cases
-- [ ] Double-tap safety tested for all approval types
-- [ ] Streak calculation tests use timezone-aware day boundaries
-- [ ] Admin auth tested across all admin endpoints
-- [ ] Client approval card tests verify optimistic UI behavior
+- [ ] All settings/activity endpoints require admin session
+- [ ] Admin logout button visible in nav; destroys session and redirects to `/today`
+- [ ] After logout, navigating to `/admin/*` redirects to `/admin/pin`
