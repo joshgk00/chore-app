@@ -87,6 +87,19 @@ describe("admin settings routes", () => {
       db.close();
     });
 
+    it("rejects out-of-range time values", async () => {
+      const { db, app } = await createTestApp();
+      const cookies = await loginAdmin(app);
+
+      const res = await request(app)
+        .put("/api/admin/settings")
+        .set("Cookie", cookies)
+        .send({ morning_start: "99:99" });
+
+      expect(res.status).toBe(422);
+      db.close();
+    });
+
     it("rejects unknown keys", async () => {
       const { db, app } = await createTestApp();
       const cookies = await loginAdmin(app);

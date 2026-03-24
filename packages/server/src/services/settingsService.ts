@@ -113,6 +113,11 @@ export function createSettingsService(db: Database.Database): SettingsService {
       if (TIME_SLOT_KEYS.has(key)) {
         if (typeof value !== "string" || !TIME_FORMAT.test(value)) {
           fieldErrors[key] = "Must be in HH:MM format";
+        } else {
+          const [hours, minutes] = value.split(":").map(Number);
+          if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+            fieldErrors[key] = "Hours must be 00-23 and minutes 00-59";
+          }
         }
       } else if (key === "timezone") {
         if (typeof value !== "string" || value.trim().length === 0) {

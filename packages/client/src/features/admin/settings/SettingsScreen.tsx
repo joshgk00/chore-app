@@ -69,9 +69,10 @@ export default function SettingsScreen() {
   const [newPin, setNewPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   const [pinErrors, setPinErrors] = useState<Record<string, string>>({});
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    if (query.data) {
+    if (query.data && !isInitialized) {
       setMorningStart(query.data.morning_start ?? "");
       setMorningEnd(query.data.morning_end ?? "");
       setAfternoonStart(query.data.afternoon_start ?? "");
@@ -80,8 +81,9 @@ export default function SettingsScreen() {
       setBedtimeEnd(query.data.bedtime_end ?? "");
       setTimezone(query.data.timezone ?? "");
       setRetentionDays(query.data.activity_retention_days ?? "");
+      setIsInitialized(true);
     }
-  }, [query.data]);
+  }, [query.data, isInitialized]);
 
   const timeSlotMutation = useMutation({
     mutationFn: async (settings: Record<string, string>) => {
@@ -107,7 +109,7 @@ export default function SettingsScreen() {
 
   const pinMutation = useMutation({
     mutationFn: async (payload: PinChangePayload) => {
-      const result = await api.put<{ message: string }>("/api/admin/settings/pin", payload);
+      const result = await api.put<{ pinChanged: boolean }>("/api/admin/settings/pin", payload);
       if (!result.ok) throw result.error;
       return result.data;
     },

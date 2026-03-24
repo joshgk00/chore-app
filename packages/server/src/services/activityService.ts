@@ -1,5 +1,5 @@
 import type Database from "better-sqlite3";
-import type { ActivityEvent, ActivityLogEntry } from "@chore-app/shared";
+import type { ActivityEvent, ActivityLogEntry, ActivityEventType } from "@chore-app/shared";
 
 interface ActivityRow {
   id: number;
@@ -93,7 +93,7 @@ export function createActivityService(db: Database.Database): ActivityService {
   function mapRowToLogEntry(row: ActivityRow): ActivityLogEntry {
     return {
       id: row.id,
-      eventType: row.event_type,
+      eventType: row.event_type as ActivityEventType,
       entityType: row.entity_type ?? undefined,
       entityId: row.entity_id ?? undefined,
       summary: row.summary ?? undefined,

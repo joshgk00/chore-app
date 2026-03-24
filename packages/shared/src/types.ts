@@ -47,7 +47,7 @@ export interface ActivityEvent {
 
 export interface ActivityLogEntry {
   id: number;
-  eventType: string;
+  eventType: ActivityEventType;
   entityType?: string;
   entityId?: number;
   summary?: string;

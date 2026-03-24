@@ -33,13 +33,13 @@ export function createAdminActivityRoutes(activityService: ActivityService) {
         }
       }
 
-      const parsedPage = page !== undefined ? parseInt(String(page), 10) : 0;
-      if (isNaN(parsedPage) || parsedPage < 0) {
+      const parsedPage = page !== undefined ? Number(page) : 0;
+      if (!Number.isInteger(parsedPage) || parsedPage < 0) {
         throw new ValidationError("page must be an integer >= 0");
       }
 
-      const parsedLimit = limit !== undefined ? parseInt(String(limit), 10) : 50;
-      if (isNaN(parsedLimit) || parsedLimit < 1 || parsedLimit > 200) {
+      const parsedLimit = limit !== undefined ? Number(limit) : 50;
+      if (!Number.isInteger(parsedLimit) || parsedLimit < 1 || parsedLimit > 200) {
         throw new ValidationError("limit must be an integer between 1 and 200");
       }
 

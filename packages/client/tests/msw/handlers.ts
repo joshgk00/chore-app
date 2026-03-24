@@ -273,11 +273,11 @@ export const handlers: RequestHandler[] = [
   ),
 
   http.put('/api/admin/settings/pin', () =>
-    HttpResponse.json({ data: { message: "PIN updated" } }),
+    HttpResponse.json({ data: { pinChanged: true } }),
   ),
 
   http.post('/api/auth/logout', () =>
-    HttpResponse.json({ data: { message: "Logged out" } }),
+    HttpResponse.json({ data: { loggedOut: true } }),
   ),
 ];
 
