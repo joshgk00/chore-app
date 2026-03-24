@@ -32,6 +32,9 @@ export const MAX_PIN_ATTEMPTS = 5;
 export const RATE_LIMIT_WINDOW_MINUTES = 15;
 export const COOLDOWN_ESCALATION_MINUTES = [15, 30, 60] as const;
 
+// EntryType in types.ts is derived from this array — add new types here
+export const ENTRY_TYPES = ["routine", "chore", "reward", "manual"] as const;
+
 // Rate limiting (submission endpoints: POST /routine-completions, /chore-logs, /reward-requests)
 export const SUBMISSION_RATE_LIMIT_MAX = 10;
 export const SUBMISSION_RATE_LIMIT_WINDOW_SECONDS = 10;

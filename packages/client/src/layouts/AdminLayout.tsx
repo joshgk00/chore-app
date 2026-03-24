@@ -6,6 +6,7 @@ const adminLinks = [
   { to: "/admin/chores", label: "Chores" },
   { to: "/admin/rewards", label: "Rewards" },
   { to: "/admin/approvals", label: "Approvals" },
+  { to: "/admin/ledger", label: "Ledger" },
   { to: "/admin/settings", label: "Settings" },
 ];
 

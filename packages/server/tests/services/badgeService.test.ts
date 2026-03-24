@@ -219,25 +219,128 @@ describe('badgeService', () => {
       expect(completions.count).toBe(1);
     });
 
-    it('deferred badges are not awarded: helping_hand, solo_act, big_spender', () => {
-      db.prepare(
-        `INSERT INTO points_ledger (entry_type, amount, note) VALUES ('manual', 999, 'seed')`,
-      ).run();
+    describe('big_spender', () => {
+      it('awards big_spender on first approved reward redemption', () => {
+        db.prepare(
+          `INSERT INTO reward_requests (reward_id, reward_name_snapshot, cost_snapshot, local_date, status, idempotency_key)
+           VALUES (1, 'Extra Screen Time', 20, '2026-03-15', 'approved', 'big-spender-key')`,
+        ).run();
 
-      for (let i = 0; i < 15; i++) {
-        submitChoreLog(`deferred-chore-${i}`);
+        badgeService.evaluateBadges({ type: 'reward_request' });
+
+        const badges = badgeService.getEarnedBadges();
+        expect(badges.map((b) => b.badgeKey)).toContain(BADGE_KEYS.BIG_SPENDER);
+      });
+
+      it('does not award big_spender with only pending reward requests', () => {
+        db.prepare(
+          `INSERT INTO reward_requests (reward_id, reward_name_snapshot, cost_snapshot, local_date, status, idempotency_key)
+           VALUES (1, 'Extra Screen Time', 20, '2026-03-15', 'pending', 'pending-reward-key')`,
+        ).run();
+
+        badgeService.evaluateBadges({ type: 'reward_request' });
+
+        const badges = badgeService.getEarnedBadges();
+        expect(badges.map((b) => b.badgeKey)).not.toContain(BADGE_KEYS.BIG_SPENDER);
+      });
+    });
+
+    describe('helping_hand', () => {
+      function seedHelpChore(): { choreId: number; tierId: number } {
+        db.prepare(
+          `INSERT INTO chores (id, name, requires_approval, active, sort_order)
+           VALUES (100, 'Helping Chore', 0, 1, 100)`,
+        ).run();
+        db.prepare(
+          `INSERT INTO chore_tiers (id, chore_id, name, points, sort_order, active)
+           VALUES (100, 100, 'With Help', 3, 1, 1)`,
+        ).run();
+        return { choreId: 100, tierId: 100 };
       }
-      for (let i = 0; i < 7; i++) {
-        const date = `2026-03-${String(10 + i).padStart(2, '0')}`;
-        submitRoutineCompletion(date, `deferred-routine-${i}`);
+
+      function submitHelpChoreLog(key: string) {
+        const { choreId, tierId } = { choreId: 100, tierId: 100 };
+        return choreService.submitChoreLog({
+          choreId,
+          tierId,
+          idempotencyKey: key,
+          localDate: '2026-03-15',
+        });
       }
 
-      const badges = badgeService.getEarnedBadges();
-      const keys = badges.map((b) => b.badgeKey);
+      it('awards helping_hand after 5 approved chore logs with help tier', () => {
+        seedHelpChore();
+        for (let i = 0; i < 5; i++) {
+          submitHelpChoreLog(`help-chore-${i}`);
+        }
 
-      expect(keys).not.toContain(BADGE_KEYS.HELPING_HAND);
-      expect(keys).not.toContain(BADGE_KEYS.SOLO_ACT);
-      expect(keys).not.toContain(BADGE_KEYS.BIG_SPENDER);
+        const badges = badgeService.getEarnedBadges();
+        expect(badges.map((b) => b.badgeKey)).toContain(BADGE_KEYS.HELPING_HAND);
+      });
+
+      it('does not award helping_hand with only 4 help-tier chore logs', () => {
+        seedHelpChore();
+        for (let i = 0; i < 4; i++) {
+          submitHelpChoreLog(`help-four-${i}`);
+        }
+
+        const badges = badgeService.getEarnedBadges();
+        expect(badges.map((b) => b.badgeKey)).not.toContain(BADGE_KEYS.HELPING_HAND);
+      });
+
+      it('does not count non-help-tier chore logs toward helping_hand', () => {
+        seedHelpChore();
+        for (let i = 0; i < 4; i++) {
+          submitHelpChoreLog(`help-mixed-${i}`);
+        }
+        // Submit one non-help chore log (tier 1 = "Quick Clean")
+        submitChoreLog('non-help-chore');
+
+        const badges = badgeService.getEarnedBadges();
+        expect(badges.map((b) => b.badgeKey)).not.toContain(BADGE_KEYS.HELPING_HAND);
+      });
+    });
+
+    describe('solo_act', () => {
+      function seedAloneChore(): void {
+        db.prepare(
+          `INSERT INTO chores (id, name, requires_approval, active, sort_order)
+           VALUES (101, 'Solo Chore', 0, 1, 101)`,
+        ).run();
+        db.prepare(
+          `INSERT INTO chore_tiers (id, chore_id, name, points, sort_order, active)
+           VALUES (101, 101, 'Do It Alone', 4, 1, 1)`,
+        ).run();
+      }
+
+      function submitAloneChoreLog(key: string) {
+        return choreService.submitChoreLog({
+          choreId: 101,
+          tierId: 101,
+          idempotencyKey: key,
+          localDate: '2026-03-15',
+        });
+      }
+
+      it('awards solo_act after 5 approved chore logs with alone tier', () => {
+        seedAloneChore();
+        for (let i = 0; i < 5; i++) {
+          submitAloneChoreLog(`alone-chore-${i}`);
+        }
+
+        const badges = badgeService.getEarnedBadges();
+        expect(badges.map((b) => b.badgeKey)).toContain(BADGE_KEYS.SOLO_ACT);
+      });
+
+      it('does not award solo_act with only 4 alone-tier chore logs', () => {
+        seedAloneChore();
+        for (let i = 0; i < 4; i++) {
+          submitAloneChoreLog(`alone-four-${i}`);
+        }
+
+        const badges = badgeService.getEarnedBadges();
+        expect(badges.map((b) => b.badgeKey)).not.toContain(BADGE_KEYS.SOLO_ACT);
+      });
     });
   });
 });

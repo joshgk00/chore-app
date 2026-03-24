@@ -18,6 +18,7 @@ import AdminChoreForm from "./features/admin/chores/AdminChoreForm.js";
 import AdminRewardsList from "./features/admin/rewards/AdminRewardsList.js";
 import AdminRewardForm from "./features/admin/rewards/AdminRewardForm.js";
 import ApprovalsScreen from "./features/admin/approvals/ApprovalsScreen.js";
+import LedgerScreen from "./features/admin/ledger/LedgerScreen.js";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -110,6 +111,7 @@ export default function App() {
               <Route path="/admin/rewards/new" element={<AdminRewardForm />} />
               <Route path="/admin/rewards/:id/edit" element={<AdminRewardForm />} />
               <Route path="/admin/approvals" element={<ApprovalsScreen />} />
+              <Route path="/admin/ledger" element={<LedgerScreen />} />
               <Route path="/admin/settings" element={<AdminPlaceholder title="Settings" />} />
             </Route>
           </Route>

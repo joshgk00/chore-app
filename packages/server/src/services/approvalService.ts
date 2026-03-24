@@ -369,6 +369,8 @@ export function createApprovalService(
         `Redeemed: ${row.reward_name_snapshot}`,
       );
 
+      badgeService?.evaluateBadges({ type: "reward_request" });
+
       activityService.recordActivityOrThrow({
         eventType: "reward_approved",
         entityType: "reward_request",

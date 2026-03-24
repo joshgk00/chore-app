@@ -16,8 +16,9 @@ export type ApiResponse<T> = ApiSuccess<T> | ApiError;
 // Status enum for approvals
 export type Status = "pending" | "approved" | "rejected" | "canceled";
 
-// Entry types for points ledger
-export type EntryType = "routine" | "chore" | "reward" | "manual";
+// Derived from ENTRY_TYPES constant so the type and runtime array stay in sync
+import type { ENTRY_TYPES } from "./constants.js";
+export type EntryType = (typeof ENTRY_TYPES)[number];
 
 // Time slot enum
 export type TimeSlot = "morning" | "afternoon" | "bedtime" | "anytime";

@@ -2,16 +2,19 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type Database from 'better-sqlite3';
 import { createTestDb, seedTestData } from '../db-helpers.js';
 import { createPointsService, type PointsService } from '../../src/services/pointsService.js';
+import { createActivityService, type ActivityService } from '../../src/services/activityService.js';
 import { seedRewardData, seedPointsLedger } from '../helpers/seed-rewards.js';
 
 let db: Database.Database;
 let service: PointsService;
+let activityService: ActivityService;
 
 beforeEach(async () => {
   db = createTestDb();
   await seedTestData(db);
   seedRewardData(db);
-  service = createPointsService(db);
+  activityService = createActivityService(db);
+  service = createPointsService(db, activityService);
 });
 
 afterEach(() => {
@@ -134,6 +137,83 @@ describe('pointsService', () => {
       const entries = service.getLedger({ limit: 200, offset: 0 });
 
       expect(entries).toHaveLength(5);
+    });
+  });
+
+  describe('createAdjustment', () => {
+    it('positive adjustment increases total', () => {
+      seedPointsLedger(db, 50);
+
+      service.createAdjustment(25, 'Bonus points');
+
+      const balance = service.getBalance();
+      expect(balance.total).toBe(75);
+    });
+
+    it('negative adjustment decreases total', () => {
+      seedPointsLedger(db, 100);
+
+      service.createAdjustment(-30, 'Point correction');
+
+      const balance = service.getBalance();
+      expect(balance.total).toBe(70);
+    });
+
+    it('returns created LedgerEntry with entry_type manual', () => {
+      const entry = service.createAdjustment(10, 'Test adjustment');
+
+      expect(entry.entryType).toBe('manual');
+      expect(entry.amount).toBe(10);
+      expect(entry.note).toBe('Test adjustment');
+      expect(entry.referenceTable).toBeNull();
+      expect(entry.referenceId).toBeNull();
+      expect(entry).toHaveProperty('id');
+      expect(entry).toHaveProperty('createdAt');
+    });
+
+    it('throws ValidationError when note is empty', () => {
+      expect(() => service.createAdjustment(10, '')).toThrow('note is required');
+    });
+
+    it('throws ValidationError when note is only whitespace', () => {
+      expect(() => service.createAdjustment(10, '   ')).toThrow('note is required');
+    });
+
+    it('throws ValidationError when note exceeds 500 chars', () => {
+      expect(() => service.createAdjustment(10, 'a'.repeat(501))).toThrow(
+        'note must be 500 characters or fewer',
+      );
+    });
+
+    it('throws ValidationError when amount is 0', () => {
+      expect(() => service.createAdjustment(0, 'Zero adjustment')).toThrow(
+        'amount must be a non-zero integer',
+      );
+    });
+
+    it('throws ValidationError when amount is not integer', () => {
+      expect(() => service.createAdjustment(1.5, 'Fractional amount')).toThrow(
+        'amount must be a non-zero integer',
+      );
+    });
+
+    it('negative adjustment can make available_points negative', () => {
+      service.createAdjustment(-50, 'Overdraft correction');
+
+      const balance = service.getBalance();
+      expect(balance.total).toBe(-50);
+      expect(balance.available).toBe(-50);
+    });
+
+    it('records activity event', () => {
+      service.createAdjustment(15, 'Reward bonus');
+
+      const events = activityService.getRecentActivity(1);
+      expect(events).toHaveLength(1);
+      expect(events[0].eventType).toBe('manual_adjustment');
+      expect(events[0].entityType).toBe('points_ledger');
+      expect(events[0].summary).toContain('+15');
+      expect(events[0].summary).toContain('Reward bonus');
     });
   });
 });
