@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { loginAsAdmin } from "./helpers/admin-auth.js";
+import { paceForRateLimiter } from "./helpers/rate-limiter.js";
 
 const TEST_RUN_SUFFIX = Date.now();
 
@@ -18,12 +19,6 @@ async function createReward(page: Page, name: string, pointsCost: number) {
 
 function getRewardRow(page: Page, name: string) {
   return page.locator("tr", { hasText: name });
-}
-
-// The submission rate limiter (10 req / 10 sec) is mounted at /api and
-// accidentally catches admin routes. Pace requests to stay under the limit.
-async function paceForRateLimiter(page: Page) {
-  await page.waitForTimeout(5000);
 }
 
 async function toggleArchiveStatus(page: Page, row: ReturnType<typeof getRewardRow>, action: "Archive" | "Unarchive") {
@@ -75,7 +70,14 @@ test.describe("Admin Rewards CRUD", () => {
     await page.getByLabel("Points Cost").fill("");
     await page.getByLabel("Points Cost").fill("55");
 
-    await page.getByRole("button", { name: "Save Changes" }).click();
+    await Promise.all([
+      page.waitForResponse(
+        (resp) =>
+          resp.url().includes("/api/admin/rewards/") &&
+          resp.request().method() === "PUT",
+      ),
+      page.getByRole("button", { name: "Save Changes" }).click(),
+    ]);
     await page.waitForURL(/\/admin\/rewards$/);
 
     const row = getRewardRow(page, updatedName);
@@ -192,9 +194,10 @@ test.describe("Admin Rewards CRUD", () => {
     await page.getByLabel("Points Cost").fill("40");
 
     const submitButton = page.getByRole("button", { name: "Create Reward" });
-    await Promise.all([submitButton.click(), submitButton.click()]);
-
-    await page.waitForURL(/\/admin\/rewards$/);
+    await Promise.all([
+      page.waitForURL(/\/admin\/rewards$/),
+      submitButton.click({ clickCount: 2 }),
+    ]);
     await expect(page.getByRole("link", { name })).toHaveCount(1);
   });
 });

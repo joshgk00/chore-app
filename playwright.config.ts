@@ -4,6 +4,8 @@ export default defineConfig({
   testDir: "./e2e",
   timeout: 30_000,
   retries: 0,
+  // Serial test suites share a single Page/session, so parallel workers would collide
+  workers: 1,
   use: {
     baseURL: "http://localhost:5173",
     headless: true,

@@ -1,21 +1,17 @@
 import { test, expect, type Page } from "@playwright/test";
 import { loginAsAdmin } from "./helpers/admin-auth.js";
+import { paceForRateLimiter } from "./helpers/rate-limiter.js";
 
 const TEST_RUN_SUFFIX = Date.now();
-
-// The submission rate limiter (10 req / 10 sec) is mounted at /api and
-// accidentally catches admin routes. Pace requests to stay under the limit.
-async function paceForRateLimiter(page: Page) {
-  await page.waitForTimeout(5000);
-}
 
 async function createRoutineWithApproval(page: Page, name: string) {
   await page.goto("/admin/routines/new");
   await page.getByLabel("Name").fill(name);
   await page.getByLabel("Points").fill("");
   await page.getByLabel("Points").fill("5");
+  await page.getByLabel("Completion Rule").selectOption("unlimited");
   await page.getByLabel("Requires Approval").check();
-  await page.getByLabel("Item 1").fill("Test task");
+  await page.getByLabel("Checklist item 1").fill("Test task");
   await Promise.all([
     page.waitForResponse((resp) =>
       resp.url().includes("/api/admin/routines") && resp.request().method() === "POST",
@@ -35,12 +31,13 @@ async function submitRoutineAsChild(page: Page, routineName: string) {
   const checkbox = page.getByRole("checkbox").first();
   await checkbox.click();
 
-  await Promise.all([
+  const [response] = await Promise.all([
     page.waitForResponse((resp) =>
       resp.url().includes("/api/routine-completions") && resp.request().method() === "POST",
     ),
     page.getByRole("button", { name: /submit|complete/i }).click(),
   ]);
+  expect(response.ok(), `Submission failed with ${response.status()}`).toBe(true);
 }
 
 test.describe("Admin Approval Queue", () => {
@@ -74,12 +71,12 @@ test.describe("Admin Approval Queue", () => {
     await page.goto("/admin/approvals");
 
     await expect(page.getByRole("heading", { name: "Approval Queue" })).toBeVisible();
-    await expect(page.getByText(routineName)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: routineName })).toBeVisible({ timeout: 10000 });
   });
 
   test("approve a routine completion and verify it leaves the queue", async () => {
     await page.goto("/admin/approvals");
-    await expect(page.getByText(routineName)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: routineName })).toBeVisible({ timeout: 10000 });
 
     const card = page.locator("div", { hasText: routineName })
       .filter({ has: page.getByRole("button", { name: "Approve" }) })
@@ -92,7 +89,7 @@ test.describe("Admin Approval Queue", () => {
 
     expect(response.ok()).toBe(true);
 
-    await expect(page.getByText(routineName)).not.toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: routineName })).not.toBeVisible({ timeout: 10000 });
   });
 
   test("approved item no longer appears in pending queue", async () => {
@@ -114,7 +111,6 @@ test.describe("Admin Approval Queue", () => {
   test("reject a routine completion and verify no points awarded", async () => {
     await paceForRateLimiter(page);
 
-    // Submit another routine completion
     await submitRoutineAsChild(page, routineName);
     await paceForRateLimiter(page);
     await loginAsAdmin(page);
@@ -123,7 +119,7 @@ test.describe("Admin Approval Queue", () => {
     const totalBefore = (await pointsBefore.json()).data.total;
 
     await page.goto("/admin/approvals");
-    await expect(page.getByText(routineName)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: routineName })).toBeVisible({ timeout: 10000 });
 
     const card = page.locator("div", { hasText: routineName })
       .filter({ has: page.getByRole("button", { name: "Reject" }) })
@@ -135,7 +131,7 @@ test.describe("Admin Approval Queue", () => {
     ]);
 
     expect(response.ok()).toBe(true);
-    await expect(page.getByText(routineName)).not.toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: routineName })).not.toBeVisible({ timeout: 10000 });
 
     const pointsAfter = await page.request.get("/api/points/summary");
     const totalAfter = (await pointsAfter.json()).data.total;
@@ -145,12 +141,11 @@ test.describe("Admin Approval Queue", () => {
   test("approve/reject buttons are disabled when offline", async () => {
     await paceForRateLimiter(page);
 
-    // Submit one more to have something in the queue
     await submitRoutineAsChild(page, routineName);
     await paceForRateLimiter(page);
     await loginAsAdmin(page);
     await page.goto("/admin/approvals");
-    await expect(page.getByText(routineName)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: routineName })).toBeVisible({ timeout: 10000 });
 
     const approveButton = page.getByRole("button", { name: "Approve" }).first();
     const rejectButton = page.getByRole("button", { name: "Reject" }).first();
@@ -170,7 +165,6 @@ test.describe("Admin Approval Queue", () => {
   test("empty state shown when no pending approvals", async () => {
     await paceForRateLimiter(page);
 
-    // Approve remaining items
     const card = page.locator("div", { hasText: routineName })
       .filter({ has: page.getByRole("button", { name: "Approve" }) })
       .first();
@@ -180,9 +174,8 @@ test.describe("Admin Approval Queue", () => {
       card.getByRole("button", { name: "Approve" }).click(),
     ]);
 
-    // Wait for queue to be empty (or check empty state)
     await expect(
-      page.getByText(/no pending/i).or(page.getByText(/all caught up/i).or(page.getByText(/nothing to review/i))),
+      page.getByText("No pending approvals"),
     ).toBeVisible({ timeout: 10000 });
   });
 });

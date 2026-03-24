@@ -1,11 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 import { loginAsAdmin } from "./helpers/admin-auth.js";
+import { paceForRateLimiter } from "./helpers/rate-limiter.js";
 
 const TEST_RUN_SUFFIX = Date.now();
-
-async function paceForRateLimiter(page: Page) {
-  await page.waitForTimeout(5000);
-}
 
 test.describe("Admin Points Ledger", () => {
   test.describe.configure({ mode: "serial" });
@@ -87,7 +84,6 @@ test.describe("Admin Points Ledger", () => {
     const submitButton = page.getByRole("button", { name: /adjust/i });
     await submitButton.click();
 
-    // Expect client-side or server-side validation message
     await expect(
       page.getByText(/note.*required/i).or(page.getByText(/required/i)),
     ).toBeVisible({ timeout: 5000 });
@@ -98,7 +94,6 @@ test.describe("Admin Points Ledger", () => {
     await page.goto("/admin/ledger");
     await expect(page.getByText("Total")).toBeVisible({ timeout: 10000 });
 
-    // Filter by manual entries
     const filterSelect = page.getByLabel(/filter|type/i);
     await filterSelect.selectOption("manual");
 
@@ -106,7 +101,6 @@ test.describe("Admin Points Ledger", () => {
       resp.url().includes("/api/admin/points/ledger") && resp.url().includes("entry_type=manual"),
     );
 
-    // All visible entries should be manual type
     const entryTypes = page.locator("[data-entry-type]");
     const count = await entryTypes.count();
     if (count > 0) {
