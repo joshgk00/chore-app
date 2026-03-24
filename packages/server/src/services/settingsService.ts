@@ -146,11 +146,19 @@ export function createSettingsService(db: Database.Database): SettingsService {
   }
 
   async function updatePin(newPin: string): Promise<void> {
-    if (!newPin || typeof newPin !== "string" || newPin.length < PIN_MIN_LENGTH) {
+    if (!newPin || typeof newPin !== "string") {
       throw new ValidationError(`PIN must be at least ${PIN_MIN_LENGTH} digits`);
     }
 
-    const hash = await hashPin(newPin);
+    const trimmed = newPin.trim();
+    if (trimmed.length < PIN_MIN_LENGTH) {
+      throw new ValidationError(`PIN must be at least ${PIN_MIN_LENGTH} digits`);
+    }
+    if (!/^\d+$/.test(trimmed)) {
+      throw new ValidationError("PIN must contain only digits");
+    }
+
+    const hash = await hashPin(trimmed);
     setSetting("admin_pin_hash", hash);
   }
 

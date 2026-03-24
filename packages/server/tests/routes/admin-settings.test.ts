@@ -178,6 +178,39 @@ describe("admin settings routes", () => {
       db.close();
     });
 
+    it("returns 422 for non-digit PIN", async () => {
+      const { db, app } = await createTestApp();
+      const cookies = await loginAdmin(app);
+
+      const res = await request(app)
+        .put("/api/admin/settings/pin")
+        .set("Cookie", cookies)
+        .send({ currentPin: "123456", newPin: "abcdef" });
+
+      expect(res.status).toBe(422);
+      expect(res.body.error.message).toContain("digits");
+      db.close();
+    });
+
+    it("trims whitespace from PIN before validation", async () => {
+      const { db, app } = await createTestApp();
+      const cookies = await loginAdmin(app);
+
+      const res = await request(app)
+        .put("/api/admin/settings/pin")
+        .set("Cookie", cookies)
+        .send({ currentPin: "123456", newPin: "  654321  " });
+
+      expect(res.status).toBe(200);
+
+      const loginRes = await request(app)
+        .post("/api/auth/verify")
+        .send({ pin: "654321" });
+
+      expect(loginRes.status).toBe(200);
+      db.close();
+    });
+
     it("returns 401 without session", async () => {
       const { db, app } = await createTestApp();
 

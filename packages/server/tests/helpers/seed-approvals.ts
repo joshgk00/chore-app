@@ -27,7 +27,7 @@ export function seedPendingSubmissions(db: Database.Database): void {
     2, 1, "Morning Routine", "morning", "once_per_day",
     5, 0, null,
     null, null, "2026-03-22", "approved", "rc-approved-1",
-    null, "2026-03-22T10:00:00",
+    null, "2026-03-22 10:00:00",
   );
 
   // Pending chore log (chore 2 "Yard Work" requires approval)
@@ -48,7 +48,7 @@ export function seedPendingSubmissions(db: Database.Database): void {
   ).run(
     2, 1, "Clean Kitchen", 1, "Quick Clean", 3, 0,
     "2026-03-22", "rejected", "cl-rejected-1",
-    "Not done properly", "2026-03-22T11:00:00",
+    "Not done properly", "2026-03-22 11:00:00",
   );
 
   // Pending reward request

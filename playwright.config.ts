@@ -16,7 +16,7 @@ export default defineConfig({
     command: "npm run dev",
     port: 5173,
     timeout: 30_000,
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI,
     env: {
       PUBLIC_ORIGIN: "http://localhost:3000",
       INITIAL_ADMIN_PIN: "123456",
