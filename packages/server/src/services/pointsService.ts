@@ -6,7 +6,7 @@ import type { ActivityService } from "./activityService.js";
 export interface PointsService {
   getBalance(): PointsBalance;
   getLedger(options: { limit: number; offset: number }): LedgerEntry[];
-  getLedgerFiltered(options: { limit: number; offset: number; entryType?: string }): LedgerEntry[];
+  getLedgerFiltered(options: { limit: number; offset: number; entryType?: EntryType }): LedgerEntry[];
   createAdjustment(amount: number, note: string): LedgerEntry;
 }
 
@@ -32,9 +32,7 @@ function mapLedgerRow(row: LedgerRow): LedgerEntry {
   };
 }
 
-const VALID_ENTRY_TYPES = ["routine", "chore", "reward", "manual"] as const;
-
-export function createPointsService(db: Database.Database, activityService?: ActivityService): PointsService {
+export function createPointsService(db: Database.Database, activityService: ActivityService): PointsService {
   const selectTotalStmt = db.prepare(
     `SELECT COALESCE(SUM(amount), 0) as total FROM points_ledger`,
   );
@@ -85,11 +83,11 @@ export function createPointsService(db: Database.Database, activityService?: Act
     return rows.map(mapLedgerRow);
   }
 
-  function getLedgerFiltered(options: { limit: number; offset: number; entryType?: string }): LedgerEntry[] {
+  function getLedgerFiltered(options: { limit: number; offset: number; entryType?: EntryType }): LedgerEntry[] {
     const safeLimit = Math.max(1, Math.min(options.limit, 100));
     const safeOffset = Math.max(0, options.offset);
 
-    if (options.entryType && VALID_ENTRY_TYPES.includes(options.entryType as typeof VALID_ENTRY_TYPES[number])) {
+    if (options.entryType) {
       const rows = selectLedgerByTypeStmt.all(options.entryType, safeLimit, safeOffset) as LedgerRow[];
       return rows.map(mapLedgerRow);
     }
@@ -102,7 +100,7 @@ export function createPointsService(db: Database.Database, activityService?: Act
     const result = insertAdjustmentStmt.run(amount, trimmedNote);
     const inserted = selectLedgerByIdStmt.get(result.lastInsertRowid) as LedgerRow;
 
-    activityService?.recordActivity({
+    activityService.recordActivityOrThrow({
       eventType: "manual_adjustment",
       entityType: "points_ledger",
       entityId: Number(result.lastInsertRowid),

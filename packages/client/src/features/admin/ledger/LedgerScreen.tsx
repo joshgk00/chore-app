@@ -26,7 +26,7 @@ interface AdjustResponse {
   balance: PointsBalance;
 }
 
-function useLedger(filter: FilterType, isOnline: boolean) {
+function useLedger(filter: FilterType) {
   const [page, setPage] = useState(0);
 
   const query = useQuery({
@@ -45,7 +45,6 @@ function useLedger(filter: FilterType, isOnline: boolean) {
       if (!result.ok) throw result.error;
       return result.data;
     },
-    enabled: isOnline,
   });
 
   const entries = query.data?.entries ?? [];
@@ -361,7 +360,7 @@ function LedgerTable({ entries }: LedgerTableProps) {
 export default function LedgerScreen() {
   const isOnline = useOnline();
   const [filter, setFilter] = useState<FilterType>("all");
-  const ledger = useLedger(filter, isOnline);
+  const ledger = useLedger(filter);
   const adjustMutation = useAdjustPoints();
 
   function handleFilterChange(newFilter: FilterType) {
@@ -381,7 +380,20 @@ export default function LedgerScreen() {
       <div className="mt-6 space-y-6">
         {ledger.isLoading && <LoadingSkeleton />}
 
-        {ledger.error && (
+        <div aria-live="polite">
+          {!isOnline && !ledger.balance && !ledger.isLoading && (
+            <div className="rounded-2xl bg-[var(--color-surface)] p-6 text-center shadow-card">
+              <p className="font-display text-lg font-bold text-[var(--color-text-secondary)]">
+                You're offline
+              </p>
+              <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+                The ledger requires an internet connection to load.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {isOnline && ledger.error && (
           <div
             className="rounded-2xl bg-[var(--color-surface)] p-6 text-center shadow-card"
             aria-live="assertive"

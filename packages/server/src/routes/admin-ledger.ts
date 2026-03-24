@@ -1,8 +1,8 @@
 import { Router } from "express";
+import { ENTRY_TYPES } from "@chore-app/shared";
+import type { EntryType } from "@chore-app/shared";
 import type { PointsService } from "../services/pointsService.js";
 import { ValidationError } from "../lib/errors.js";
-
-const VALID_ENTRY_TYPES = ["routine", "chore", "reward", "manual"] as const;
 
 function parseIntParam(value: unknown, defaultVal: number): number {
   if (value === undefined || value === null) return defaultVal;
@@ -19,11 +19,11 @@ export function createAdminLedgerRoutes(pointsService: PointsService) {
       const limit = parseIntParam(req.query.limit, 50);
       const offset = parseIntParam(req.query.offset, 0);
       const rawType = typeof req.query.entry_type === "string" ? req.query.entry_type : undefined;
-      if (rawType && !VALID_ENTRY_TYPES.includes(rawType as typeof VALID_ENTRY_TYPES[number])) {
-        throw new ValidationError(`Invalid entry_type. Must be one of: ${VALID_ENTRY_TYPES.join(", ")}`);
+      if (rawType && !(ENTRY_TYPES as readonly string[]).includes(rawType)) {
+        throw new ValidationError(`Invalid entry_type. Must be one of: ${ENTRY_TYPES.join(", ")}`);
       }
 
-      const entries = pointsService.getLedgerFiltered({ limit, offset, entryType: rawType });
+      const entries = pointsService.getLedgerFiltered({ limit, offset, entryType: rawType as EntryType | undefined });
       const balance = pointsService.getBalance();
 
       res.json({ data: { entries, balance } });
