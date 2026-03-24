@@ -202,9 +202,10 @@ test.describe("Admin Chores CRUD", () => {
     await page.getByLabel("Tier 1 name").fill("Basic");
 
     const submitButton = page.getByRole("button", { name: "Create Chore" });
-    await Promise.all([submitButton.click(), submitButton.click()]);
-
-    await page.waitForURL(/\/admin\/chores$/);
+    await Promise.all([
+      page.waitForURL(/\/admin\/chores$/),
+      submitButton.click({ clickCount: 2 }),
+    ]);
     await expect(page.getByRole("link", { name })).toHaveCount(1);
   });
 

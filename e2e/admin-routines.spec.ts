@@ -221,9 +221,10 @@ test.describe("Admin Routines CRUD", () => {
     await page.getByLabel("Checklist item 1").fill("Step one");
 
     const submitButton = page.getByRole("button", { name: "Create Routine" });
-    await Promise.all([submitButton.click(), submitButton.click()]);
-
-    await page.waitForURL(/\/admin\/routines$/);
+    await Promise.all([
+      page.waitForURL(/\/admin\/routines$/),
+      submitButton.click({ clickCount: 2 }),
+    ]);
     await expect(page.getByRole("link", { name })).toHaveCount(1);
   });
 });

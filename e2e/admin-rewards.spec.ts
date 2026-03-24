@@ -194,9 +194,10 @@ test.describe("Admin Rewards CRUD", () => {
     await page.getByLabel("Points Cost").fill("40");
 
     const submitButton = page.getByRole("button", { name: "Create Reward" });
-    await Promise.all([submitButton.click(), submitButton.click()]);
-
-    await page.waitForURL(/\/admin\/rewards$/);
+    await Promise.all([
+      page.waitForURL(/\/admin\/rewards$/),
+      submitButton.click({ clickCount: 2 }),
+    ]);
     await expect(page.getByRole("link", { name })).toHaveCount(1);
   });
 });
