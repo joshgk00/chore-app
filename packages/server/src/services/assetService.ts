@@ -124,24 +124,22 @@ async function processImageToWebp(
   const storedFilename = `${randomUUID()}.webp`;
   const outputPath = path.join(outputDir, storedFilename);
 
-  const processedBuffer = await sharp(inputPath)
+  const { data: processedBuffer, info } = await sharp(inputPath)
     .rotate()
     .resize(MAX_LONG_EDGE_PX, MAX_LONG_EDGE_PX, {
       fit: "inside",
       withoutEnlargement: true,
     })
     .webp({ quality: 85 })
-    .toBuffer();
-
-  const { width, height } = await sharp(processedBuffer).metadata();
+    .toBuffer({ resolveWithObject: true });
 
   fs.writeFileSync(outputPath, processedBuffer);
 
   return {
     storedFilename,
     sizeBytes: processedBuffer.length,
-    width: width ?? 0,
-    height: height ?? 0,
+    width: info.width,
+    height: info.height,
   };
 }
 
@@ -239,8 +237,11 @@ export function createAssetService(
 
     const headerBuffer = Buffer.alloc(12);
     const fd = fs.openSync(file.path, "r");
-    fs.readSync(fd, headerBuffer, 0, 12, 0);
-    fs.closeSync(fd);
+    try {
+      fs.readSync(fd, headerBuffer, 0, 12, 0);
+    } finally {
+      fs.closeSync(fd);
+    }
 
     const detectedMime = detectMimeType(headerBuffer);
     if (!detectedMime || !ACCEPTED_MIME_TYPES.has(detectedMime)) {
@@ -327,6 +328,8 @@ export function createAssetService(
   }
 
   function getAssets(filters?: AssetFilters): Asset[] {
+    // WHERE clause varies by filter combination, so the statement is built dynamically.
+    // This is intentional — a single cached statement can't cover all filter permutations.
     const conditions: string[] = [];
     const params: unknown[] = [];
 
