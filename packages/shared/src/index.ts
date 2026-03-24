@@ -12,6 +12,8 @@ export type {
   PushStatus,
   SlotConfig,
   ActivityEvent,
+  ActivityLogEntry,
+  ActivityEventType,
   ChecklistItem,
   Routine,
   RoutineCompletion,
@@ -38,6 +40,7 @@ export {
   MAX_PIN_ATTEMPTS,
   RATE_LIMIT_WINDOW_MINUTES,
   COOLDOWN_ESCALATION_MINUTES,
+  ACTIVITY_EVENT_TYPES,
   SUBMISSION_RATE_LIMIT_MAX,
   SUBMISSION_RATE_LIMIT_WINDOW_SECONDS,
 } from "./constants.js";

@@ -7,7 +7,8 @@ import type Database from "better-sqlite3";
 import { NotFoundError } from "./lib/errors.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { createAuthRoutes } from "./routes/auth.js";
-import { createAdminRoutes } from "./routes/admin.js";
+import { createAdminSettingsRoutes } from "./routes/admin-settings.js";
+import { createAdminActivityRoutes } from "./routes/admin-activity.js";
 import { createAdminRoutinesRoutes } from "./routes/admin-routines.js";
 import { createAdminChoresRoutes } from "./routes/admin-chores.js";
 import { createAdminRewardsRoutes } from "./routes/admin-rewards.js";
@@ -59,7 +60,8 @@ export function createApp(db: Database.Database, config: AppConfig) {
   app.use("/api", createSubmissionRoutes(routineService, choreService, rewardService, settingsService));
 
   app.use("/api/admin", adminAuth(authService, config));
-  app.use("/api/admin", createAdminRoutes(settingsService));
+  app.use("/api/admin", createAdminSettingsRoutes(settingsService, authService, config));
+  app.use("/api/admin", createAdminActivityRoutes(activityService));
   app.use("/api/admin", createAdminRoutinesRoutes(routineService));
   app.use("/api/admin", createAdminChoresRoutes(choreService));
   app.use("/api/admin", createAdminRewardsRoutes(rewardService));

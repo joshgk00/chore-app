@@ -91,6 +91,17 @@ const mockActivity = [
   },
 ];
 
+const mockSettings: Record<string, string> = {
+  timezone: "America/Chicago",
+  activity_retention_days: "90",
+  morning_start: "05:00",
+  morning_end: "10:59",
+  afternoon_start: "15:00",
+  afternoon_end: "18:29",
+  bedtime_start: "18:30",
+  bedtime_end: "21:30",
+};
+
 export const handlers: RequestHandler[] = [
   http.get('/api/auth/session', () =>
     HttpResponse.json(
@@ -246,6 +257,28 @@ export const handlers: RequestHandler[] = [
       },
     }),
   ),
+
+  http.get('/api/admin/activity-log', () =>
+    HttpResponse.json({
+      data: { events: [], total: 0, page: 0, limit: 50 },
+    }),
+  ),
+
+  http.get('/api/admin/settings', () =>
+    HttpResponse.json({ data: mockSettings }),
+  ),
+
+  http.put('/api/admin/settings', () =>
+    HttpResponse.json({ data: mockSettings }),
+  ),
+
+  http.put('/api/admin/settings/pin', () =>
+    HttpResponse.json({ data: { message: "PIN updated" } }),
+  ),
+
+  http.post('/api/auth/logout', () =>
+    HttpResponse.json({ data: { message: "Logged out" } }),
+  ),
 ];
 
-export { mockRoutines, mockChecklistItems, mockChores, mockChoreTiers, mockRewards, mockPointsSummary, mockBadges, mockActivity };
+export { mockRoutines, mockChecklistItems, mockChores, mockChoreTiers, mockRewards, mockPointsSummary, mockBadges, mockActivity, mockSettings };
