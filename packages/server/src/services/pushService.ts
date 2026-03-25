@@ -148,7 +148,7 @@ export function createPushService(
 
   const updateLastSuccessStmt = db.prepare(
     `UPDATE push_subscriptions
-     SET last_success_at = datetime('now'), updated_at = datetime('now')
+     SET last_success_at = datetime('now'), updated_at = datetime('now'), status = 'active'
      WHERE id = ?`,
   );
 

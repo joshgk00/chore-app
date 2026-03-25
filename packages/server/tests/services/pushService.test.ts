@@ -343,6 +343,32 @@ describe("pushService", () => {
       }).not.toThrow();
     });
 
+    it("successful delivery reactivates a subscription expired during send", async () => {
+      pushService.subscribe("child", "https://push.example.com/c1", { p256dh: "p1", auth: "a1" });
+
+      let resolveDelivery!: () => void;
+      const deliveryPromise = new Promise<webpush.SendResult>((resolve) => {
+        resolveDelivery = () => resolve({} as webpush.SendResult);
+      });
+      vi.mocked(webpush.sendNotification).mockReturnValue(deliveryPromise);
+
+      // sendNotification selects the sub while still active
+      pushService.sendNotification("child", { title: "Test", body: "Hello" });
+
+      // Cleanup expires the sub while the push is in flight
+      db.prepare("UPDATE push_subscriptions SET status = 'expired' WHERE endpoint = ?")
+        .run("https://push.example.com/c1");
+
+      // Push succeeds — success handler should reactivate the sub
+      resolveDelivery();
+
+      await vi.waitFor(() => {
+        const row = db.prepare("SELECT status FROM push_subscriptions WHERE endpoint = ?")
+          .get("https://push.example.com/c1") as Record<string, unknown>;
+        expect(row.status).toBe("active");
+      });
+    });
+
     it("sends JSON payload with title, body, and data", () => {
       pushService.subscribe("admin", "https://push.example.com/a1", { p256dh: "p1", auth: "a1" });
 
