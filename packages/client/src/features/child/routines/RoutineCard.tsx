@@ -27,12 +27,20 @@ export default function RoutineCard({ routine, showSlotBadge }: Props) {
       aria-label={`Go to ${routine.name}`}
       className="flex items-center gap-3.5 rounded-3xl border-l-4 border-l-sky-500 bg-[var(--color-surface)] p-4 shadow-card transition-all duration-200 hover:translate-y-[-1px] hover:shadow-elevated active:scale-[0.98] dark:border-l-sky-400"
     >
-      <div
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-[var(--color-sky-50)] text-xl"
-        data-emoji
-      >
-        {SLOT_EMOJI[routine.timeSlot] ?? "\u2B50"}
-      </div>
+      {routine.imageUrl ? (
+        <img
+          src={routine.imageUrl}
+          alt={routine.name}
+          className="h-11 w-11 shrink-0 rounded-[14px] object-cover"
+        />
+      ) : (
+        <div
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-[var(--color-sky-50)] text-xl"
+          data-emoji
+        >
+          {SLOT_EMOJI[routine.timeSlot] ?? "\u2B50"}
+        </div>
+      )}
 
       <div className="min-w-0 flex-1">
         <h3 className="font-display text-base font-semibold text-[var(--color-text)]">

@@ -136,7 +136,7 @@ describe("AdminRoutineForm", () => {
     expect(body.name).toBe("Evening Routine");
     expect(body.timeSlot).toBe("bedtime");
     expect(body.points).toBe(10);
-    expect(body.items).toEqual([{ label: "Brush teeth", sortOrder: 0 }]);
+    expect(body.items).toEqual([{ label: "Brush teeth", sortOrder: 0, imageAssetId: null }]);
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith("/admin/routines");

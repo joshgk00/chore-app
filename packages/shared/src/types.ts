@@ -72,6 +72,7 @@ export interface ChecklistItem {
   routineId: number;
   label: string;
   imageAssetId?: number;
+  imageUrl?: string;
   sortOrder: number;
   archivedAt?: string;
 }
@@ -84,6 +85,7 @@ export interface Routine {
   points: number;
   requiresApproval: boolean;
   imageAssetId?: number;
+  imageUrl?: string;
   randomizeItems: boolean;
   sortOrder: number;
   items: ChecklistItem[];
@@ -148,6 +150,7 @@ export interface Reward {
   name: string;
   pointsCost: number;
   imageAssetId?: number;
+  imageUrl?: string;
   sortOrder: number;
   archivedAt?: string;
 }
