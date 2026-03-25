@@ -265,7 +265,9 @@ export function createApprovalService(
         body: result.pointsSnapshot > 0 ? `+${result.pointsSnapshot} points` : "Great job!",
         data: { type: "routine_completion", id: result.id, action: "approved" },
       });
-    } catch { /* side-effect — never crash the primary operation */ }
+    } catch (err) {
+      console.error("Failed to send push notification", { entityType: "approval", id: result.id }, err);
+    }
     return result;
   }
 
@@ -301,7 +303,9 @@ export function createApprovalService(
         body: reviewNote || "Check with your parent",
         data: { type: "routine_completion", id: result.id, action: "rejected" },
       });
-    } catch { /* side-effect — never crash the primary operation */ }
+    } catch (err) {
+      console.error("Failed to send push notification", { entityType: "approval", id: result.id }, err);
+    }
     return result;
   }
 
@@ -345,7 +349,9 @@ export function createApprovalService(
         body: result.pointsSnapshot > 0 ? `+${result.pointsSnapshot} points` : "Great job!",
         data: { type: "chore_log", id: result.id, action: "approved" },
       });
-    } catch { /* side-effect — never crash the primary operation */ }
+    } catch (err) {
+      console.error("Failed to send push notification", { entityType: "approval", id: result.id }, err);
+    }
     return result;
   }
 
@@ -381,7 +387,9 @@ export function createApprovalService(
         body: reviewNote || "Check with your parent",
         data: { type: "chore_log", id: result.id, action: "rejected" },
       });
-    } catch { /* side-effect — never crash the primary operation */ }
+    } catch (err) {
+      console.error("Failed to send push notification", { entityType: "approval", id: result.id }, err);
+    }
     return result;
   }
 
@@ -425,7 +433,9 @@ export function createApprovalService(
         body: `Enjoy your reward!`,
         data: { type: "reward_request", id: result.id, action: "approved" },
       });
-    } catch { /* side-effect — never crash the primary operation */ }
+    } catch (err) {
+      console.error("Failed to send push notification", { entityType: "approval", id: result.id }, err);
+    }
     return result;
   }
 
@@ -461,7 +471,9 @@ export function createApprovalService(
         body: reviewNote || "Check with your parent",
         data: { type: "reward_request", id: result.id, action: "rejected" },
       });
-    } catch { /* side-effect — never crash the primary operation */ }
+    } catch (err) {
+      console.error("Failed to send push notification", { entityType: "approval", id: result.id }, err);
+    }
     return result;
   }
 

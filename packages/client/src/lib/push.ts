@@ -11,7 +11,12 @@ interface PushSupport {
 }
 
 function checkSupported(): boolean {
-  return "serviceWorker" in navigator && "PushManager" in window;
+  return (
+    "serviceWorker" in navigator &&
+    "PushManager" in window &&
+    "Notification" in window &&
+    typeof Notification.requestPermission === "function"
+  );
 }
 
 function getPermission(): NotificationPermission | null {

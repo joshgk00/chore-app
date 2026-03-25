@@ -470,7 +470,9 @@ export function createRoutineService(
           body: `${result.routineNameSnapshot} needs approval`,
           data: { type: "routine_completion", id: result.id },
         });
-      } catch { /* side-effect — never crash the primary operation */ }
+      } catch (err) {
+        console.error("Failed to send admin notification for routine completion", { id: result.id }, err);
+      }
     }
 
     return result;

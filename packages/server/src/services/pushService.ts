@@ -72,9 +72,20 @@ function initVapidKeys(dataDir: string, publicOrigin: string): VapidKeys {
     keys = generateAndSaveKeys(keysPath);
   }
 
-  const vapidSubject = publicOrigin.startsWith("https://")
-    ? publicOrigin
-    : `mailto:vapid@${new URL(publicOrigin).hostname || "localhost"}`;
+  let vapidSubject: string;
+  if (publicOrigin.startsWith("https://")) {
+    vapidSubject = publicOrigin;
+  } else {
+    let hostname: string;
+    try {
+      hostname = new URL(publicOrigin).hostname || "localhost";
+    } catch {
+      throw new Error(
+        `Invalid PUBLIC_ORIGIN "${publicOrigin}". Expected an absolute URL such as "https://example.com".`,
+      );
+    }
+    vapidSubject = `mailto:vapid@${hostname}`;
+  }
   webpush.setVapidDetails(vapidSubject, keys.publicKey, keys.privateKey);
 
   return keys;
@@ -151,20 +162,29 @@ export function createPushService(
 
       webpush.sendNotification(pushSub, jsonPayload).then(
         () => {
-          try { updateLastSuccessStmt.run(sub.id); } catch { /* ignore */ }
+          try { updateLastSuccessStmt.run(sub.id); } catch (err) {
+            console.error(`Failed to update last_success_at for subscription ${sub.id}`, err);
+          }
         },
         (err: unknown) => {
           const statusCode = (err as { statusCode?: number })?.statusCode;
           if (statusCode === 410 || statusCode === 404) {
-            try { markFailedStmt.run(sub.id); } catch { /* ignore */ }
+            try { markFailedStmt.run(sub.id); } catch (dbErr) {
+              console.error(`Failed to mark subscription ${sub.id} as failed after HTTP ${statusCode}`, dbErr);
+            }
           } else {
             // Transient failure — retry once
             webpush.sendNotification(pushSub, jsonPayload).then(
               () => {
-                try { updateLastSuccessStmt.run(sub.id); } catch { /* ignore */ }
+                try { updateLastSuccessStmt.run(sub.id); } catch (retryErr) {
+                  console.error(`Failed to update last_success_at for subscription ${sub.id} after retry`, retryErr);
+                }
               },
-              () => {
-                // Second failure — log and move on, don't mark failed for transient errors
+              (err2: unknown) => {
+                const statusCode2 = (err2 as { statusCode?: number })?.statusCode;
+                if (statusCode2 === 410 || statusCode2 === 404) {
+                  try { markFailedStmt.run(sub.id); } catch { /* best effort */ }
+                }
                 console.error(`Push delivery failed for subscription ${sub.id} after retry`);
               },
             );

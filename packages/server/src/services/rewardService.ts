@@ -267,7 +267,9 @@ export function createRewardService(
           body: `${result.rewardNameSnapshot} (${result.costSnapshot} pts) needs approval`,
           data: { type: "reward_request", id: result.id },
         });
-      } catch { /* side-effect — never crash the primary operation */ }
+      } catch (err) {
+        console.error("Failed to send admin notification for reward request", { id: result.id }, err);
+      }
     }
 
     return result;

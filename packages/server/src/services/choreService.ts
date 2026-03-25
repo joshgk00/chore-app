@@ -365,7 +365,9 @@ export function createChoreService(
           body: `${result.choreNameSnapshot} needs approval`,
           data: { type: "chore_log", id: result.id },
         });
-      } catch { /* side-effect — never crash the primary operation */ }
+      } catch (err) {
+        console.error("Failed to send admin notification for chore log", { id: result.id }, err);
+      }
     }
 
     return result;
