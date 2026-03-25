@@ -15,7 +15,7 @@ export default function BackupSettings() {
 
   const [isRestoring, setIsRestoring] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
-  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
+  const [isRestoreConfirmVisible, setIsRestoreConfirmVisible] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   async function handleExport() {
@@ -66,7 +66,7 @@ export default function BackupSettings() {
 
     setSelectedFile(file);
     setRestoreError(null);
-    setShowRestoreConfirm(true);
+    setIsRestoreConfirmVisible(true);
   }
 
   async function handleRestore() {
@@ -98,7 +98,7 @@ export default function BackupSettings() {
       );
     } finally {
       setIsRestoring(false);
-      setShowRestoreConfirm(false);
+      setIsRestoreConfirmVisible(false);
       setSelectedFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -107,7 +107,7 @@ export default function BackupSettings() {
   }
 
   function handleCancelRestore() {
-    setShowRestoreConfirm(false);
+    setIsRestoreConfirmVisible(false);
     setSelectedFile(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -123,8 +123,7 @@ export default function BackupSettings() {
         Backup &amp; Restore
       </h2>
 
-      {/* Export */}
-      <div className="mt-4">
+            <div className="mt-4">
         <p className="text-sm text-[var(--color-text-secondary)]">
           Download a complete backup of your data, including the database and uploaded images.
         </p>
@@ -150,13 +149,12 @@ export default function BackupSettings() {
         )}
       </div>
 
-      {/* Restore */}
-      <div className="mt-6 border-t border-[var(--color-border)] pt-6">
+            <div className="mt-6 border-t border-[var(--color-border)] pt-6">
         <p className="text-sm text-[var(--color-text-secondary)]">
           Restore from a previous backup. This will replace all current data.
         </p>
         <div className="mt-3">
-          {!showRestoreConfirm ? (
+          {!isRestoreConfirmVisible ? (
             <>
               <input
                 ref={fileInputRef}

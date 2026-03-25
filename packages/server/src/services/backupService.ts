@@ -7,8 +7,10 @@ import type Database from "better-sqlite3";
 import type { BackupManifest } from "@chore-app/shared";
 import { openDatabase } from "../db/connection.js";
 import { runMigrations } from "../db/migrate.js";
-import type { ActivityService } from "./activityService.js";
+import { createActivityService, type ActivityService } from "./activityService.js";
 import { AppError, ValidationError } from "../lib/errors.js";
+
+const MAX_UNCOMPRESSED_BYTES = 500 * 1024 * 1024; // 500MB
 
 export interface BackupService {
   createExport(): Promise<string>;
@@ -96,6 +98,7 @@ export function createBackupService(
 
       const archiveFinished = new Promise<void>((resolve, reject) => {
         output.on("close", resolve);
+        output.on("error", reject);
         archive.on("error", reject);
       });
 
@@ -168,10 +171,18 @@ export function createBackupService(
       throw new ValidationError("Backup archive is missing db.sqlite");
     }
 
+    // Guard against ZIP bombs — check total uncompressed size before extracting
+    const totalUncompressed = zip.getEntries().reduce((sum, e) => sum + e.header.size, 0);
+    if (totalUncompressed > MAX_UNCOMPRESSED_BYTES) {
+      deletePath(uploadedFilePath);
+      throw new ValidationError(
+        `Backup uncompressed size (${Math.round(totalUncompressed / 1024 / 1024)}MB) exceeds 500MB limit`,
+      );
+    }
+
     const currentSchema = getSchemaVersion();
     // Migration versions are zero-padded numerics (001, 002, etc.) — compare as strings
-    // which works correctly for zero-padded values. Fall back to string comparison
-    // for any non-standard naming.
+    // which works correctly for zero-padded values.
     if (manifest.schemaVersion > currentSchema && currentSchema !== "unknown") {
       deletePath(uploadedFilePath);
       throw new ValidationError(
@@ -202,12 +213,8 @@ export function createBackupService(
           path.join(preRestoreDir, "secrets", "webpush.json"),
         );
       }
-    } catch (err) {
-      throw new AppError(
-        500,
-        "BACKUP_FAILED",
-        `Failed to create safety backup: ${err instanceof Error ? err.message : String(err)}`,
-      );
+    } catch {
+      throw new AppError(500, "BACKUP_FAILED", "Failed to create safety backup before restore");
     }
 
     db.close();
@@ -243,23 +250,11 @@ export function createBackupService(
       const restoredDb = openDatabase(dataDir);
       try {
         runMigrations(restoredDb);
+        // restoredDb is ephemeral — no benefit to caching prepared statements
         restoredDb.prepare("DELETE FROM admin_sessions").run();
 
-        const restoredActivityService = {
-          recordActivity(event: { eventType: string; summary?: string }) {
-            try {
-              restoredDb
-                .prepare(
-                  "INSERT INTO activity_events (event_type, entity_type, entity_id, summary, metadata_json) VALUES (?, ?, ?, ?, ?)",
-                )
-                .run(event.eventType, null, null, event.summary ?? null, null);
-            } catch {
-              // Best-effort logging on the restored DB
-            }
-          },
-        };
-
-        restoredActivityService.recordActivity({
+        const restoredActivity = createActivityService(restoredDb);
+        restoredActivity.recordActivity({
           eventType: "backup_restored",
           summary: `Backup restored from ${manifest.exportedAt} (schema ${manifest.schemaVersion})`,
         });
@@ -289,12 +284,14 @@ export function createBackupService(
         // Safety restore itself failed — original data is in pre-restore dir
       }
 
-      if (err instanceof AppError) throw err;
-      throw new AppError(
-        500,
-        "RESTORE_FAILED",
-        `Restore failed: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      // DB handle is closed and all services are stale — exit so the process
+      // manager restarts with the safety-restored files
+      if (err instanceof AppError) {
+        setTimeout(() => process.exit(1), 500);
+        throw err;
+      }
+      setTimeout(() => process.exit(1), 500);
+      throw new AppError(500, "RESTORE_FAILED", "Backup restore failed");
     } finally {
       deletePath(uploadedFilePath);
     }
