@@ -274,6 +274,29 @@ describe("AssetPicker", () => {
     });
   });
 
+  it("shows error when generation fails", async () => {
+    server.use(
+      http.post("/api/admin/assets/generate", () =>
+        HttpResponse.json(
+          { error: { message: "Generation quota exceeded" } },
+          { status: 429 },
+        ),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderAssetPicker();
+
+    await user.click(screen.getByRole("button", { name: "Generate" }));
+    const promptInput = screen.getByLabelText("Image description");
+    await user.type(promptInput, "A friendly cat");
+    await user.click(getGenerateSubmitButton());
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent("Generation quota exceeded");
+    });
+  });
+
   it("disables generate button when prompt is empty", async () => {
     const user = userEvent.setup();
     renderAssetPicker();
