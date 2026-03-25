@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createTestDb, seedTestData } from "../db-helpers.js";
 import webpush from "web-push";
 import { createPushService } from "../../src/services/pushService.js";
@@ -18,6 +18,10 @@ beforeEach(async () => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "push-test-"));
   pushService = createPushService(db, tmpDir, "http://localhost:3000");
   vi.clearAllMocks();
+});
+
+afterEach(() => {
+  db.close();
 });
 
 describe("pushService", () => {
@@ -132,15 +136,24 @@ describe("pushService", () => {
       expect(row.ip_address).toBe("192.168.1.1");
     });
 
-    it("rejects when IP exceeds subscription cap", () => {
+    it("allows exactly 10 subscriptions per IP then rejects the 11th", () => {
       const ip = "10.0.0.1";
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 9; i++) {
         pushService.subscribe("child", `https://push.example.com/sub${i}`, {
           p256dh: `p${i}`,
           auth: `a${i}`,
         }, ip);
       }
 
+      // 10th should succeed
+      expect(() => {
+        pushService.subscribe("child", "https://push.example.com/sub9", {
+          p256dh: "p9",
+          auth: "a9",
+        }, ip);
+      }).not.toThrow();
+
+      // 11th should fail
       expect(() => {
         pushService.subscribe("child", "https://push.example.com/over-limit", {
           p256dh: "px",

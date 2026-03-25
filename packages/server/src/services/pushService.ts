@@ -151,26 +151,31 @@ export function createPushService(
     return vapidKeys.publicKey;
   }
 
+  const subscribeInTransaction = db.transaction(
+    (role: PushRole, endpoint: string, keys: { p256dh: string; auth: string }, ip: string | null) => {
+      if (ip) {
+        const existingRow = existsByEndpointStmt.get(endpoint) as { id: number } | undefined;
+        if (!existingRow) {
+          const { count } = countActiveByIpStmt.get(ip) as { count: number };
+          if (count >= MAX_PUSH_SUBSCRIPTIONS_PER_IP) {
+            throw new RateLimitError(
+              `Too many subscriptions from this IP (max ${MAX_PUSH_SUBSCRIPTIONS_PER_IP})`,
+            );
+          }
+        }
+      }
+
+      upsertSubscriptionStmt.run(role, endpoint, keys.p256dh, keys.auth, ip);
+    },
+  );
+
   function subscribe(
     role: PushRole,
     endpoint: string,
     keys: { p256dh: string; auth: string },
     ipAddress?: string,
   ): void {
-    // Enforce per-IP cap for new subscriptions (skip for re-subscriptions to existing endpoints)
-    if (ipAddress) {
-      const existingRow = existsByEndpointStmt.get(endpoint) as { id: number } | undefined;
-      if (!existingRow) {
-        const { count } = countActiveByIpStmt.get(ipAddress) as { count: number };
-        if (count >= MAX_PUSH_SUBSCRIPTIONS_PER_IP) {
-          throw new RateLimitError(
-            `Too many subscriptions from this IP (max ${MAX_PUSH_SUBSCRIPTIONS_PER_IP})`,
-          );
-        }
-      }
-    }
-
-    upsertSubscriptionStmt.run(role, endpoint, keys.p256dh, keys.auth, ipAddress ?? null);
+    subscribeInTransaction(role, endpoint, keys, ipAddress ?? null);
   }
 
   function sendNotification(
