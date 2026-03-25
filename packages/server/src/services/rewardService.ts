@@ -2,6 +2,7 @@ import type Database from "better-sqlite3";
 import type { Reward, RewardRequest, Status } from "@chore-app/shared";
 import { ConflictError, NotFoundError, ValidationError } from "../lib/errors.js";
 import type { ActivityService } from "./activityService.js";
+import type { PushService } from "./pushService.js";
 
 export interface SubmitRewardRequestData {
   rewardId: number;
@@ -13,12 +14,14 @@ export interface CreateRewardData {
   name: string;
   pointsCost: number;
   sortOrder: number;
+  imageAssetId?: number | null;
 }
 
 export interface UpdateRewardData {
   name?: string;
   pointsCost?: number;
   sortOrder?: number;
+  imageAssetId?: number | null;
 }
 
 export interface RewardService {
@@ -39,6 +42,7 @@ interface RewardRow {
   name: string;
   points_cost: number;
   image_asset_id: number | null;
+  asset_stored_filename: string | null;
   active: number;
   sort_order: number;
   archived_at: string | null;
@@ -61,6 +65,7 @@ function mapRewardRow(row: RewardRow): Reward {
     name: row.name,
     pointsCost: row.points_cost,
     imageAssetId: row.image_asset_id ?? undefined,
+    imageUrl: row.asset_stored_filename ? `/assets/${row.asset_stored_filename}` : undefined,
     sortOrder: row.sort_order,
   };
 }
@@ -71,6 +76,7 @@ function mapRewardRowAdmin(row: RewardRow): Reward {
     name: row.name,
     pointsCost: row.points_cost,
     imageAssetId: row.image_asset_id ?? undefined,
+    imageUrl: row.asset_stored_filename ? `/assets/${row.asset_stored_filename}` : undefined,
     sortOrder: row.sort_order,
     archivedAt: row.archived_at ?? undefined,
   };
@@ -92,18 +98,25 @@ function mapRequestRow(row: RequestRow): RewardRequest {
 export function createRewardService(
   db: Database.Database,
   activityService: ActivityService,
+  pushService?: PushService,
 ): RewardService {
   const selectActiveRewardsStmt = db.prepare(
-    `SELECT id, name, points_cost, image_asset_id, active, sort_order, archived_at
+    `SELECT rewards.id, rewards.name, rewards.points_cost, rewards.image_asset_id,
+            a.stored_filename AS asset_stored_filename,
+            rewards.active, rewards.sort_order, rewards.archived_at
      FROM rewards
-     WHERE active = 1 AND archived_at IS NULL
-     ORDER BY sort_order ASC`,
+     LEFT JOIN assets a ON rewards.image_asset_id = a.id
+     WHERE rewards.active = 1 AND rewards.archived_at IS NULL
+     ORDER BY rewards.sort_order ASC`,
   );
 
   const selectRewardByIdStmt = db.prepare(
-    `SELECT id, name, points_cost, image_asset_id, active, sort_order, archived_at
+    `SELECT rewards.id, rewards.name, rewards.points_cost, rewards.image_asset_id,
+            a.stored_filename AS asset_stored_filename,
+            rewards.active, rewards.sort_order, rewards.archived_at
      FROM rewards
-     WHERE id = ?`,
+     LEFT JOIN assets a ON rewards.image_asset_id = a.id
+     WHERE rewards.id = ?`,
   );
 
   const selectRequestByKeyStmt = db.prepare(
@@ -142,18 +155,21 @@ export function createRewardService(
   );
 
   const selectAllRewardsStmt = db.prepare(
-    `SELECT id, name, points_cost, image_asset_id, active, sort_order, archived_at
+    `SELECT rewards.id, rewards.name, rewards.points_cost, rewards.image_asset_id,
+            a.stored_filename AS asset_stored_filename,
+            rewards.active, rewards.sort_order, rewards.archived_at
      FROM rewards
-     ORDER BY sort_order ASC`,
+     LEFT JOIN assets a ON rewards.image_asset_id = a.id
+     ORDER BY rewards.sort_order ASC`,
   );
 
   const insertRewardStmt = db.prepare(
-    `INSERT INTO rewards (name, points_cost, sort_order)
-     VALUES (?, ?, ?)`,
+    `INSERT INTO rewards (name, points_cost, sort_order, image_asset_id)
+     VALUES (?, ?, ?, ?)`,
   );
 
   const updateRewardStmt = db.prepare(
-    `UPDATE rewards SET name = ?, points_cost = ?, sort_order = ?, updated_at = datetime('now')
+    `UPDATE rewards SET name = ?, points_cost = ?, sort_order = ?, image_asset_id = ?, updated_at = datetime('now')
      WHERE id = ?`,
   );
 
@@ -166,6 +182,21 @@ export function createRewardService(
     `UPDATE rewards SET archived_at = NULL, active = 1, updated_at = datetime('now')
      WHERE id = ? AND active = 0 AND archived_at IS NOT NULL`,
   );
+
+  const selectAssetExistsStmt = db.prepare(
+    `SELECT id, archived_at FROM assets WHERE id = ?`,
+  );
+
+  function validateAssetId(assetId: number | null | undefined): void {
+    if (assetId == null) return;
+    const asset = selectAssetExistsStmt.get(assetId) as { id: number; archived_at: string | null } | undefined;
+    if (!asset) {
+      throw new ValidationError("Referenced asset does not exist");
+    }
+    if (asset.archived_at !== null) {
+      throw new ValidationError("Referenced asset is archived");
+    }
+  }
 
   function getActiveRewards(): Reward[] {
     const rows = selectActiveRewardsStmt.all() as RewardRow[];
@@ -227,7 +258,21 @@ export function createRewardService(
   });
 
   function submitRequest(data: SubmitRewardRequestData): RewardRequest {
-    return submitRequestTx(data);
+    const result = submitRequestTx(data);
+
+    if (result.status === "pending") {
+      try {
+        pushService?.sendNotification("admin", {
+          title: "Reward requested",
+          body: `${result.rewardNameSnapshot} (${result.costSnapshot} pts) needs approval`,
+          data: { type: "reward_request", id: result.id },
+        });
+      } catch (err) {
+        console.error("Failed to send admin notification for reward request", { id: result.id }, err);
+      }
+    }
+
+    return result;
   }
 
   const cancelRequestTx = db.transaction((requestId: number): RewardRequest => {
@@ -283,11 +328,13 @@ export function createRewardService(
     if (data.name.trim().length === 0) {
       throw new ValidationError("Name is required");
     }
+    validateAssetId(data.imageAssetId);
 
     const result = insertRewardStmt.run(
       data.name.trim(),
       data.pointsCost,
       data.sortOrder,
+      data.imageAssetId ?? null,
     );
     const rewardId = Number(result.lastInsertRowid);
 
@@ -310,6 +357,8 @@ export function createRewardService(
     const newName = data.name !== undefined ? data.name : existing.name;
     const newPointsCost = data.pointsCost !== undefined ? data.pointsCost : existing.points_cost;
     const newSortOrder = data.sortOrder !== undefined ? data.sortOrder : existing.sort_order;
+    const newImageAssetId = data.imageAssetId !== undefined ? data.imageAssetId : existing.image_asset_id;
+    validateAssetId(newImageAssetId);
 
     if (newName.trim().length === 0) {
       throw new ValidationError("Name is required");
@@ -319,6 +368,7 @@ export function createRewardService(
       newName.trim(),
       newPointsCost,
       newSortOrder,
+      newImageAssetId,
       id,
     );
 

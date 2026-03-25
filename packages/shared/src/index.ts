@@ -28,6 +28,9 @@ export type {
   BootstrapData,
   ApprovalType,
   PendingApprovals,
+  BackupManifest,
+  Asset,
+  PushSubscribePayload,
 } from "./types.js";
 
 export {
@@ -43,4 +46,5 @@ export {
   ACTIVITY_EVENT_TYPES,
   SUBMISSION_RATE_LIMIT_MAX,
   SUBMISSION_RATE_LIMIT_WINDOW_SECONDS,
+  MAX_PUSH_SUBSCRIPTIONS_PER_IP,
 } from "./constants.js";

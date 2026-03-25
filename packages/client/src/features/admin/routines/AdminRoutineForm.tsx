@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
+import AssetPicker from "../assets/AssetPicker.js";
 import type { Routine, TimeSlot, CompletionRule } from "@chore-app/shared";
 
 interface DraftItem {
@@ -10,6 +11,8 @@ interface DraftItem {
   serverId?: number;
   label: string;
   sortOrder: number;
+  imageAssetId: number | null;
+  imageUrl: string | null;
 }
 
 interface FormState {
@@ -20,6 +23,8 @@ interface FormState {
   requiresApproval: boolean;
   randomizeItems: boolean;
   sortOrder: number;
+  imageAssetId: number | null;
+  imageUrl: string | null;
   items: DraftItem[];
 }
 
@@ -36,7 +41,9 @@ const INITIAL_STATE: FormState = {
   requiresApproval: false,
   randomizeItems: false,
   sortOrder: 0,
-  items: [{ key: crypto.randomUUID(), label: "", sortOrder: 0 }],
+  imageAssetId: null,
+  imageUrl: null,
+  items: [{ key: crypto.randomUUID(), label: "", sortOrder: 0, imageAssetId: null, imageUrl: null }],
 };
 
 const TIME_SLOT_OPTIONS: { value: TimeSlot; label: string }[] = [
@@ -99,6 +106,8 @@ export default function AdminRoutineForm() {
         requiresApproval: existing.requiresApproval,
         randomizeItems: existing.randomizeItems,
         sortOrder: existing.sortOrder,
+        imageAssetId: existing.imageAssetId ?? null,
+        imageUrl: existing.imageUrl ?? null,
         items: existing.items
           .filter((item) => !item.archivedAt)
           .map((item) => ({
@@ -106,6 +115,8 @@ export default function AdminRoutineForm() {
             serverId: item.id,
             label: item.label,
             sortOrder: item.sortOrder,
+            imageAssetId: item.imageAssetId ?? null,
+            imageUrl: item.imageUrl ?? null,
           })),
       });
       setHasPopulated(true);
@@ -122,9 +133,14 @@ export default function AdminRoutineForm() {
         requiresApproval: data.requiresApproval,
         randomizeItems: data.randomizeItems,
         sortOrder: data.sortOrder,
+        imageAssetId: data.imageAssetId,
         items: data.items
           .filter((item) => item.label.trim())
-          .map((item, idx) => ({ label: item.label.trim(), sortOrder: idx })),
+          .map((item, idx) => ({
+            label: item.label.trim(),
+            sortOrder: idx,
+            imageAssetId: item.imageAssetId,
+          })),
       });
       if (!result.ok) throw result.error;
       return result.data;
@@ -143,6 +159,7 @@ export default function AdminRoutineForm() {
           id: item.serverId,
           label: item.label.trim(),
           sortOrder: idx,
+          imageAssetId: item.imageAssetId,
         }));
 
       const removedItems = (existing?.items ?? [])
@@ -162,6 +179,7 @@ export default function AdminRoutineForm() {
         requiresApproval: data.requiresApproval,
         randomizeItems: data.randomizeItems,
         sortOrder: data.sortOrder,
+        imageAssetId: data.imageAssetId,
         items: [...activeItems, ...removedItems],
       });
       if (!result.ok) throw result.error;
@@ -195,7 +213,7 @@ export default function AdminRoutineForm() {
       ...prev,
       items: [
         ...prev.items,
-        { key: crypto.randomUUID(), label: "", sortOrder: prev.items.length },
+        { key: crypto.randomUUID(), label: "", sortOrder: prev.items.length, imageAssetId: null, imageUrl: null },
       ],
     }));
     if (errors.items) {
@@ -388,6 +406,17 @@ export default function AdminRoutineForm() {
         </div>
 
         <div className="rounded-2xl bg-[var(--color-surface)] p-6 shadow-card">
+          <AssetPicker
+            value={form.imageAssetId}
+            imageUrl={form.imageUrl ?? undefined}
+            onChange={(assetId, imageUrl) => {
+              setForm((prev) => ({ ...prev, imageAssetId: assetId, imageUrl }));
+            }}
+            label="Routine Image"
+          />
+        </div>
+
+        <div className="rounded-2xl bg-[var(--color-surface)] p-6 shadow-card">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg font-semibold text-[var(--color-text-secondary)]">
               Checklist Items
@@ -407,56 +436,72 @@ export default function AdminRoutineForm() {
             </p>
           )}
 
-          <div className="mt-4 space-y-2" aria-describedby={errors.items ? "items-error" : undefined}>
+          <div className="mt-4 space-y-4" aria-describedby={errors.items ? "items-error" : undefined}>
             {form.items.map((item, index) => (
-              <div key={item.key} className="flex items-center gap-2">
-                <div className="flex flex-col">
+              <div key={item.key} className="space-y-2 rounded-xl border border-[var(--color-border)] p-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex flex-col">
+                    <button
+                      type="button"
+                      onClick={() => moveItem(index, "up")}
+                      disabled={index === 0}
+                      aria-label={`Move item ${index + 1} up`}
+                      className="rounded p-1 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-muted)] disabled:opacity-30"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveItem(index, "down")}
+                      disabled={index === form.items.length - 1}
+                      aria-label={`Move item ${index + 1} down`}
+                      className="rounded p-1 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-muted)] disabled:opacity-30"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <label className="sr-only" htmlFor={`item-${item.key}`}>
+                    Checklist item {index + 1}
+                  </label>
+                  <input
+                    id={`item-${item.key}`}
+                    type="text"
+                    value={item.label}
+                    onChange={(e) => updateItemLabel(item.key, e.target.value)}
+                    placeholder={`Item ${index + 1}`}
+                    className="flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 font-body text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-faint)] focus:border-[var(--color-amber-500)] focus:outline-none focus:ring-2 focus:ring-[var(--color-amber-500)]"
+                  />
+
                   <button
                     type="button"
-                    onClick={() => moveItem(index, "up")}
-                    disabled={index === 0}
-                    aria-label={`Move item ${index + 1} up`}
-                    className="rounded p-1 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-muted)] disabled:opacity-30"
+                    onClick={() => removeItem(item.key)}
+                    aria-label={`Remove item ${index + 1}`}
+                    className="min-h-touch rounded-lg p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-red-600)]"
                   >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => moveItem(index, "down")}
-                    disabled={index === form.items.length - 1}
-                    aria-label={`Move item ${index + 1} down`}
-                    className="rounded p-1 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-muted)] disabled:opacity-30"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 </div>
 
-                <label className="sr-only" htmlFor={`item-${item.key}`}>
-                  Checklist item {index + 1}
-                </label>
-                <input
-                  id={`item-${item.key}`}
-                  type="text"
-                  value={item.label}
-                  onChange={(e) => updateItemLabel(item.key, e.target.value)}
-                  placeholder={`Item ${index + 1}`}
-                  className="flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 font-body text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-faint)] focus:border-[var(--color-amber-500)] focus:outline-none focus:ring-2 focus:ring-[var(--color-amber-500)]"
+                <AssetPicker
+                  value={item.imageAssetId}
+                  imageUrl={item.imageUrl ?? undefined}
+                  onChange={(assetId, imageUrl) => {
+                    setForm((prev) => ({
+                      ...prev,
+                      items: prev.items.map((i) =>
+                        i.key === item.key ? { ...i, imageAssetId: assetId, imageUrl } : i,
+                      ),
+                    }));
+                  }}
+                  label={`Image for item ${index + 1}`}
                 />
-
-                <button
-                  type="button"
-                  onClick={() => removeItem(item.key)}
-                  aria-label={`Remove item ${index + 1}`}
-                  className="min-h-touch rounded-lg p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-red-600)]"
-                >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
               </div>
             ))}
           </div>

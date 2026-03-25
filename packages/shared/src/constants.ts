@@ -49,8 +49,16 @@ export const ACTIVITY_EVENT_TYPES = [
   "reward_rejected",
   "reward_canceled",
   "manual_adjustment",
+  "asset_uploaded",
+  "asset_generated",
+  "asset_archived",
+  "backup_exported",
+  "backup_restored",
 ] as const;
 
 // Rate limiting (submission endpoints: POST /routine-completions, /chore-logs, /reward-requests)
 export const SUBMISSION_RATE_LIMIT_MAX = 10;
 export const SUBMISSION_RATE_LIMIT_WINDOW_SECONDS = 10;
+
+// Push subscription caps
+export const MAX_PUSH_SUBSCRIPTIONS_PER_IP = 10;

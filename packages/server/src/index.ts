@@ -2,7 +2,6 @@ import { loadConfig } from "./config.js";
 import { openDatabase } from "./db/connection.js";
 import { runMigrations } from "./db/migrate.js";
 import { createSettingsService } from "./services/settingsService.js";
-import { initVapidKeys } from "./services/pushService.js";
 import { createApp } from "./app.js";
 
 const SHUTDOWN_TIMEOUT_MS = 5_000;
@@ -25,10 +24,8 @@ async function main() {
     const settingsService = createSettingsService(db);
     await settingsService.bootstrapSettings(config);
 
-    initVapidKeys(config.dataDir, config.publicOrigin);
-    console.log("VAPID keys initialized.");
-
     const app = createApp(db, config);
+    console.log("VAPID keys initialized.");
 
     const server = app.listen(config.port, () => {
       console.log(`Server listening on port ${config.port}`);

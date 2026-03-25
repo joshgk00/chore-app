@@ -9,6 +9,7 @@ import type {
 import { ConflictError, NotFoundError } from "../lib/errors.js";
 import type { ActivityService } from "./activityService.js";
 import type { BadgeService } from "./badgeService.js";
+import type { PushService } from "./pushService.js";
 
 export interface ApprovalService {
   getPendingApprovals(): PendingApprovals;
@@ -126,6 +127,7 @@ export function createApprovalService(
   db: Database.Database,
   activityService: ActivityService,
   badgeService?: BadgeService,
+  pushService?: PushService,
 ): ApprovalService {
   const selectPendingCompletionsStmt = db.prepare(
     `SELECT id, routine_id, routine_name_snapshot, time_slot_snapshot,
@@ -256,7 +258,17 @@ export function createApprovalService(
   );
 
   function approveRoutineCompletion(id: number, reviewNote?: string): RoutineCompletion {
-    return approveRoutineCompletionTx(id, reviewNote);
+    const result = approveRoutineCompletionTx(id, reviewNote);
+    try {
+      pushService?.sendNotification("child", {
+        title: `${result.routineNameSnapshot} approved!`,
+        body: result.pointsSnapshot > 0 ? `+${result.pointsSnapshot} points` : "Great job!",
+        data: { type: "routine_completion", id: result.id, action: "approved" },
+      });
+    } catch (err) {
+      console.error("Failed to send push notification", { entityType: "approval", id: result.id }, err);
+    }
+    return result;
   }
 
   const rejectRoutineCompletionTx = db.transaction(
@@ -284,7 +296,17 @@ export function createApprovalService(
   );
 
   function rejectRoutineCompletion(id: number, reviewNote?: string): RoutineCompletion {
-    return rejectRoutineCompletionTx(id, reviewNote);
+    const result = rejectRoutineCompletionTx(id, reviewNote);
+    try {
+      pushService?.sendNotification("child", {
+        title: `${result.routineNameSnapshot} needs revision`,
+        body: reviewNote || "Check with your parent",
+        data: { type: "routine_completion", id: result.id, action: "rejected" },
+      });
+    } catch (err) {
+      console.error("Failed to send push notification", { entityType: "approval", id: result.id }, err);
+    }
+    return result;
   }
 
   const approveChoreLogTx = db.transaction(
@@ -320,7 +342,17 @@ export function createApprovalService(
   );
 
   function approveChoreLog(id: number, reviewNote?: string): ChoreLog {
-    return approveChoreLogTx(id, reviewNote);
+    const result = approveChoreLogTx(id, reviewNote);
+    try {
+      pushService?.sendNotification("child", {
+        title: `${result.choreNameSnapshot} approved!`,
+        body: result.pointsSnapshot > 0 ? `+${result.pointsSnapshot} points` : "Great job!",
+        data: { type: "chore_log", id: result.id, action: "approved" },
+      });
+    } catch (err) {
+      console.error("Failed to send push notification", { entityType: "approval", id: result.id }, err);
+    }
+    return result;
   }
 
   const rejectChoreLogTx = db.transaction(
@@ -348,7 +380,17 @@ export function createApprovalService(
   );
 
   function rejectChoreLog(id: number, reviewNote?: string): ChoreLog {
-    return rejectChoreLogTx(id, reviewNote);
+    const result = rejectChoreLogTx(id, reviewNote);
+    try {
+      pushService?.sendNotification("child", {
+        title: `${result.choreNameSnapshot} needs revision`,
+        body: reviewNote || "Check with your parent",
+        data: { type: "chore_log", id: result.id, action: "rejected" },
+      });
+    } catch (err) {
+      console.error("Failed to send push notification", { entityType: "approval", id: result.id }, err);
+    }
+    return result;
   }
 
   const approveRewardRequestTx = db.transaction(
@@ -384,7 +426,17 @@ export function createApprovalService(
   );
 
   function approveRewardRequest(id: number, reviewNote?: string): RewardRequest {
-    return approveRewardRequestTx(id, reviewNote);
+    const result = approveRewardRequestTx(id, reviewNote);
+    try {
+      pushService?.sendNotification("child", {
+        title: `${result.rewardNameSnapshot} approved!`,
+        body: `Enjoy your reward!`,
+        data: { type: "reward_request", id: result.id, action: "approved" },
+      });
+    } catch (err) {
+      console.error("Failed to send push notification", { entityType: "approval", id: result.id }, err);
+    }
+    return result;
   }
 
   const rejectRewardRequestTx = db.transaction(
@@ -412,7 +464,17 @@ export function createApprovalService(
   );
 
   function rejectRewardRequest(id: number, reviewNote?: string): RewardRequest {
-    return rejectRewardRequestTx(id, reviewNote);
+    const result = rejectRewardRequestTx(id, reviewNote);
+    try {
+      pushService?.sendNotification("child", {
+        title: `${result.rewardNameSnapshot} not approved`,
+        body: reviewNote || "Check with your parent",
+        data: { type: "reward_request", id: result.id, action: "rejected" },
+      });
+    } catch (err) {
+      console.error("Failed to send push notification", { entityType: "approval", id: result.id }, err);
+    }
+    return result;
   }
 
   return {

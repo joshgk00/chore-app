@@ -72,6 +72,7 @@ export interface ChecklistItem {
   routineId: number;
   label: string;
   imageAssetId?: number;
+  imageUrl?: string;
   sortOrder: number;
   archivedAt?: string;
 }
@@ -84,6 +85,7 @@ export interface Routine {
   points: number;
   requiresApproval: boolean;
   imageAssetId?: number;
+  imageUrl?: string;
   randomizeItems: boolean;
   sortOrder: number;
   items: ChecklistItem[];
@@ -148,6 +150,7 @@ export interface Reward {
   name: string;
   pointsCost: number;
   imageAssetId?: number;
+  imageUrl?: string;
   sortOrder: number;
   archivedAt?: string;
 }
@@ -193,6 +196,38 @@ export interface Badge {
   id: number;
   badgeKey: string;
   earnedAt: string;
+}
+
+export interface PushSubscribePayload {
+  role: PushRole;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}
+
+export interface BackupManifest {
+  appVersion: string;
+  schemaVersion: string;
+  timezone: string;
+  exportedAt: string;
+}
+
+export interface Asset {
+  id: number;
+  source: AssetSource;
+  reusable: boolean;
+  status: AssetStatus;
+  originalFilename: string | null;
+  storedFilename: string;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  width: number | null;
+  height: number | null;
+  prompt: string | null;
+  model: string | null;
+  createdAt: string;
+  archivedAt: string | null;
+  url: string;
 }
 
 export interface BootstrapData {

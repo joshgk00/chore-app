@@ -202,6 +202,78 @@ describe("admin routines routes", () => {
       expect(res.status).toBe(422);
       db.close();
     });
+
+    it("creates routine with imageAssetId", async () => {
+      const { db, app } = await createTestApp();
+      const cookies = await loginAdmin(app);
+
+      const res = await request(app)
+        .post("/api/admin/routines")
+        .set("Cookie", cookies)
+        .send({
+          name: "Routine With Image",
+          timeSlot: "morning",
+          completionRule: "once_per_day",
+          points: 5,
+          requiresApproval: false,
+          randomizeItems: false,
+          sortOrder: 10,
+          imageAssetId: 1,
+          items: [{ label: "Step 1", sortOrder: 1 }],
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.data.imageAssetId).toBe(1);
+      expect(res.body.data.imageUrl).toBe("/assets/test-asset.webp");
+      db.close();
+    });
+
+    it("creates routine with item imageAssetId", async () => {
+      const { db, app } = await createTestApp();
+      const cookies = await loginAdmin(app);
+
+      const res = await request(app)
+        .post("/api/admin/routines")
+        .set("Cookie", cookies)
+        .send({
+          name: "Routine With Item Image",
+          timeSlot: "morning",
+          completionRule: "once_per_day",
+          points: 5,
+          requiresApproval: false,
+          randomizeItems: false,
+          sortOrder: 11,
+          items: [{ label: "Step 1", sortOrder: 1, imageAssetId: 1 }],
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.data.items[0].imageAssetId).toBe(1);
+      expect(res.body.data.items[0].imageUrl).toBe("/assets/test-asset.webp");
+      db.close();
+    });
+
+    it("returns 422 for invalid imageAssetId", async () => {
+      const { db, app } = await createTestApp();
+      const cookies = await loginAdmin(app);
+
+      const res = await request(app)
+        .post("/api/admin/routines")
+        .set("Cookie", cookies)
+        .send({
+          name: "Bad Image",
+          timeSlot: "morning",
+          completionRule: "once_per_day",
+          points: 5,
+          requiresApproval: false,
+          randomizeItems: false,
+          sortOrder: 12,
+          imageAssetId: "not-a-number",
+          items: [{ label: "Step 1", sortOrder: 1 }],
+        });
+
+      expect(res.status).toBe(422);
+      db.close();
+    });
   });
 
   describe("PUT /api/admin/routines/:id", () => {
@@ -275,6 +347,41 @@ describe("admin routines routes", () => {
         .send({ name: "Updated" });
 
       expect(res.status).toBe(409);
+      db.close();
+    });
+
+    it("updates routine imageAssetId", async () => {
+      const { db, app } = await createTestApp();
+      const cookies = await loginAdmin(app);
+
+      const res = await request(app)
+        .put("/api/admin/routines/1")
+        .set("Cookie", cookies)
+        .send({ imageAssetId: 1 });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.imageAssetId).toBe(1);
+      expect(res.body.data.imageUrl).toBe("/assets/test-asset.webp");
+      db.close();
+    });
+
+    it("clears routine imageAssetId with null", async () => {
+      const { db, app } = await createTestApp();
+      const cookies = await loginAdmin(app);
+
+      await request(app)
+        .put("/api/admin/routines/1")
+        .set("Cookie", cookies)
+        .send({ imageAssetId: 1 });
+
+      const res = await request(app)
+        .put("/api/admin/routines/1")
+        .set("Cookie", cookies)
+        .send({ imageAssetId: null });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.imageAssetId).toBeUndefined();
+      expect(res.body.data.imageUrl).toBeUndefined();
       db.close();
     });
   });
@@ -371,6 +478,21 @@ describe("admin routines routes", () => {
       const childRes = await request(app).get("/api/routines");
       const childIds = childRes.body.data.map((r: { id: number }) => r.id);
       expect(childIds).not.toContain(4);
+      db.close();
+    });
+
+    it("child endpoint includes imageUrl when asset is attached", async () => {
+      const { db, app } = await createTestApp();
+      const cookies = await loginAdmin(app);
+
+      await request(app)
+        .put("/api/admin/routines/1")
+        .set("Cookie", cookies)
+        .send({ imageAssetId: 1 });
+
+      const childRes = await request(app).get("/api/routines");
+      const routine = childRes.body.data.find((r: { id: number }) => r.id === 1);
+      expect(routine.imageUrl).toBe("/assets/test-asset.webp");
       db.close();
     });
   });

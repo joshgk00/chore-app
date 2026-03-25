@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { PIN_MIN_LENGTH } from "@chore-app/shared";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
+import BackupSettings from "./BackupSettings.js";
+import NotificationSettings from "./NotificationSettings.js";
 
 interface SettingsResponse {
   [key: string]: string;
@@ -535,6 +537,9 @@ export default function SettingsScreen() {
                 </div>
               )}
             </form>
+
+            <NotificationSettings />
+            <BackupSettings />
           </>
         )}
       </div>
