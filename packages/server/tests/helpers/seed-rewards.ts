@@ -1,6 +1,14 @@
 import type Database from "better-sqlite3";
 
 export function seedRewardData(db: Database.Database): void {
+  const existingAsset = db.prepare('SELECT id FROM assets WHERE id = 1').get();
+  if (!existingAsset) {
+    db.prepare(
+      `INSERT INTO assets (id, source, reusable, status, stored_filename, mime_type, size_bytes, width, height)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(1, "upload", 0, "ready", "test-asset.webp", "image/webp", 1024, 100, 100);
+  }
+
   db.prepare(
     `INSERT INTO rewards (id, name, points_cost, active, sort_order)
      VALUES (?, ?, ?, ?, ?)`,

@@ -13,12 +13,14 @@ export interface CreateRewardData {
   name: string;
   pointsCost: number;
   sortOrder: number;
+  imageAssetId?: number | null;
 }
 
 export interface UpdateRewardData {
   name?: string;
   pointsCost?: number;
   sortOrder?: number;
+  imageAssetId?: number | null;
 }
 
 export interface RewardService {
@@ -39,6 +41,7 @@ interface RewardRow {
   name: string;
   points_cost: number;
   image_asset_id: number | null;
+  asset_stored_filename: string | null;
   active: number;
   sort_order: number;
   archived_at: string | null;
@@ -61,6 +64,7 @@ function mapRewardRow(row: RewardRow): Reward {
     name: row.name,
     pointsCost: row.points_cost,
     imageAssetId: row.image_asset_id ?? undefined,
+    imageUrl: row.asset_stored_filename ? `/assets/${row.asset_stored_filename}` : undefined,
     sortOrder: row.sort_order,
   };
 }
@@ -71,6 +75,7 @@ function mapRewardRowAdmin(row: RewardRow): Reward {
     name: row.name,
     pointsCost: row.points_cost,
     imageAssetId: row.image_asset_id ?? undefined,
+    imageUrl: row.asset_stored_filename ? `/assets/${row.asset_stored_filename}` : undefined,
     sortOrder: row.sort_order,
     archivedAt: row.archived_at ?? undefined,
   };
@@ -94,16 +99,22 @@ export function createRewardService(
   activityService: ActivityService,
 ): RewardService {
   const selectActiveRewardsStmt = db.prepare(
-    `SELECT id, name, points_cost, image_asset_id, active, sort_order, archived_at
+    `SELECT rewards.id, rewards.name, rewards.points_cost, rewards.image_asset_id,
+            a.stored_filename AS asset_stored_filename,
+            rewards.active, rewards.sort_order, rewards.archived_at
      FROM rewards
-     WHERE active = 1 AND archived_at IS NULL
-     ORDER BY sort_order ASC`,
+     LEFT JOIN assets a ON rewards.image_asset_id = a.id
+     WHERE rewards.active = 1 AND rewards.archived_at IS NULL
+     ORDER BY rewards.sort_order ASC`,
   );
 
   const selectRewardByIdStmt = db.prepare(
-    `SELECT id, name, points_cost, image_asset_id, active, sort_order, archived_at
+    `SELECT rewards.id, rewards.name, rewards.points_cost, rewards.image_asset_id,
+            a.stored_filename AS asset_stored_filename,
+            rewards.active, rewards.sort_order, rewards.archived_at
      FROM rewards
-     WHERE id = ?`,
+     LEFT JOIN assets a ON rewards.image_asset_id = a.id
+     WHERE rewards.id = ?`,
   );
 
   const selectRequestByKeyStmt = db.prepare(
@@ -142,18 +153,21 @@ export function createRewardService(
   );
 
   const selectAllRewardsStmt = db.prepare(
-    `SELECT id, name, points_cost, image_asset_id, active, sort_order, archived_at
+    `SELECT rewards.id, rewards.name, rewards.points_cost, rewards.image_asset_id,
+            a.stored_filename AS asset_stored_filename,
+            rewards.active, rewards.sort_order, rewards.archived_at
      FROM rewards
-     ORDER BY sort_order ASC`,
+     LEFT JOIN assets a ON rewards.image_asset_id = a.id
+     ORDER BY rewards.sort_order ASC`,
   );
 
   const insertRewardStmt = db.prepare(
-    `INSERT INTO rewards (name, points_cost, sort_order)
-     VALUES (?, ?, ?)`,
+    `INSERT INTO rewards (name, points_cost, sort_order, image_asset_id)
+     VALUES (?, ?, ?, ?)`,
   );
 
   const updateRewardStmt = db.prepare(
-    `UPDATE rewards SET name = ?, points_cost = ?, sort_order = ?, updated_at = datetime('now')
+    `UPDATE rewards SET name = ?, points_cost = ?, sort_order = ?, image_asset_id = ?, updated_at = datetime('now')
      WHERE id = ?`,
   );
 
@@ -288,6 +302,7 @@ export function createRewardService(
       data.name.trim(),
       data.pointsCost,
       data.sortOrder,
+      data.imageAssetId ?? null,
     );
     const rewardId = Number(result.lastInsertRowid);
 
@@ -310,6 +325,7 @@ export function createRewardService(
     const newName = data.name !== undefined ? data.name : existing.name;
     const newPointsCost = data.pointsCost !== undefined ? data.pointsCost : existing.points_cost;
     const newSortOrder = data.sortOrder !== undefined ? data.sortOrder : existing.sort_order;
+    const newImageAssetId = data.imageAssetId !== undefined ? data.imageAssetId : existing.image_asset_id;
 
     if (newName.trim().length === 0) {
       throw new ValidationError("Name is required");
@@ -319,6 +335,7 @@ export function createRewardService(
       newName.trim(),
       newPointsCost,
       newSortOrder,
+      newImageAssetId,
       id,
     );
 

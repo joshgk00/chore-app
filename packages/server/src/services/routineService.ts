@@ -29,7 +29,8 @@ export interface CreateRoutineData {
   requiresApproval: boolean;
   randomizeItems: boolean;
   sortOrder: number;
-  items: { label: string; sortOrder: number }[];
+  imageAssetId?: number | null;
+  items: { label: string; sortOrder: number; imageAssetId?: number | null }[];
 }
 
 export interface UpdateRoutineData {
@@ -40,7 +41,8 @@ export interface UpdateRoutineData {
   requiresApproval?: boolean;
   randomizeItems?: boolean;
   sortOrder?: number;
-  items?: { id?: number; label: string; sortOrder: number; shouldArchive?: boolean }[];
+  imageAssetId?: number | null;
+  items?: { id?: number; label: string; sortOrder: number; shouldArchive?: boolean; imageAssetId?: number | null }[];
 }
 
 export interface RoutineService {
@@ -64,6 +66,7 @@ interface RoutineRow {
   points: number;
   requires_approval: number;
   image_asset_id: number | null;
+  asset_stored_filename: string | null;
   randomize_items: number;
   active: number;
   sort_order: number;
@@ -75,6 +78,7 @@ interface ChecklistItemRow {
   routine_id: number;
   label: string;
   image_asset_id: number | null;
+  asset_stored_filename: string | null;
   sort_order: number;
 }
 
@@ -104,6 +108,7 @@ function mapRoutineRow(row: RoutineRow): Routine {
     points: row.points,
     requiresApproval: row.requires_approval === 1,
     imageAssetId: row.image_asset_id ?? undefined,
+    imageUrl: row.asset_stored_filename ? `/assets/${row.asset_stored_filename}` : undefined,
     randomizeItems: row.randomize_items === 1,
     sortOrder: row.sort_order,
     items: [],
@@ -116,6 +121,7 @@ function mapChecklistItemRow(row: ChecklistItemRow): ChecklistItem {
     routineId: row.routine_id,
     label: row.label,
     imageAssetId: row.image_asset_id ?? undefined,
+    imageUrl: row.asset_stored_filename ? `/assets/${row.asset_stored_filename}` : undefined,
     sortOrder: row.sort_order,
   };
 }
@@ -133,6 +139,7 @@ function mapRoutineRowAdmin(row: RoutineRow): Routine {
     points: row.points,
     requiresApproval: row.requires_approval === 1,
     imageAssetId: row.image_asset_id ?? undefined,
+    imageUrl: row.asset_stored_filename ? `/assets/${row.asset_stored_filename}` : undefined,
     randomizeItems: row.randomize_items === 1,
     sortOrder: row.sort_order,
     items: [],
@@ -146,6 +153,7 @@ function mapChecklistItemRowAdmin(row: AdminChecklistItemRow): ChecklistItem {
     routineId: row.routine_id,
     label: row.label,
     imageAssetId: row.image_asset_id ?? undefined,
+    imageUrl: row.asset_stored_filename ? `/assets/${row.asset_stored_filename}` : undefined,
     sortOrder: row.sort_order,
     archivedAt: row.archived_at ?? undefined,
   };
@@ -176,34 +184,42 @@ export function createRoutineService(
   badgeService?: BadgeService,
 ): RoutineService {
   const selectActiveRoutinesStmt = db.prepare(
-    `SELECT id, name, time_slot, completion_rule, points, requires_approval,
-            image_asset_id, randomize_items, active, sort_order, archived_at
-     FROM routines
-     WHERE active = 1 AND archived_at IS NULL
-     ORDER BY sort_order ASC`,
+    `SELECT r.id, r.name, r.time_slot, r.completion_rule, r.points, r.requires_approval,
+            r.image_asset_id, a.stored_filename AS asset_stored_filename,
+            r.randomize_items, r.active, r.sort_order, r.archived_at
+     FROM routines r
+     LEFT JOIN assets a ON r.image_asset_id = a.id
+     WHERE r.active = 1 AND r.archived_at IS NULL
+     ORDER BY r.sort_order ASC`,
   );
 
   const selectActiveItemsStmt = db.prepare(
-    `SELECT id, routine_id, label, image_asset_id, sort_order
-     FROM checklist_items
-     WHERE routine_id = ? AND active = 1 AND archived_at IS NULL
-     ORDER BY sort_order ASC`,
+    `SELECT ci.id, ci.routine_id, ci.label, ci.image_asset_id,
+            a.stored_filename AS asset_stored_filename, ci.sort_order
+     FROM checklist_items ci
+     LEFT JOIN assets a ON ci.image_asset_id = a.id
+     WHERE ci.routine_id = ? AND ci.active = 1 AND ci.archived_at IS NULL
+     ORDER BY ci.sort_order ASC`,
   );
 
   const selectAllActiveItemsStmt = db.prepare(
-    `SELECT ci.id, ci.routine_id, ci.label, ci.image_asset_id, ci.sort_order
+    `SELECT ci.id, ci.routine_id, ci.label, ci.image_asset_id,
+            a.stored_filename AS asset_stored_filename, ci.sort_order
      FROM checklist_items ci
      INNER JOIN routines r ON ci.routine_id = r.id
+     LEFT JOIN assets a ON ci.image_asset_id = a.id
      WHERE ci.active = 1 AND ci.archived_at IS NULL
        AND r.active = 1 AND r.archived_at IS NULL
      ORDER BY ci.routine_id, ci.sort_order ASC`,
   );
 
   const selectRoutineByIdStmt = db.prepare(
-    `SELECT id, name, time_slot, completion_rule, points, requires_approval,
-            image_asset_id, randomize_items, active, sort_order, archived_at
-     FROM routines
-     WHERE id = ?`,
+    `SELECT r.id, r.name, r.time_slot, r.completion_rule, r.points, r.requires_approval,
+            r.image_asset_id, a.stored_filename AS asset_stored_filename,
+            r.randomize_items, r.active, r.sort_order, r.archived_at
+     FROM routines r
+     LEFT JOIN assets a ON r.image_asset_id = a.id
+     WHERE r.id = ?`,
   );
 
   const selectCompletionByKeyStmt = db.prepare(
@@ -247,43 +263,49 @@ export function createRoutineService(
   );
 
   const selectAllRoutinesStmt = db.prepare(
-    `SELECT id, name, time_slot, completion_rule, points, requires_approval,
-            image_asset_id, randomize_items, active, sort_order, archived_at
-     FROM routines
-     ORDER BY sort_order ASC`,
+    `SELECT r.id, r.name, r.time_slot, r.completion_rule, r.points, r.requires_approval,
+            r.image_asset_id, a.stored_filename AS asset_stored_filename,
+            r.randomize_items, r.active, r.sort_order, r.archived_at
+     FROM routines r
+     LEFT JOIN assets a ON r.image_asset_id = a.id
+     ORDER BY r.sort_order ASC`,
   );
 
   const selectAllItemsForRoutineStmt = db.prepare(
-    `SELECT id, routine_id, label, image_asset_id, sort_order, archived_at
-     FROM checklist_items
-     WHERE routine_id = ?
-     ORDER BY sort_order ASC`,
+    `SELECT ci.id, ci.routine_id, ci.label, ci.image_asset_id,
+            a.stored_filename AS asset_stored_filename, ci.sort_order, ci.archived_at
+     FROM checklist_items ci
+     LEFT JOIN assets a ON ci.image_asset_id = a.id
+     WHERE ci.routine_id = ?
+     ORDER BY ci.sort_order ASC`,
   );
 
   const selectAllItemsAdminBulkStmt = db.prepare(
-    `SELECT ci.id, ci.routine_id, ci.label, ci.image_asset_id, ci.sort_order, ci.archived_at
+    `SELECT ci.id, ci.routine_id, ci.label, ci.image_asset_id,
+            a.stored_filename AS asset_stored_filename, ci.sort_order, ci.archived_at
      FROM checklist_items ci
+     LEFT JOIN assets a ON ci.image_asset_id = a.id
      ORDER BY ci.routine_id, ci.sort_order ASC`,
   );
 
   const insertRoutineStmt = db.prepare(
-    `INSERT INTO routines (name, time_slot, completion_rule, points, requires_approval, randomize_items, sort_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO routines (name, time_slot, completion_rule, points, requires_approval, randomize_items, sort_order, image_asset_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   );
 
   const insertChecklistItemStmt = db.prepare(
-    `INSERT INTO checklist_items (routine_id, label, sort_order)
-     VALUES (?, ?, ?)`,
+    `INSERT INTO checklist_items (routine_id, label, sort_order, image_asset_id)
+     VALUES (?, ?, ?, ?)`,
   );
 
   const updateRoutineStmt = db.prepare(
     `UPDATE routines SET name = ?, time_slot = ?, completion_rule = ?, points = ?,
-            requires_approval = ?, randomize_items = ?, sort_order = ?, updated_at = datetime('now')
+            requires_approval = ?, randomize_items = ?, sort_order = ?, image_asset_id = ?, updated_at = datetime('now')
      WHERE id = ?`,
   );
 
   const updateChecklistItemStmt = db.prepare(
-    `UPDATE checklist_items SET label = ?, sort_order = ?, updated_at = datetime('now')
+    `UPDATE checklist_items SET label = ?, sort_order = ?, image_asset_id = ?, updated_at = datetime('now')
      WHERE id = ? AND routine_id = ?`,
   );
 
@@ -489,11 +511,12 @@ export function createRoutineService(
       data.requiresApproval ? 1 : 0,
       data.randomizeItems ? 1 : 0,
       data.sortOrder,
+      data.imageAssetId ?? null,
     );
     const routineId = Number(result.lastInsertRowid);
 
     for (const item of data.items) {
-      insertChecklistItemStmt.run(routineId, item.label.trim(), item.sortOrder);
+      insertChecklistItemStmt.run(routineId, item.label.trim(), item.sortOrder, item.imageAssetId ?? null);
     }
 
     return getRoutineAdmin(routineId);
@@ -519,6 +542,7 @@ export function createRoutineService(
     const newRequiresApproval = data.requiresApproval !== undefined ? data.requiresApproval : existing.requires_approval === 1;
     const newRandomizeItems = data.randomizeItems !== undefined ? data.randomizeItems : existing.randomize_items === 1;
     const newSortOrder = data.sortOrder !== undefined ? data.sortOrder : existing.sort_order;
+    const newImageAssetId = data.imageAssetId !== undefined ? data.imageAssetId : existing.image_asset_id;
 
     validateRoutineFields(newTimeSlot, newCompletionRule, newPoints, newName);
 
@@ -530,6 +554,7 @@ export function createRoutineService(
       newRequiresApproval ? 1 : 0,
       newRandomizeItems ? 1 : 0,
       newSortOrder,
+      newImageAssetId,
       id,
     );
 
@@ -539,10 +564,10 @@ export function createRoutineService(
           if (item.shouldArchive) {
             archiveChecklistItemStmt.run(item.id, id);
           } else {
-            updateChecklistItemStmt.run(item.label.trim(), item.sortOrder, item.id, id);
+            updateChecklistItemStmt.run(item.label.trim(), item.sortOrder, item.imageAssetId ?? null, item.id, id);
           }
         } else {
-          insertChecklistItemStmt.run(id, item.label.trim(), item.sortOrder);
+          insertChecklistItemStmt.run(id, item.label.trim(), item.sortOrder, item.imageAssetId ?? null);
         }
       }
     }

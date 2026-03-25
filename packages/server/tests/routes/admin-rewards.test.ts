@@ -206,6 +206,44 @@ describe("admin rewards routes", () => {
       expect(res.status).toBe(401);
       db.close();
     });
+
+    it("creates reward with imageAssetId", async () => {
+      const { db, app } = await createTestApp();
+      const cookies = await loginAdmin(app);
+
+      const res = await request(app)
+        .post("/api/admin/rewards")
+        .set("Cookie", cookies)
+        .send({
+          name: "Reward With Image",
+          pointsCost: 15,
+          sortOrder: 5,
+          imageAssetId: 1,
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.data.imageAssetId).toBe(1);
+      expect(res.body.data.imageUrl).toBe("/assets/test-asset.webp");
+      db.close();
+    });
+
+    it("returns 422 for invalid imageAssetId", async () => {
+      const { db, app } = await createTestApp();
+      const cookies = await loginAdmin(app);
+
+      const res = await request(app)
+        .post("/api/admin/rewards")
+        .set("Cookie", cookies)
+        .send({
+          name: "Bad Image",
+          pointsCost: 10,
+          sortOrder: 5,
+          imageAssetId: -1,
+        });
+
+      expect(res.status).toBe(422);
+      db.close();
+    });
   });
 
   describe("PUT /api/admin/rewards/:id", () => {
@@ -286,6 +324,41 @@ describe("admin rewards routes", () => {
         .send({ name: "Test" });
 
       expect(res.status).toBe(401);
+      db.close();
+    });
+
+    it("updates reward imageAssetId", async () => {
+      const { db, app } = await createTestApp();
+      const cookies = await loginAdmin(app);
+
+      const res = await request(app)
+        .put("/api/admin/rewards/1")
+        .set("Cookie", cookies)
+        .send({ imageAssetId: 1 });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.imageAssetId).toBe(1);
+      expect(res.body.data.imageUrl).toBe("/assets/test-asset.webp");
+      db.close();
+    });
+
+    it("clears reward imageAssetId with null", async () => {
+      const { db, app } = await createTestApp();
+      const cookies = await loginAdmin(app);
+
+      await request(app)
+        .put("/api/admin/rewards/1")
+        .set("Cookie", cookies)
+        .send({ imageAssetId: 1 });
+
+      const res = await request(app)
+        .put("/api/admin/rewards/1")
+        .set("Cookie", cookies)
+        .send({ imageAssetId: null });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.imageAssetId).toBeUndefined();
+      expect(res.body.data.imageUrl).toBeUndefined();
       db.close();
     });
   });

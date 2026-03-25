@@ -2,6 +2,11 @@ import type Database from "better-sqlite3";
 
 export function seedRoutineData(db: Database.Database): void {
   db.prepare(
+    `INSERT INTO assets (id, source, reusable, status, stored_filename, mime_type, size_bytes, width, height)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(1, "upload", 0, "ready", "test-asset.webp", "image/webp", 1024, 100, 100);
+
+  db.prepare(
     `INSERT INTO routines (id, name, time_slot, completion_rule, points, requires_approval, randomize_items, active, sort_order)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(1, "Morning Routine", "morning", "once_per_day", 5, 0, 1, 1, 1);

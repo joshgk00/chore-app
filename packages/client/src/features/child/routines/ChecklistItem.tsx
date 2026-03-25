@@ -49,6 +49,14 @@ export default function ChecklistItem({ item, isChecked, onToggle }: Props) {
         )}
       </div>
 
+      {item.imageUrl && (
+        <img
+          src={item.imageUrl}
+          alt=""
+          className="h-8 w-8 shrink-0 rounded-lg object-cover"
+        />
+      )}
+
       <span
         className={`text-lg font-medium transition-all duration-200 ${
           isChecked ? "text-[var(--color-emerald-700)] line-through" : "text-[var(--color-text)]"

@@ -53,6 +53,13 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
   if (pendingRequest) {
     return (
       <div className="rounded-3xl bg-[var(--color-surface)] p-4 shadow-card ring-1 ring-[var(--color-border)]">
+        {reward.imageUrl && (
+          <img
+            src={reward.imageUrl}
+            alt=""
+            className="mb-3 h-24 w-full rounded-2xl object-cover"
+          />
+        )}
         <div className="flex items-center justify-between">
           <h3 className="font-display font-bold text-[var(--color-text)]">{reward.name}</h3>
           <span className="rounded-full bg-[var(--color-amber-100)] px-2.5 py-0.5 text-xs font-bold text-[var(--color-amber-700)]">
@@ -74,6 +81,13 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
 
   return (
     <div className="rounded-3xl bg-[var(--color-surface)] p-4 shadow-card ring-1 ring-[var(--color-border)]">
+      {reward.imageUrl && (
+        <img
+          src={reward.imageUrl}
+          alt=""
+          className="mb-3 h-24 w-full rounded-2xl object-cover"
+        />
+      )}
       <h3 className="font-display font-bold text-[var(--color-text)]">{reward.name}</h3>
       <p className="mt-1 text-sm text-[var(--color-text-muted)]">{reward.pointsCost} pts</p>
 

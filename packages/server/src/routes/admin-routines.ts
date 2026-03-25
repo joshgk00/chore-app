@@ -32,7 +32,7 @@ export function createAdminRoutinesRoutes(routineService: RoutineService) {
 
   router.post("/routines", (req, res, next) => {
     try {
-      const { name, timeSlot, completionRule, points, requiresApproval, randomizeItems, sortOrder, items } = req.body;
+      const { name, timeSlot, completionRule, points, requiresApproval, randomizeItems, sortOrder, items, imageAssetId } = req.body;
 
       if (typeof name !== "string" || name.trim().length === 0) {
         throw new ValidationError("name is required");
@@ -58,6 +58,10 @@ export function createAdminRoutinesRoutes(routineService: RoutineService) {
       if (typeof sortOrder !== "number" || !Number.isInteger(sortOrder)) {
         throw new ValidationError("sortOrder must be an integer");
       }
+      if (imageAssetId !== undefined && imageAssetId !== null &&
+          (typeof imageAssetId !== "number" || !Number.isInteger(imageAssetId) || imageAssetId < 1)) {
+        throw new ValidationError("imageAssetId must be a positive integer or null");
+      }
       if (!Array.isArray(items) || items.length === 0) {
         throw new ValidationError("At least one checklist item is required");
       }
@@ -74,6 +78,10 @@ export function createAdminRoutinesRoutes(routineService: RoutineService) {
         if (typeof item.sortOrder !== "number" || !Number.isInteger(item.sortOrder)) {
           throw new ValidationError("Each item must have an integer sortOrder");
         }
+        if (item.imageAssetId !== undefined && item.imageAssetId !== null &&
+            (typeof item.imageAssetId !== "number" || !Number.isInteger(item.imageAssetId) || item.imageAssetId < 1)) {
+          throw new ValidationError("Each item.imageAssetId must be a positive integer or null");
+        }
       }
 
       const routine = routineService.createRoutine({
@@ -84,9 +92,11 @@ export function createAdminRoutinesRoutes(routineService: RoutineService) {
         requiresApproval,
         randomizeItems,
         sortOrder,
-        items: items.map((i: { label: string; sortOrder: number }) => ({
+        imageAssetId: imageAssetId ?? null,
+        items: items.map((i: { label: string; sortOrder: number; imageAssetId?: number | null }) => ({
           label: i.label.trim(),
           sortOrder: i.sortOrder,
+          imageAssetId: i.imageAssetId ?? null,
         })),
       });
 
@@ -103,7 +113,7 @@ export function createAdminRoutinesRoutes(routineService: RoutineService) {
         throw new ValidationError("Invalid routine ID");
       }
 
-      const { name, timeSlot, completionRule, points, requiresApproval, randomizeItems, sortOrder, items } = req.body;
+      const { name, timeSlot, completionRule, points, requiresApproval, randomizeItems, sortOrder, items, imageAssetId } = req.body;
 
       if (name !== undefined && (typeof name !== "string" || name.trim().length === 0)) {
         throw new ValidationError("name must be a non-empty string");
@@ -129,6 +139,10 @@ export function createAdminRoutinesRoutes(routineService: RoutineService) {
       if (sortOrder !== undefined && (typeof sortOrder !== "number" || !Number.isInteger(sortOrder))) {
         throw new ValidationError("sortOrder must be an integer");
       }
+      if (imageAssetId !== undefined && imageAssetId !== null &&
+          (typeof imageAssetId !== "number" || !Number.isInteger(imageAssetId) || imageAssetId < 1)) {
+        throw new ValidationError("imageAssetId must be a positive integer or null");
+      }
       if (items !== undefined) {
         if (!Array.isArray(items)) {
           throw new ValidationError("items must be an array");
@@ -152,6 +166,10 @@ export function createAdminRoutinesRoutes(routineService: RoutineService) {
           if (typeof item.sortOrder !== "number" || !Number.isInteger(item.sortOrder)) {
             throw new ValidationError("Each item must have an integer sortOrder");
           }
+          if (item.imageAssetId !== undefined && item.imageAssetId !== null &&
+              (typeof item.imageAssetId !== "number" || !Number.isInteger(item.imageAssetId) || item.imageAssetId < 1)) {
+            throw new ValidationError("Each item.imageAssetId must be a positive integer or null");
+          }
         }
       }
 
@@ -163,12 +181,14 @@ export function createAdminRoutinesRoutes(routineService: RoutineService) {
       if (requiresApproval !== undefined) updateData.requiresApproval = requiresApproval;
       if (randomizeItems !== undefined) updateData.randomizeItems = randomizeItems;
       if (sortOrder !== undefined) updateData.sortOrder = sortOrder;
+      if (imageAssetId !== undefined) updateData.imageAssetId = imageAssetId;
       if (items !== undefined) {
-        updateData.items = items.map((i: { id?: number; label: string; sortOrder: number; shouldArchive?: boolean }) => ({
+        updateData.items = items.map((i: { id?: number; label: string; sortOrder: number; shouldArchive?: boolean; imageAssetId?: number | null }) => ({
           id: i.id,
           label: i.label.trim(),
           sortOrder: i.sortOrder,
           shouldArchive: i.shouldArchive,
+          imageAssetId: i.imageAssetId ?? null,
         }));
       }
 

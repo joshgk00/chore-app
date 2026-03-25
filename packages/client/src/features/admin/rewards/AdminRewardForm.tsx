@@ -3,12 +3,15 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
+import AssetPicker from "../assets/AssetPicker.js";
 import type { Reward } from "@chore-app/shared";
 
 interface FormState {
   name: string;
   pointsCost: number;
   sortOrder: number;
+  imageAssetId: number | null;
+  imageUrl: string | null;
 }
 
 interface FormErrors {
@@ -21,6 +24,8 @@ const INITIAL_STATE: FormState = {
   name: "",
   pointsCost: 0,
   sortOrder: 0,
+  imageAssetId: null,
+  imageUrl: null,
 };
 
 function useExistingReward(id: string | undefined) {
@@ -70,6 +75,8 @@ export default function AdminRewardForm() {
         name: existing.name,
         pointsCost: existing.pointsCost,
         sortOrder: existing.sortOrder,
+        imageAssetId: existing.imageAssetId ?? null,
+        imageUrl: existing.imageUrl ?? null,
       });
       setHasPopulated(true);
     }
@@ -81,6 +88,7 @@ export default function AdminRewardForm() {
         name: data.name.trim(),
         pointsCost: data.pointsCost,
         sortOrder: data.sortOrder,
+        imageAssetId: data.imageAssetId,
       });
       if (!result.ok) throw result.error;
       return result.data;
@@ -97,6 +105,7 @@ export default function AdminRewardForm() {
         name: data.name.trim(),
         pointsCost: data.pointsCost,
         sortOrder: data.sortOrder,
+        imageAssetId: data.imageAssetId,
       });
       if (!result.ok) throw result.error;
       return result.data;
@@ -251,6 +260,17 @@ export default function AdminRewardForm() {
               </div>
             </div>
           </fieldset>
+        </div>
+
+        <div className="rounded-2xl bg-[var(--color-surface)] p-6 shadow-card">
+          <AssetPicker
+            value={form.imageAssetId}
+            imageUrl={form.imageUrl ?? undefined}
+            onChange={(assetId, imageUrl) => {
+              setForm((prev) => ({ ...prev, imageAssetId: assetId, imageUrl }));
+            }}
+            label="Reward Image"
+          />
         </div>
 
         {mutation.error && (
