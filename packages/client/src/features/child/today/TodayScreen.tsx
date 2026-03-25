@@ -1,6 +1,8 @@
 import { useBootstrap } from "./hooks/useBootstrap.js";
 import RoutineCard from "../routines/RoutineCard.js";
 import QuickChoreLog from "../chores/QuickChoreLog.js";
+import Mascot from "../../../components/mascot/Mascot.js";
+import { determineMascotState } from "../../../components/mascot/mascotStates.js";
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -49,13 +51,23 @@ export default function TodayScreen() {
   const routines = bootstrap?.routines ?? [];
   const pendingCount = bootstrap?.pendingRoutineCount ?? 0;
   const pendingChoreCount = bootstrap?.pendingChoreCount ?? 0;
+  const hasPendingApprovals = pendingCount > 0 || pendingChoreCount > 0 || (bootstrap?.pendingRewardCount ?? 0) > 0;
+  const hasRecentBadges = (bootstrap?.recentBadges?.length ?? 0) > 0;
+
+  const mascotState = determineMascotState({
+    hasBadgeOrRewardApproval: hasRecentBadges,
+    hasPendingApprovals,
+  });
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] p-4">
       <div className="flex items-start justify-between">
-        <div>
-          <h1 className="font-display text-[28px] font-bold text-[var(--color-text)]">{getGreeting()}!</h1>
-          <p className="mt-0.5 text-[15px] text-[var(--color-text-muted)]">Let's get some things done</p>
+        <div className="flex items-center gap-3">
+          <Mascot state={mascotState} size={48} />
+          <div>
+            <h1 className="font-display text-[28px] font-bold text-[var(--color-text)]">{getGreeting()}!</h1>
+            <p className="mt-0.5 text-[15px] text-[var(--color-text-muted)]">Let's get some things done</p>
+          </div>
         </div>
         <button
           type="button"
