@@ -1,8 +1,10 @@
+import { useState, useEffect } from "react";
 import { useBootstrap } from "./hooks/useBootstrap.js";
 import RoutineCard from "../routines/RoutineCard.js";
 import QuickChoreLog from "../chores/QuickChoreLog.js";
 import Mascot from "../../../components/mascot/Mascot.js";
 import { determineMascotState } from "../../../components/mascot/mascotStates.js";
+import { hasAnyActiveDraft } from "../../../lib/draft.js";
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -13,6 +15,11 @@ function getGreeting(): string {
 
 export default function TodayScreen() {
   const { data: bootstrap, isLoading, error, refetch } = useBootstrap();
+
+  const [hasActiveDraft, setHasActiveDraft] = useState(false);
+  useEffect(() => {
+    hasAnyActiveDraft().then(setHasActiveDraft).catch(() => {});
+  }, []);
 
   if (isLoading) {
     return (
@@ -52,11 +59,18 @@ export default function TodayScreen() {
   const pendingCount = bootstrap?.pendingRoutineCount ?? 0;
   const pendingChoreCount = bootstrap?.pendingChoreCount ?? 0;
   const hasPendingApprovals = pendingCount > 0 || pendingChoreCount > 0 || (bootstrap?.pendingRewardCount ?? 0) > 0;
-  const hasRecentBadges = (bootstrap?.recentBadges?.length ?? 0) > 0;
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const hasBadgeEarnedToday = (bootstrap?.recentBadges ?? []).some(
+    (b) => new Date(b.earnedAt) >= todayStart,
+  );
 
   const mascotState = determineMascotState({
-    hasBadgeOrRewardApproval: hasRecentBadges,
+    hasBadgeOrRewardApproval: hasBadgeEarnedToday,
     hasPendingApprovals,
+    hasActiveDraft,
+    slotConfig: bootstrap?.slotConfig,
   });
 
   return (

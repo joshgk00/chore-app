@@ -19,7 +19,11 @@ export interface MascotContext {
 }
 
 function parseTimeToMinutes(time: string): number {
-  const [h, m] = time.split(":").map(Number);
+  const match = time.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return -1;
+  const h = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10);
+  if (h > 23 || m > 59) return -1;
   return h * 60 + m;
 }
 
@@ -27,6 +31,7 @@ function isBedtime(now: Date, slotConfig: SlotConfig): boolean {
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   const bedtimeEnd = parseTimeToMinutes(slotConfig.bedtimeEnd);
   const morningStart = parseTimeToMinutes(slotConfig.morningStart);
+  if (bedtimeEnd < 0 || morningStart < 0) return false;
   return currentMinutes > bedtimeEnd || currentMinutes < morningStart;
 }
 

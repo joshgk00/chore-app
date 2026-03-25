@@ -237,4 +237,5 @@ export interface BootstrapData {
   pointsSummary?: PointsBalance;
   pendingRewardCount?: number;
   recentBadges?: Badge[];
+  slotConfig?: SlotConfig;
 }

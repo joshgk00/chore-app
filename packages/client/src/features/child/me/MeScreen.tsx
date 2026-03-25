@@ -51,8 +51,14 @@ export default function MeScreen() {
   const earnedBadges = badges ?? [];
   const recentEvents = activity ?? [];
 
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const hasBadgeEarnedToday = earnedBadges.some(
+    (b) => new Date(b.earnedAt) >= todayStart,
+  );
+
   const mascotState = determineMascotState({
-    hasBadgeOrRewardApproval: earnedBadges.length > 0,
+    hasBadgeOrRewardApproval: hasBadgeEarnedToday,
   });
 
   return (

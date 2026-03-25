@@ -155,4 +155,26 @@ describe("determineMascotState", () => {
       expect(determineMascotState(context)).toBe("greeting");
     });
   });
+
+  describe("invalid slot config", () => {
+    it("falls back to greeting when slot times are malformed", () => {
+      const badConfig = {
+        ...slotConfig,
+        bedtimeEnd: "invalid",
+        morningStart: "nope",
+      };
+      const context: MascotContext = { now: makeTime(23), slotConfig: badConfig };
+      expect(determineMascotState(context)).toBe("greeting");
+    });
+
+    it("falls back to greeting when slot times have out-of-range values", () => {
+      const badConfig = {
+        ...slotConfig,
+        bedtimeEnd: "25:00",
+        morningStart: "05:60",
+      };
+      const context: MascotContext = { now: makeTime(23), slotConfig: badConfig };
+      expect(determineMascotState(context)).toBe("greeting");
+    });
+  });
 });
