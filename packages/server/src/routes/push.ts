@@ -5,8 +5,6 @@ import type { AppConfig } from "../config.js";
 import { ValidationError, AuthError } from "../lib/errors.js";
 import { SESSION_COOKIE_NAME } from "@chore-app/shared";
 import { setSessionCookie } from "../lib/sessionCookie.js";
-import { createSubmissionRateLimiter } from "../middleware/submissionRateLimiter.js";
-
 const VALID_ROLES = ["child", "admin"] as const;
 
 export function createPushRoutes(
@@ -15,7 +13,6 @@ export function createPushRoutes(
   config: AppConfig,
 ) {
   const router = Router();
-  const rateLimiter = createSubmissionRateLimiter();
 
   router.get("/vapid-public-key", (_req, res, next) => {
     try {
@@ -26,7 +23,7 @@ export function createPushRoutes(
     }
   });
 
-  router.post("/subscribe", rateLimiter, (req, res, next) => {
+  router.post("/subscribe", (req, res, next) => {
     try {
       const { role, endpoint, p256dh, auth } = req.body;
 

@@ -69,9 +69,10 @@ export function createApp(db: Database.Database, config: AppConfig) {
   app.use("/api/auth", createAuthRoutes(authService, config));
 
   app.use("/api", createChildRoutes(routineService, choreService, rewardService, pointsService, badgeService, activityService, settingsService));
-  app.use("/api", createSubmissionRoutes(routineService, choreService, rewardService, settingsService));
 
   app.use("/api/push", createPushRoutes(pushService, authService, config));
+
+  app.use("/api", createSubmissionRoutes(routineService, choreService, rewardService, settingsService));
 
   app.use("/api/admin", adminAuth(authService, config));
   app.use("/api/admin", createAdminSettingsRoutes(settingsService, authService, config));

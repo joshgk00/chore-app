@@ -96,7 +96,7 @@ export function createAdminRoutinesRoutes(routineService: RoutineService) {
         items: items.map((i: { label: string; sortOrder: number; imageAssetId?: number | null }) => ({
           label: i.label.trim(),
           sortOrder: i.sortOrder,
-          imageAssetId: i.imageAssetId ?? null,
+          imageAssetId: i.imageAssetId,
         })),
       });
 
@@ -188,7 +188,7 @@ export function createAdminRoutinesRoutes(routineService: RoutineService) {
           label: i.label.trim(),
           sortOrder: i.sortOrder,
           shouldArchive: i.shouldArchive,
-          imageAssetId: i.imageAssetId ?? null,
+          imageAssetId: i.imageAssetId,
         }));
       }
 

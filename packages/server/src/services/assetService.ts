@@ -36,7 +36,7 @@ export interface Asset {
   reusable: boolean;
   status: "processing" | "ready" | "failed";
   originalFilename: string | null;
-  storedFilename: string;
+  storedFilename: string | null;
   mimeType: string | null;
   sizeBytes: number | null;
   width: number | null;
@@ -45,7 +45,7 @@ export interface Asset {
   model: string | null;
   createdAt: string;
   archivedAt: string | null;
-  url: string;
+  url: string | null;
 }
 
 export interface AssetFilters {
@@ -113,7 +113,7 @@ function mapAssetRow(row: AssetRow): Asset {
     model: row.model,
     createdAt: row.created_at,
     archivedAt: row.archived_at,
-    url: `/assets/${row.stored_filename}`,
+    url: row.stored_filename ? `/assets/${row.stored_filename}` : null,
   };
 }
 
@@ -250,8 +250,13 @@ export function createAssetService(
     }
 
     try {
-      const { storedFilename, sizeBytes, width, height } =
-        await processImageToWebp(file.path, assetsDir);
+      let processed: Awaited<ReturnType<typeof processImageToWebp>>;
+      try {
+        processed = await processImageToWebp(file.path, assetsDir);
+      } catch {
+        throw new ValidationError("Invalid or corrupt image file");
+      }
+      const { storedFilename, sizeBytes, width, height } = processed;
 
       const result = insertAssetStmt.run(
         "upload",
