@@ -324,6 +324,25 @@ export function createRoutineService(
      WHERE id = ? AND active = 0 AND archived_at IS NOT NULL`,
   );
 
+  const selectAssetExistsStmt = db.prepare(
+    `SELECT id, archived_at FROM assets WHERE id = ?`,
+  );
+
+  const selectItemImageAssetIdStmt = db.prepare(
+    `SELECT image_asset_id FROM checklist_items WHERE id = ? AND routine_id = ?`,
+  );
+
+  function validateAssetId(assetId: number | null | undefined): void {
+    if (assetId == null) return;
+    const asset = selectAssetExistsStmt.get(assetId) as { id: number; archived_at: string | null } | undefined;
+    if (!asset) {
+      throw new ValidationError("Referenced asset does not exist");
+    }
+    if (asset.archived_at !== null) {
+      throw new ValidationError("Referenced asset is archived");
+    }
+  }
+
   function getActiveRoutines(): Routine[] {
     const rows = selectActiveRoutinesStmt.all() as RoutineRow[];
     const allItemRows = selectAllActiveItemsStmt.all() as ChecklistItemRow[];
@@ -502,6 +521,10 @@ export function createRoutineService(
     if (data.items.length === 0) {
       throw new ValidationError("At least one checklist item is required");
     }
+    validateAssetId(data.imageAssetId);
+    for (const item of data.items) {
+      validateAssetId(item.imageAssetId);
+    }
 
     const result = insertRoutineStmt.run(
       data.name.trim(),
@@ -543,6 +566,7 @@ export function createRoutineService(
     const newRandomizeItems = data.randomizeItems !== undefined ? data.randomizeItems : existing.randomize_items === 1;
     const newSortOrder = data.sortOrder !== undefined ? data.sortOrder : existing.sort_order;
     const newImageAssetId = data.imageAssetId !== undefined ? data.imageAssetId : existing.image_asset_id;
+    validateAssetId(newImageAssetId);
 
     validateRoutineFields(newTimeSlot, newCompletionRule, newPoints, newName);
 
@@ -564,9 +588,13 @@ export function createRoutineService(
           if (item.shouldArchive) {
             archiveChecklistItemStmt.run(item.id, id);
           } else {
-            updateChecklistItemStmt.run(item.label.trim(), item.sortOrder, item.imageAssetId ?? null, item.id, id);
+            const existingItem = selectItemImageAssetIdStmt.get(item.id, id) as { image_asset_id: number | null } | undefined;
+            const itemImageAssetId = item.imageAssetId !== undefined ? item.imageAssetId : (existingItem?.image_asset_id ?? null);
+            validateAssetId(itemImageAssetId);
+            updateChecklistItemStmt.run(item.label.trim(), item.sortOrder, itemImageAssetId, item.id, id);
           }
         } else {
+          validateAssetId(item.imageAssetId);
           insertChecklistItemStmt.run(id, item.label.trim(), item.sortOrder, item.imageAssetId ?? null);
         }
       }

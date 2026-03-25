@@ -58,6 +58,11 @@ async function uploadAsset(file: File): Promise<Asset> {
 
     const body = await res.json();
     return body.data;
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("Upload timed out. Please try again.");
+    }
+    throw err;
   } finally {
     clearTimeout(timeoutId);
   }

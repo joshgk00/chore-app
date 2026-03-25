@@ -181,6 +181,21 @@ export function createRewardService(
      WHERE id = ? AND active = 0 AND archived_at IS NOT NULL`,
   );
 
+  const selectAssetExistsStmt = db.prepare(
+    `SELECT id, archived_at FROM assets WHERE id = ?`,
+  );
+
+  function validateAssetId(assetId: number | null | undefined): void {
+    if (assetId == null) return;
+    const asset = selectAssetExistsStmt.get(assetId) as { id: number; archived_at: string | null } | undefined;
+    if (!asset) {
+      throw new ValidationError("Referenced asset does not exist");
+    }
+    if (asset.archived_at !== null) {
+      throw new ValidationError("Referenced asset is archived");
+    }
+  }
+
   function getActiveRewards(): Reward[] {
     const rows = selectActiveRewardsStmt.all() as RewardRow[];
     return rows.map(mapRewardRow);
@@ -297,6 +312,7 @@ export function createRewardService(
     if (data.name.trim().length === 0) {
       throw new ValidationError("Name is required");
     }
+    validateAssetId(data.imageAssetId);
 
     const result = insertRewardStmt.run(
       data.name.trim(),
@@ -326,6 +342,7 @@ export function createRewardService(
     const newPointsCost = data.pointsCost !== undefined ? data.pointsCost : existing.points_cost;
     const newSortOrder = data.sortOrder !== undefined ? data.sortOrder : existing.sort_order;
     const newImageAssetId = data.imageAssetId !== undefined ? data.imageAssetId : existing.image_asset_id;
+    validateAssetId(newImageAssetId);
 
     if (newName.trim().length === 0) {
       throw new ValidationError("Name is required");
