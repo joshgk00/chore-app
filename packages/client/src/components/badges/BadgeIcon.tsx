@@ -27,7 +27,7 @@ export default function BadgeIcon({ badgeKey, isEarned, isNewlyEarned }: BadgeIc
       <div
         className={`relative flex h-[52px] w-[52px] items-center justify-center rounded-2xl text-2xl ${
           isEarned
-            ? "bg-gradient-to-br from-violet-100 to-violet-50 shadow-glow-violet dark:from-violet-900/50 dark:to-violet-800/30"
+            ? "bg-[var(--color-violet-50)] shadow-glow-violet"
             : "bg-[var(--color-surface-muted)]"
         } ${isNewlyEarned ? "animate-badge-unlock animate-badge-glow" : ""}`}
       >
@@ -39,7 +39,7 @@ export default function BadgeIcon({ badgeKey, isEarned, isNewlyEarned }: BadgeIc
           {display.emoji}
         </span>
         {isEarned && (
-          <span className="absolute inset-[-2px] rounded-[18px] border-2 border-violet-400/50 dark:border-violet-500/40" aria-hidden="true" />
+          <span className="absolute inset-[-2px] rounded-[18px] border-2 border-[var(--color-violet-400)]" style={{ opacity: 0.5 }} aria-hidden="true" />
         )}
         {!isEarned && (
           <span className="absolute inset-[-2px] rounded-[18px] border-2 border-dashed border-[var(--color-border)]" aria-hidden="true" />

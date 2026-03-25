@@ -135,7 +135,7 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
           onClick={() => setIsConfirming(true)}
           disabled={!isAffordable || !isOnline || submitMutation.isPending}
           title={!isOnline ? "You're offline" : undefined}
-          className="mt-3 w-full rounded-xl bg-[var(--color-amber-500)] py-2.5 font-bold text-white transition-all duration-200 hover:bg-[var(--color-amber-600)] disabled:cursor-not-allowed disabled:bg-[var(--color-border)] disabled:text-[var(--color-text-faint)]"
+          className="mt-3 w-full rounded-xl bg-[var(--color-amber-500)] py-2.5 font-display font-bold text-white transition-all duration-200 hover:bg-[var(--color-amber-600)] disabled:cursor-not-allowed disabled:bg-[var(--color-border)] disabled:text-[var(--color-text-faint)]"
         >
           {isAffordable ? "Request" : `Need ${reward.pointsCost - availablePoints} more pts`}
         </button>

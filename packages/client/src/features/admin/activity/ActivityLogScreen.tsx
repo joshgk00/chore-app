@@ -231,19 +231,19 @@ export default function ActivityLogScreen() {
                     <tr className="border-b border-[var(--color-border)]">
                       <th
                         scope="col"
-                        className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]"
+                        className="px-4 py-3 text-left font-display text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]"
                       >
                         Date
                       </th>
                       <th
                         scope="col"
-                        className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]"
+                        className="px-4 py-3 text-left font-display text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]"
                       >
                         Event
                       </th>
                       <th
                         scope="col"
-                        className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]"
+                        className="px-4 py-3 text-left font-display text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]"
                       >
                         Summary
                       </th>

@@ -20,9 +20,9 @@ export default function RoutinesScreen() {
         <h1 className="font-display text-2xl font-bold text-[var(--color-text)]">My Routines</h1>
         <div aria-live="polite" className="sr-only">Loading routines...</div>
         <div className="mt-4 animate-pulse space-y-4">
-          <div className="h-6 w-32 rounded-lg bg-[var(--color-border)]" />
+          <div className="h-6 w-32 rounded-lg bg-[var(--color-surface-muted)]" />
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-24 rounded-3xl bg-[var(--color-border)]" />
+            <div key={i} className="h-24 rounded-3xl bg-[var(--color-surface-muted)]" />
           ))}
         </div>
       </div>
@@ -33,7 +33,7 @@ export default function RoutinesScreen() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-bg)] p-4">
         <div aria-live="assertive" className="text-center">
-          <p className="text-xl font-bold text-[var(--color-text-secondary)]">Could not load routines.</p>
+          <p className="font-display text-xl font-bold text-[var(--color-text-secondary)]">Could not load routines.</p>
           <p className="mt-2 text-[var(--color-text-muted)]">Please check your connection and try again.</p>
           <button
             type="button"
@@ -72,7 +72,7 @@ export default function RoutinesScreen() {
       {!hasRoutines && (
         <div className="mt-12 text-center" aria-live="polite">
           <p className="text-5xl" data-emoji>&#127775;</p>
-          <p className="mt-4 text-xl font-bold text-[var(--color-text-muted)]">No routines yet!</p>
+          <p className="mt-4 font-display text-xl font-bold text-[var(--color-text-muted)]">No routines yet!</p>
           <p className="mt-2 text-[var(--color-text-muted)]">Ask a grown-up to set some up for you.</p>
         </div>
       )}
