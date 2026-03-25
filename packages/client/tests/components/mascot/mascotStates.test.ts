@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { determineMascotState, type MascotContext } from "../../../src/components/mascot/mascotStates.js";
-import { DEFAULT_TIME_SLOTS } from "@chore-app/shared";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { determineMascotState, isRecentApproval, type MascotContext } from "../../../src/components/mascot/mascotStates.js";
+import { DEFAULT_TIME_SLOTS, RECENT_APPROVAL_WINDOW_MS } from "@chore-app/shared";
 
 const slotConfig = {
   morningStart: DEFAULT_TIME_SLOTS.morning_start,
@@ -176,5 +176,60 @@ describe("determineMascotState", () => {
       const context: MascotContext = { now: makeTime(23), slotConfig: badConfig };
       expect(determineMascotState(context)).toBe("greeting");
     });
+  });
+});
+
+describe("isRecentApproval", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns false when lastApprovalAt is undefined", () => {
+    expect(isRecentApproval(undefined)).toBe(false);
+  });
+
+  it("returns false when lastApprovalAt is empty string", () => {
+    expect(isRecentApproval("")).toBe(false);
+  });
+
+  it("returns true when approval is within the window", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-25T12:05:00Z"));
+
+    expect(isRecentApproval("2026-03-25T12:00:00Z")).toBe(true);
+  });
+
+  it("returns false when approval is older than the window", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-25T12:15:00Z"));
+
+    expect(isRecentApproval("2026-03-25T12:00:00Z")).toBe(false);
+  });
+
+  it("normalizes SQLite space-separated timestamps", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-25T12:05:00Z"));
+
+    expect(isRecentApproval("2026-03-25 12:00:00")).toBe(true);
+  });
+
+  it("returns false for unparseable timestamps", () => {
+    expect(isRecentApproval("not-a-date")).toBe(false);
+  });
+
+  it("returns false when approval timestamp is in the future", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-25T12:00:00Z"));
+
+    expect(isRecentApproval("2026-03-25T12:05:00Z")).toBe(false);
+  });
+
+  it("returns false when approval is exactly at the window boundary", () => {
+    vi.useFakeTimers();
+    const now = new Date("2026-03-25T12:10:00Z");
+    vi.setSystemTime(now);
+
+    const approvalAt = new Date(now.getTime() - RECENT_APPROVAL_WINDOW_MS).toISOString();
+    expect(isRecentApproval(approvalAt)).toBe(false);
   });
 });

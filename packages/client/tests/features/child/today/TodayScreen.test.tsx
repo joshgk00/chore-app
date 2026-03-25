@@ -152,6 +152,39 @@ describe("TodayScreen", () => {
     });
   });
 
+  it("shows happy mascot when bootstrap includes a recent lastApprovalAt", async () => {
+    server.use(
+      http.get("/api/app/bootstrap", () =>
+        HttpResponse.json({
+          data: {
+            routines: [
+              {
+                id: 1,
+                name: "Morning Routine",
+                timeSlot: "morning",
+                completionRule: "once_per_day",
+                points: 5,
+                requiresApproval: false,
+                randomizeItems: false,
+                sortOrder: 1,
+                items: [{ id: 1, routineId: 1, label: "Brush teeth", sortOrder: 1 }],
+              },
+            ],
+            pendingRoutineCount: 0,
+            lastApprovalAt: new Date().toISOString(),
+          },
+        }),
+      ),
+    );
+
+    renderTodayScreen();
+
+    await waitFor(() => {
+      const mascot = screen.getByRole("img", { name: /mascot/i });
+      expect(mascot).toHaveAttribute("data-state", "happy");
+    });
+  });
+
   it("refetches when refresh button is clicked", async () => {
     let requestCount = 0;
     server.use(

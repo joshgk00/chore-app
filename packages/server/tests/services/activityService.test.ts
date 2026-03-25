@@ -128,4 +128,50 @@ describe('activityService', () => {
       expect(event.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}/);
     });
   });
+
+  describe('getLastApprovalAt', () => {
+    it('returns undefined when no events exist', () => {
+      expect(service.getLastApprovalAt()).toBeUndefined();
+    });
+
+    it('returns undefined when only non-approval events exist', () => {
+      service.recordActivity({ eventType: 'routine_submitted' });
+      service.recordActivity({ eventType: 'chore_submitted' });
+
+      expect(service.getLastApprovalAt()).toBeUndefined();
+    });
+
+    it('returns the created_at of the most recent approval', () => {
+      service.recordActivity({ eventType: 'routine_approved', summary: 'first' });
+      service.recordActivity({ eventType: 'chore_approved', summary: 'second' });
+
+      const result = service.getLastApprovalAt();
+      expect(result).toBeDefined();
+      expect(typeof result).toBe('string');
+    });
+
+    it('returns the newest approval across all approval types', () => {
+      service.recordActivity({ eventType: 'routine_approved', summary: 'older' });
+      service.recordActivity({ eventType: 'reward_approved', summary: 'newest' });
+
+      const result = service.getLastApprovalAt();
+      expect(result).toBeDefined();
+
+      const events = service.getRecentActivity(1);
+      expect(events[0].eventType).toBe('reward_approved');
+      expect(result).toBe(events[0].createdAt);
+    });
+
+    it('ignores non-approval events when finding latest', () => {
+      service.recordActivity({ eventType: 'chore_approved', summary: 'approval' });
+      service.recordActivity({ eventType: 'routine_submitted', summary: 'not approval' });
+
+      const result = service.getLastApprovalAt();
+      expect(result).toBeDefined();
+
+      const allEvents = service.getRecentActivity(10);
+      const approvalEvent = allEvents.find(e => e.eventType === 'chore_approved');
+      expect(result).toBe(approvalEvent?.createdAt);
+    });
+  });
 });

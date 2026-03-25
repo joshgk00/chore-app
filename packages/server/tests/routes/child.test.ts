@@ -401,6 +401,28 @@ describe('badge and activity routes', () => {
     expect(res.body.data.recentBadges).toBeInstanceOf(Array);
   });
 
+  it('GET /api/app/bootstrap returns lastApprovalAt as undefined when no approvals exist', async () => {
+    const app = buildApp();
+    const res = await request(app).get('/api/app/bootstrap');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.lastApprovalAt).toBeUndefined();
+  });
+
+  it('GET /api/app/bootstrap includes lastApprovalAt after an approval', async () => {
+    db.prepare(
+      `INSERT INTO activity_events (event_type, entity_type, entity_id, summary)
+       VALUES (?, ?, ?, ?)`,
+    ).run('routine_approved', 'routine_completion', 1, 'Approved Morning Routine');
+
+    const app = buildApp();
+    const res = await request(app).get('/api/app/bootstrap');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveProperty('lastApprovalAt');
+    expect(typeof res.body.data.lastApprovalAt).toBe('string');
+  });
+
   it('badge awarded after completing a routine that grants immediate points', async () => {
     const app = buildApp();
 
