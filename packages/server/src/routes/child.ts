@@ -113,6 +113,7 @@ export function createChildRoutes(
       const pointsSummary = pointsService.getBalance();
       const pendingRewardCount = rewardService.getPendingRewardRequestCount();
       const recentBadges = badgeService.getRecentBadges(3);
+      const lastApprovalAt = activityService.getLastApprovalAt();
       res.json({
         data: {
           routines: filteredRoutines,
@@ -122,6 +123,7 @@ export function createChildRoutes(
           pendingRewardCount,
           recentBadges,
           slotConfig,
+          lastApprovalAt,
         },
       });
     } catch (err) {

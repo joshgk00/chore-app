@@ -1,5 +1,5 @@
 import type { SlotConfig } from "@chore-app/shared";
-import { DEFAULT_TIME_SLOTS } from "@chore-app/shared";
+import { DEFAULT_TIME_SLOTS, RECENT_APPROVAL_WINDOW_MS } from "@chore-app/shared";
 
 export type MascotState =
   | "greeting"
@@ -45,6 +45,17 @@ function buildSlotConfig(partial?: SlotConfig): SlotConfig {
     bedtimeStart: DEFAULT_TIME_SLOTS.bedtime_start,
     bedtimeEnd: DEFAULT_TIME_SLOTS.bedtime_end,
   };
+}
+
+/** SQLite datetime('now') omits 'T' and 'Z' — normalize for cross-browser Date parsing */
+function normalizeSqliteTimestamp(ts: string): string {
+  return ts.includes("T") ? ts : ts.replace(" ", "T") + "Z";
+}
+
+export function isRecentApproval(lastApprovalAt?: string): boolean {
+  if (!lastApprovalAt) return false;
+  const elapsed = Date.now() - new Date(normalizeSqliteTimestamp(lastApprovalAt)).getTime();
+  return Number.isFinite(elapsed) && elapsed >= 0 && elapsed < RECENT_APPROVAL_WINDOW_MS;
 }
 
 export function determineMascotState(context: MascotContext): MascotState {

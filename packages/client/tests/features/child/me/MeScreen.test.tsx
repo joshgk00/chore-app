@@ -67,6 +67,29 @@ describe('MeScreen', () => {
     });
   });
 
+  it('shows happy mascot when bootstrap includes a recent lastApprovalAt', async () => {
+    server.use(
+      http.get('/api/app/bootstrap', () =>
+        HttpResponse.json({
+          data: {
+            routines: [],
+            pendingRoutineCount: 0,
+            pendingChoreCount: 0,
+            pendingRewardCount: 0,
+            lastApprovalAt: new Date().toISOString(),
+          },
+        }),
+      ),
+    );
+
+    renderWithProviders(<MeScreen />);
+
+    await waitFor(() => {
+      const mascot = screen.getByRole('img', { name: /mascot/i });
+      expect(mascot).toHaveAttribute('data-state', 'happy');
+    });
+  });
+
   it('renders notification opt-in section', async () => {
     renderWithProviders(<MeScreen />);
 

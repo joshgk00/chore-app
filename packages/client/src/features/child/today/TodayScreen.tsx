@@ -3,7 +3,7 @@ import { useBootstrap } from "./hooks/useBootstrap.js";
 import RoutineCard from "../routines/RoutineCard.js";
 import QuickChoreLog from "../chores/QuickChoreLog.js";
 import Mascot from "../../../components/mascot/Mascot.js";
-import { determineMascotState } from "../../../components/mascot/mascotStates.js";
+import { determineMascotState, isRecentApproval } from "../../../components/mascot/mascotStates.js";
 import { hasAnyActiveDraft } from "../../../lib/draft.js";
 
 function getGreeting(): string {
@@ -66,8 +66,11 @@ export default function TodayScreen() {
     (b) => new Date(b.earnedAt) >= todayStart,
   );
 
+  const hasRecentApproval = isRecentApproval(bootstrap?.lastApprovalAt);
+
   const mascotState = determineMascotState({
     hasBadgeOrRewardApproval: hasBadgeEarnedToday,
+    hasRecentApproval,
     hasPendingApprovals,
     hasActiveDraft,
     slotConfig: bootstrap?.slotConfig,

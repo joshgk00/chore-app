@@ -238,4 +238,5 @@ export interface BootstrapData {
   pendingRewardCount?: number;
   recentBadges?: Badge[];
   slotConfig?: SlotConfig;
+  lastApprovalAt?: string;
 }

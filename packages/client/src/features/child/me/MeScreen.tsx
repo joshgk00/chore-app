@@ -8,7 +8,7 @@ import BadgeCollection from "../../../components/badges/BadgeCollection.js";
 import RecentActivity from "./RecentActivity.js";
 import NotificationOptIn from "./NotificationOptIn.js";
 import Mascot from "../../../components/mascot/Mascot.js";
-import { determineMascotState } from "../../../components/mascot/mascotStates.js";
+import { determineMascotState, isRecentApproval } from "../../../components/mascot/mascotStates.js";
 import { hasAnyActiveDraft } from "../../../lib/draft.js";
 
 export default function MeScreen() {
@@ -89,8 +89,11 @@ export default function MeScreen() {
 
   const pendingCount = (bootstrap?.pendingRoutineCount ?? 0) + (bootstrap?.pendingChoreCount ?? 0) + (bootstrap?.pendingRewardCount ?? 0);
 
+  const hasRecentApproval = isRecentApproval(bootstrap?.lastApprovalAt);
+
   const mascotState = determineMascotState({
     hasBadgeOrRewardApproval: hasBadgeEarnedToday,
+    hasRecentApproval,
     hasPendingApprovals: pendingCount > 0,
     hasActiveDraft,
     slotConfig: bootstrap?.slotConfig,
