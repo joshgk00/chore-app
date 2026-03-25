@@ -1,3 +1,4 @@
+import { useRef, useMemo, useEffect } from "react";
 import { usePoints } from "../rewards/hooks/usePoints.js";
 import { useBadges } from "./hooks/useBadges.js";
 import { useRecentActivity } from "./hooks/useRecentActivity.js";
@@ -10,6 +11,27 @@ export default function MeScreen() {
   const { data: points, isLoading: isLoadingPoints, error: pointsError, refetch: refetchPoints } = usePoints();
   const { data: badges, isLoading: isLoadingBadges, error: badgesError, refetch: refetchBadges } = useBadges();
   const { data: activity, isLoading: isLoadingActivity, error: activityError, refetch: refetchActivity } = useRecentActivity();
+
+  const previousBadgeKeysRef = useRef<Set<string>>(new Set());
+  const newlyEarnedKeys = useMemo(() => {
+    if (!badges) return new Set<string>();
+    const currentKeys = new Set(badges.map((b) => b.badgeKey));
+    const newKeys = new Set<string>();
+    for (const key of currentKeys) {
+      if (!previousBadgeKeysRef.current.has(key)) {
+        newKeys.add(key);
+      }
+    }
+    const isInitialLoad = previousBadgeKeysRef.current.size === 0;
+    return isInitialLoad ? new Set<string>() : newKeys;
+  }, [badges]);
+
+  // Ref update must live in useEffect — mutating refs inside useMemo breaks Strict Mode double-render
+  useEffect(() => {
+    if (badges) {
+      previousBadgeKeysRef.current = new Set(badges.map((b) => b.badgeKey));
+    }
+  }, [badges]);
 
   const isLoading = isLoadingPoints || isLoadingBadges || isLoadingActivity;
   const error = pointsError || badgesError || activityError;
@@ -60,7 +82,7 @@ export default function MeScreen() {
       <div className="mt-8">
         <h2 className="font-display text-lg font-semibold text-[var(--color-text-secondary)]">Badges</h2>
         <div className="mt-3 rounded-3xl bg-[var(--color-surface)] p-4 shadow-card">
-          <BadgeCollection earnedBadges={earnedBadges} />
+          <BadgeCollection earnedBadges={earnedBadges} newlyEarnedKeys={newlyEarnedKeys} />
         </div>
       </div>
 

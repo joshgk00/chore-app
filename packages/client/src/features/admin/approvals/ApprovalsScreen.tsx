@@ -125,6 +125,7 @@ function ApprovalCard({
   isOnline,
 }: ApprovalCardProps) {
   const [note, setNote] = useState("");
+  const [isSlidingOut, setIsSlidingOut] = useState(false);
 
   const isThisApprovePending =
     approveMutation.isPending &&
@@ -139,23 +140,21 @@ function ApprovalCard({
   const isActionPending = isThisApprovePending || isThisRejectPending;
 
   function handleApprove() {
-    approveMutation.mutate({
-      type,
-      id,
-      reviewNote: note.trim() || undefined,
-    });
+    approveMutation.mutate(
+      { type, id, reviewNote: note.trim() || undefined },
+      { onSuccess: () => setIsSlidingOut(true) },
+    );
   }
 
   function handleReject() {
-    rejectMutation.mutate({
-      type,
-      id,
-      reviewNote: note.trim() || undefined,
-    });
+    rejectMutation.mutate(
+      { type, id, reviewNote: note.trim() || undefined },
+      { onSuccess: () => setIsSlidingOut(true) },
+    );
   }
 
   return (
-    <div className="rounded-2xl bg-[var(--color-surface)] p-4 shadow-card">
+    <div className={`rounded-2xl bg-[var(--color-surface)] p-4 shadow-card ${isSlidingOut ? "animate-slide-out" : ""}`}>
       <div className="flex items-start justify-between gap-3">
         <h3 className="font-display text-base font-bold text-[var(--color-text)]">
           {name}
