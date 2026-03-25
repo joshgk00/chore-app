@@ -112,8 +112,18 @@ export function createChildRoutes(
       const pendingChoreCount = choreService.getPendingChoreLogCount();
       const pointsSummary = pointsService.getBalance();
       const pendingRewardCount = rewardService.getPendingRewardRequestCount();
-      const recentBadges = badgeService.getRecentBadges(3);
-      const lastApprovalAt = activityService.getLastApprovalAt();
+      let recentBadges;
+      try {
+        recentBadges = badgeService.getRecentBadges(3);
+      } catch {
+        recentBadges = undefined;
+      }
+      let lastApprovalAt;
+      try {
+        lastApprovalAt = activityService.getLastApprovalAt();
+      } catch {
+        lastApprovalAt = undefined;
+      }
       res.json({
         data: {
           routines: filteredRoutines,
