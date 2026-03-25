@@ -25,7 +25,7 @@ export default function RoutineCard({ routine, showSlotBadge }: Props) {
     <Link
       to={`/routines/${routine.id}`}
       aria-label={`Go to ${routine.name}`}
-      className="flex items-center gap-3.5 rounded-3xl border-l-4 border-l-sky-500 bg-[var(--color-surface)] p-4 shadow-card transition-all duration-200 hover:translate-y-[-1px] hover:shadow-elevated active:scale-[0.98] dark:border-l-sky-400"
+      className="animate-card-press flex items-center gap-3.5 rounded-3xl border-l-4 border-l-[var(--color-sky-500)] bg-[var(--color-surface)] p-4 shadow-card transition-all duration-200 hover:translate-y-[-1px] hover:shadow-elevated"
     >
       {routine.imageUrl ? (
         <img
@@ -58,7 +58,7 @@ export default function RoutineCard({ routine, showSlotBadge }: Props) {
         </div>
       </div>
 
-      <span className="shrink-0 rounded-full border-[1.5px] border-amber-200 bg-[var(--color-amber-50)] px-3 py-1 font-display text-sm font-bold text-[var(--color-amber-700)] dark:border-amber-700">
+      <span className="shrink-0 rounded-full border-[1.5px] border-[var(--color-amber-100)] bg-[var(--color-amber-50)] px-3 py-1 font-display text-sm font-bold text-[var(--color-amber-700)]">
         {routine.points} {routine.points === 1 ? "pt" : "pts"}
       </span>
     </Link>

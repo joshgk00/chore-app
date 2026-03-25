@@ -15,10 +15,10 @@ export default function RewardsScreen() {
       <div className="min-h-screen bg-[var(--color-bg)] p-4">
         <div aria-live="polite" className="sr-only">Loading rewards...</div>
         <div className="animate-pulse space-y-4">
-          <div className="h-24 rounded-3xl bg-[var(--color-border)]" />
+          <div className="h-24 rounded-3xl bg-[var(--color-surface-muted)]" />
           <div className="grid grid-cols-2 gap-4">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-40 rounded-3xl bg-[var(--color-border)]" />
+              <div key={i} className="h-40 rounded-3xl bg-[var(--color-surface-muted)]" />
             ))}
           </div>
         </div>
@@ -30,7 +30,7 @@ export default function RewardsScreen() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-bg)] p-4">
         <div aria-live="assertive" className="text-center">
-          <p className="text-xl font-bold text-[var(--color-text-secondary)]">Could not load rewards.</p>
+          <p className="font-display text-xl font-bold text-[var(--color-text-secondary)]">Could not load rewards.</p>
           <p className="mt-2 text-[var(--color-text-muted)]">Please check your connection and try again.</p>
           <button
             type="button"
@@ -58,7 +58,7 @@ export default function RewardsScreen() {
       {rewardList.length === 0 ? (
         <div className="mt-12 text-center" aria-live="polite">
           <p className="text-4xl" data-emoji>&#127873;</p>
-          <p className="mt-2 text-xl font-bold text-[var(--color-text-muted)]">No rewards available yet.</p>
+          <p className="mt-2 font-display text-xl font-bold text-[var(--color-text-secondary)]">No rewards available yet.</p>
           <p className="mt-1 text-[var(--color-text-muted)]">Keep earning points!</p>
         </div>
       ) : (

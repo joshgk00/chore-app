@@ -110,7 +110,7 @@ export default function RoutineChecklist() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-bg)] p-4">
         <div aria-live="assertive" className="text-center">
-          <p className="text-xl font-bold text-[var(--color-text-secondary)]">Oops! Could not load this routine.</p>
+          <p className="font-display text-xl font-bold text-[var(--color-text-secondary)]">Oops! Could not load this routine.</p>
           <p className="mt-2 text-[var(--color-text-muted)]">Please try again in a moment.</p>
           <Link
             to="/routines"
@@ -129,12 +129,12 @@ export default function RoutineChecklist() {
         <div aria-live="polite" className="sr-only">Loading routine...</div>
         <div className="animate-pulse space-y-4">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-[var(--color-border)]" />
-            <div className="h-8 w-48 rounded-lg bg-[var(--color-border)]" />
+            <div className="h-10 w-10 rounded-full bg-[var(--color-surface-muted)]" />
+            <div className="h-8 w-48 rounded-lg bg-[var(--color-surface-muted)]" />
           </div>
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 rounded-3xl bg-[var(--color-border)]" />
+              <div key={i} className="h-16 rounded-3xl bg-[var(--color-surface-muted)]" />
             ))}
           </div>
         </div>
@@ -233,7 +233,7 @@ export default function RoutineChecklist() {
             onClick={handleSubmit}
             disabled={!isAllChecked || !isOnline || submitRoutine.isPending}
             title={!isOnline ? "You're offline" : undefined}
-            className="w-full rounded-full bg-[var(--color-emerald-500)] px-6 py-4 text-lg font-bold text-white shadow-card transition-all duration-200 enabled:hover:bg-[var(--color-emerald-600)] enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+            className="w-full rounded-full bg-[var(--color-emerald-500)] px-6 py-4 font-display text-lg font-bold text-white shadow-card transition-all duration-200 enabled:hover:bg-[var(--color-emerald-600)] enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
           >
             {submitRoutine.isPending ? "Submitting..." : "Complete Routine!"}
           </button>
