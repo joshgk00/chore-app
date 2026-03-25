@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect } from "react";
+import { useCallback, useRef, useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useRoutine } from "./hooks/useRoutine.js";
 import { useSubmitRoutine } from "./hooks/useSubmitRoutine.js";
@@ -18,6 +18,7 @@ export default function RoutineChecklist() {
 
   const { data: routine, isLoading: isRoutineLoading, error: routineError } = useRoutine(routineId);
   const submitRoutine = useSubmitRoutine();
+  const [isShowingCelebration, setIsShowingCelebration] = useState(false);
 
   const {
     draftItems,
@@ -65,7 +66,8 @@ export default function RoutineChecklist() {
       {
         onSuccess: async () => {
           try { await deleteDraft(routine.id); } catch { /* IndexedDB unavailable */ }
-          navigate("/routines");
+          setIsShowingCelebration(true);
+          navigationTimeoutRef.current = setTimeout(() => navigate("/routines"), 800);
         },
         onError: async (error: unknown) => {
           const apiError = error && typeof error === "object" && "code" in error
@@ -225,15 +227,36 @@ export default function RoutineChecklist() {
             You're offline -- connect to submit.
           </p>
         )}
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={!isAllChecked || !isOnline || submitRoutine.isPending}
-          className="w-full rounded-full bg-[var(--color-emerald-500)] px-6 py-4 text-lg font-bold text-white shadow-card transition-all duration-200 enabled:hover:bg-[var(--color-emerald-600)] enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {submitRoutine.isPending ? "Submitting..." : "Complete Routine!"}
-        </button>
+        <div className="celebration-container">
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={!isAllChecked || !isOnline || submitRoutine.isPending}
+            className="w-full rounded-full bg-[var(--color-emerald-500)] px-6 py-4 text-lg font-bold text-white shadow-card transition-all duration-200 enabled:hover:bg-[var(--color-emerald-600)] enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {submitRoutine.isPending ? "Submitting..." : "Complete Routine!"}
+          </button>
+          {isShowingCelebration && (
+            <>
+              <span className="sparkle" aria-hidden="true" />
+              <span className="sparkle" aria-hidden="true" />
+              <span className="sparkle" aria-hidden="true" />
+              <span className="sparkle" aria-hidden="true" />
+            </>
+          )}
+        </div>
       </div>
+
+      {isShowingCelebration && (
+        <div
+          className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
+          aria-live="polite"
+        >
+          <p className="animate-tab-enter font-display text-4xl font-bold text-[var(--color-emerald-500)]" data-emoji>
+            &#127881;
+          </p>
+        </div>
+      )}
     </div>
   );
 }

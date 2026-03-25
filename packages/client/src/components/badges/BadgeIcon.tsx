@@ -1,6 +1,7 @@
 interface BadgeIconProps {
   badgeKey: string;
   isEarned: boolean;
+  isNewlyEarned?: boolean;
 }
 
 const BADGE_DISPLAY: Record<string, { label: string; emoji: string }> = {
@@ -14,7 +15,7 @@ const BADGE_DISPLAY: Record<string, { label: string; emoji: string }> = {
   solo_act: { label: "Solo Act", emoji: "\uD83C\uDFAF" },
 };
 
-export default function BadgeIcon({ badgeKey, isEarned }: BadgeIconProps) {
+export default function BadgeIcon({ badgeKey, isEarned, isNewlyEarned }: BadgeIconProps) {
   const display = BADGE_DISPLAY[badgeKey] ?? { label: badgeKey, emoji: "\uD83C\uDFC5" };
 
   return (
@@ -28,7 +29,7 @@ export default function BadgeIcon({ badgeKey, isEarned }: BadgeIconProps) {
           isEarned
             ? "bg-gradient-to-br from-violet-100 to-violet-50 shadow-glow-violet dark:from-violet-900/50 dark:to-violet-800/30"
             : "bg-[var(--color-surface-muted)]"
-        }`}
+        } ${isNewlyEarned ? "animate-badge-unlock animate-badge-glow" : ""}`}
       >
         <span
           className={isEarned ? "" : "opacity-40 grayscale"}

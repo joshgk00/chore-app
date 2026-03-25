@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useSyncOnReconnect } from "./lib/draft-sync.js";
 import { ErrorBoundary } from "./components/ErrorBoundary.js";
@@ -53,6 +53,18 @@ function ChildErrorFallback() {
   );
 }
 
+function TabContent() {
+  const location = useLocation();
+  // Re-key on the top-level path segment so the fade-in replays on tab switch
+  const tabKey = location.pathname.split("/")[1] || "today";
+
+  return (
+    <div key={tabKey} className="animate-tab-enter">
+      <Outlet />
+    </div>
+  );
+}
+
 function AppShell() {
   return (
     <div className="pb-16">
@@ -64,7 +76,7 @@ function AppShell() {
       </a>
       <main id="main-content">
         <ErrorBoundary fallback={<ChildErrorFallback />}>
-          <Outlet />
+          <TabContent />
         </ErrorBoundary>
       </main>
       <BottomNav />

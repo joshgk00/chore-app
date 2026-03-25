@@ -1,0 +1,224 @@
+/* =============================================
+   Animation keyframes & utility classes
+   =============================================
+   GPU-composited (transform/opacity only) wherever possible.
+   Every animation is disabled when the user prefers reduced motion.
+*/
+
+/* --- Checkmark draw-in --- */
+@keyframes checkmark-draw {
+  from {
+    stroke-dashoffset: 24;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-checkmark-draw {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: checkmark-draw 250ms ease-out forwards;
+}
+
+/* --- Checkbox pop: scale bounce for the check container --- */
+@keyframes checkbox-pop {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-checkbox-pop {
+  animation: checkbox-pop 200ms ease-out;
+}
+
+/* --- Badge unlock: scale up + settle with glow pulse --- */
+@keyframes badge-unlock {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes badge-glow {
+  0%, 100% {
+    box-shadow: 0 0 16px rgba(139, 92, 246, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 28px rgba(139, 92, 246, 0.5);
+  }
+}
+
+.animate-badge-unlock {
+  animation: badge-unlock 350ms ease-out;
+}
+
+.animate-badge-glow {
+  animation: badge-glow 600ms ease-in-out;
+}
+
+/* --- Card press feedback (active state) --- */
+.animate-card-press {
+  transition: transform 150ms ease-out;
+}
+
+.animate-card-press:active {
+  transform: scale(0.98);
+}
+
+/* --- Tab content crossfade --- */
+@keyframes tab-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-tab-enter {
+  animation: tab-fade-in 200ms ease-out;
+}
+
+/* --- Routine completion celebration (CSS-only sparkles) --- */
+@keyframes sparkle-drift-1 {
+  0% {
+    transform: translate(0, 0) scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-20px, -30px) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes sparkle-drift-2 {
+  0% {
+    transform: translate(0, 0) scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(22px, -28px) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes sparkle-drift-3 {
+  0% {
+    transform: translate(0, 0) scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-14px, -36px) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes sparkle-drift-4 {
+  0% {
+    transform: translate(0, 0) scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(18px, -32px) scale(1);
+    opacity: 0;
+  }
+}
+
+.celebration-container {
+  position: relative;
+}
+
+.celebration-container .sparkle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* nth-child offsets account for button being the first child */
+.celebration-container .sparkle:nth-child(2) {
+  top: 0;
+  left: 30%;
+  background: var(--color-amber-400);
+  animation: sparkle-drift-1 400ms ease-out forwards;
+}
+
+.celebration-container .sparkle:nth-child(3) {
+  top: 0;
+  left: 60%;
+  background: var(--color-emerald-400);
+  animation: sparkle-drift-2 400ms ease-out 50ms forwards;
+}
+
+.celebration-container .sparkle:nth-child(4) {
+  top: 0;
+  left: 20%;
+  background: var(--color-violet-400);
+  animation: sparkle-drift-3 400ms ease-out 100ms forwards;
+}
+
+.celebration-container .sparkle:nth-child(5) {
+  top: 0;
+  left: 70%;
+  background: var(--color-amber-500);
+  animation: sparkle-drift-4 400ms ease-out 75ms forwards;
+}
+
+/* --- Approval card slide-out (GPU-composited: transform + opacity only) --- */
+@keyframes slide-out-left {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+}
+
+.animate-slide-out {
+  animation: slide-out-left 300ms ease-in forwards;
+}
+
+/* --- Reduced motion: disable everything --- */
+@media (prefers-reduced-motion: reduce) {
+  .animate-checkmark-draw,
+  .animate-checkbox-pop,
+  .animate-badge-unlock,
+  .animate-badge-glow,
+  .animate-tab-enter,
+  .animate-slide-out,
+  .celebration-container .sparkle {
+    animation: none !important;
+  }
+
+  .animate-card-press:active {
+    transform: none !important;
+  }
+
+  .animate-checkmark-draw {
+    stroke-dashoffset: 0;
+    stroke-dasharray: none;
+  }
+}

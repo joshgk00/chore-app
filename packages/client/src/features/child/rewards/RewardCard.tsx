@@ -52,7 +52,7 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
 
   if (pendingRequest) {
     return (
-      <div className="rounded-3xl bg-[var(--color-surface)] p-4 shadow-card ring-1 ring-[var(--color-border)]">
+      <div className="animate-card-press rounded-3xl bg-[var(--color-surface)] p-4 shadow-card ring-1 ring-[var(--color-border)]">
         {reward.imageUrl && (
           <img
             src={reward.imageUrl}
@@ -80,7 +80,7 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
   }
 
   return (
-    <div className="rounded-3xl bg-[var(--color-surface)] p-4 shadow-card ring-1 ring-[var(--color-border)]">
+    <div className="animate-card-press rounded-3xl bg-[var(--color-surface)] p-4 shadow-card ring-1 ring-[var(--color-border)]">
       {reward.imageUrl && (
         <img
           src={reward.imageUrl}
