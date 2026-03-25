@@ -5,13 +5,28 @@ import { registerRoute } from 'workbox-routing';
 import { CacheFirst, NetworkFirst } from 'workbox-strategies';
 import { ExpirationPlugin } from 'workbox-expiration';
 
-declare const self: ServiceWorkerGlobalScope;
+declare const self: ServiceWorkerGlobalScope & {
+  __WB_MANIFEST: (string | { url: string; revision: string | null })[];
+};
 
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
 
+const CACHEABLE_API_PATHS = [
+  '/api/app/bootstrap',
+  '/api/routines',
+  '/api/chores',
+  '/api/rewards',
+  '/api/badges',
+  '/api/activity/recent',
+  '/api/points/summary',
+  '/api/points/ledger',
+];
+
 registerRoute(
-  ({ url }) => url.pathname.startsWith('/api/'),
+  ({ url, request }) =>
+    request.method === 'GET' &&
+    CACHEABLE_API_PATHS.some((path) => url.pathname === path || url.pathname.startsWith(`${path}/`)),
   new NetworkFirst({ networkTimeoutSeconds: 3 }),
 );
 

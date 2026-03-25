@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => {
         strategies: 'injectManifest',
         srcDir: 'src',
         filename: 'sw.ts',
+        manifestFilename: 'manifest.json',
         manifest: {
           name: 'Chores',
           short_name: 'Chores',
