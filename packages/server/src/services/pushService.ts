@@ -257,11 +257,19 @@ export function createPushService(
     return { deleted: deleteResult.changes, expired: expireResult.changes };
   }
 
-  cleanupStaleSubscriptions();
-  const cleanupTimer = setInterval(
-    cleanupStaleSubscriptions,
-    PUSH_CLEANUP_INTERVAL_HOURS * 60 * 60 * 1000,
-  );
+  try {
+    cleanupStaleSubscriptions();
+  } catch (err) {
+    console.error("Push subscription cleanup failed on startup:", err);
+  }
+
+  const cleanupTimer = setInterval(() => {
+    try {
+      cleanupStaleSubscriptions();
+    } catch (err) {
+      console.error("Push subscription cleanup failed:", err);
+    }
+  }, PUSH_CLEANUP_INTERVAL_HOURS * 60 * 60 * 1000);
   cleanupTimer.unref();
 
   return {

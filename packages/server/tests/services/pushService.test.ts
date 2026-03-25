@@ -369,6 +369,12 @@ describe("pushService", () => {
   });
 
   describe("cleanupStaleSubscriptions", () => {
+    function daysAgo(days: number): string {
+      const d = new Date();
+      d.setDate(d.getDate() - days);
+      return d.toISOString().replace("T", " ").slice(0, 19);
+    }
+
     function insertSubscription(
       endpoint: string,
       overrides: {
@@ -380,9 +386,9 @@ describe("pushService", () => {
     ) {
       const {
         status = "active",
-        updatedAt = "2026-03-25 00:00:00",
+        updatedAt = daysAgo(0),
         lastSuccessAt = null,
-        createdAt = "2026-03-25 00:00:00",
+        createdAt = daysAgo(0),
       } = overrides;
 
       db.prepare(
@@ -394,7 +400,7 @@ describe("pushService", () => {
     it("deletes failed subscriptions older than 30 days", () => {
       insertSubscription("https://push.example.com/old-failed", {
         status: "failed",
-        updatedAt: "2026-01-01 00:00:00",
+        updatedAt: daysAgo(45),
       });
 
       const result = pushService.cleanupStaleSubscriptions();
@@ -405,10 +411,35 @@ describe("pushService", () => {
       expect(row).toBeUndefined();
     });
 
+    it("keeps failed subscriptions at exactly 29 days old", () => {
+      insertSubscription("https://push.example.com/boundary-failed", {
+        status: "failed",
+        updatedAt: daysAgo(29),
+      });
+
+      const result = pushService.cleanupStaleSubscriptions();
+
+      expect(result.deleted).toBe(0);
+      const row = db.prepare("SELECT * FROM push_subscriptions WHERE endpoint = ?")
+        .get("https://push.example.com/boundary-failed");
+      expect(row).toBeDefined();
+    });
+
+    it("deletes failed subscriptions at 31 days old", () => {
+      insertSubscription("https://push.example.com/just-past-failed", {
+        status: "failed",
+        updatedAt: daysAgo(31),
+      });
+
+      const result = pushService.cleanupStaleSubscriptions();
+
+      expect(result.deleted).toBe(1);
+    });
+
     it("keeps recently failed subscriptions", () => {
       insertSubscription("https://push.example.com/recent-failed", {
         status: "failed",
-        updatedAt: new Date().toISOString(),
+        updatedAt: daysAgo(1),
       });
 
       const result = pushService.cleanupStaleSubscriptions();
@@ -422,8 +453,8 @@ describe("pushService", () => {
     it("marks active subscriptions as expired when last_success_at is older than 90 days", () => {
       insertSubscription("https://push.example.com/stale-active", {
         status: "active",
-        lastSuccessAt: "2025-12-01 00:00:00",
-        createdAt: "2025-11-01 00:00:00",
+        lastSuccessAt: daysAgo(100),
+        createdAt: daysAgo(120),
       });
 
       const result = pushService.cleanupStaleSubscriptions();
@@ -434,11 +465,35 @@ describe("pushService", () => {
       expect(row.status).toBe("expired");
     });
 
+    it("keeps active subscriptions at exactly 89 days since last success", () => {
+      insertSubscription("https://push.example.com/boundary-active", {
+        status: "active",
+        lastSuccessAt: daysAgo(89),
+        createdAt: daysAgo(120),
+      });
+
+      const result = pushService.cleanupStaleSubscriptions();
+
+      expect(result.expired).toBe(0);
+    });
+
+    it("expires active subscriptions at 91 days since last success", () => {
+      insertSubscription("https://push.example.com/just-past-active", {
+        status: "active",
+        lastSuccessAt: daysAgo(91),
+        createdAt: daysAgo(120),
+      });
+
+      const result = pushService.cleanupStaleSubscriptions();
+
+      expect(result.expired).toBe(1);
+    });
+
     it("uses created_at as fallback when last_success_at is null", () => {
       insertSubscription("https://push.example.com/never-succeeded", {
         status: "active",
         lastSuccessAt: null,
-        createdAt: "2025-11-01 00:00:00",
+        createdAt: daysAgo(100),
       });
 
       const result = pushService.cleanupStaleSubscriptions();
@@ -452,7 +507,7 @@ describe("pushService", () => {
     it("leaves active subscriptions with recent success alone", () => {
       insertSubscription("https://push.example.com/healthy", {
         status: "active",
-        lastSuccessAt: new Date().toISOString(),
+        lastSuccessAt: daysAgo(0),
       });
 
       const result = pushService.cleanupStaleSubscriptions();
@@ -466,7 +521,7 @@ describe("pushService", () => {
     it("does not touch already-expired subscriptions", () => {
       insertSubscription("https://push.example.com/already-expired", {
         status: "expired",
-        updatedAt: "2025-01-01 00:00:00",
+        updatedAt: daysAgo(200),
       });
 
       const result = pushService.cleanupStaleSubscriptions();
@@ -481,16 +536,16 @@ describe("pushService", () => {
     it("handles both deletions and expirations in a single call", () => {
       insertSubscription("https://push.example.com/to-delete", {
         status: "failed",
-        updatedAt: "2025-01-01 00:00:00",
+        updatedAt: daysAgo(45),
       });
       insertSubscription("https://push.example.com/to-expire", {
         status: "active",
-        lastSuccessAt: "2025-11-01 00:00:00",
-        createdAt: "2025-10-01 00:00:00",
+        lastSuccessAt: daysAgo(100),
+        createdAt: daysAgo(120),
       });
       insertSubscription("https://push.example.com/to-keep", {
         status: "active",
-        lastSuccessAt: new Date().toISOString(),
+        lastSuccessAt: daysAgo(0),
       });
 
       const result = pushService.cleanupStaleSubscriptions();
