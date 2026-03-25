@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useId } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
 
@@ -69,6 +69,7 @@ export default function AssetPicker({ value, imageUrl, onChange, label }: AssetP
   const [generatePrompt, setGeneratePrompt] = useState("");
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const promptId = useId();
 
   const { data: assets, isLoading: isLoadingAssets } = useQuery({
     queryKey: ["admin", "assets", { status: "active" }],
@@ -270,11 +271,11 @@ export default function AssetPicker({ value, imageUrl, onChange, label }: AssetP
           </div>
 
           <div className="mt-3 flex gap-2">
-            <label className="sr-only" htmlFor="generate-prompt">
+            <label className="sr-only" htmlFor={promptId}>
               Image description
             </label>
             <input
-              id="generate-prompt"
+              id={promptId}
               type="text"
               value={generatePrompt}
               onChange={(e) => setGeneratePrompt(e.target.value)}

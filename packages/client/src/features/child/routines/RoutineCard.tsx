@@ -30,7 +30,7 @@ export default function RoutineCard({ routine, showSlotBadge }: Props) {
       {routine.imageUrl ? (
         <img
           src={routine.imageUrl}
-          alt=""
+          alt={routine.name}
           className="h-11 w-11 shrink-0 rounded-[14px] object-cover"
         />
       ) : (

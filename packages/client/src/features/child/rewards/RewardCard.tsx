@@ -56,7 +56,7 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
         {reward.imageUrl && (
           <img
             src={reward.imageUrl}
-            alt=""
+            alt={reward.name}
             className="mb-3 h-24 w-full rounded-2xl object-cover"
           />
         )}

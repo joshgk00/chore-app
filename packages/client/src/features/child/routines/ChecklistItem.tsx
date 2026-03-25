@@ -52,7 +52,7 @@ export default function ChecklistItem({ item, isChecked, onToggle }: Props) {
       {item.imageUrl && (
         <img
           src={item.imageUrl}
-          alt=""
+          alt={item.label}
           className="h-8 w-8 shrink-0 rounded-lg object-cover"
         />
       )}
