@@ -23,7 +23,7 @@ afterEach(() => {
 });
 
 function buildApp() {
-  return createApp(db, testConfig).app;
+  return createApp(db, testConfig);
 }
 
 const validBody = {

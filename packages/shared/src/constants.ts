@@ -60,8 +60,3 @@ export const SUBMISSION_RATE_LIMIT_WINDOW_SECONDS = 10;
 
 // Push subscription caps
 export const MAX_PUSH_SUBSCRIPTIONS_PER_IP = 10;
-
-// Push subscription cleanup
-export const PUSH_CLEANUP_INTERVAL_HOURS = 24;
-export const PUSH_FAILED_TTL_DAYS = 30;
-export const PUSH_INACTIVE_TTL_DAYS = 90;

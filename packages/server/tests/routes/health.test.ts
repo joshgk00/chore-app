@@ -8,7 +8,7 @@ const testConfig = createTestConfig();
 describe('health routes', () => {
   it('GET /api/health returns 200 with status ok', async () => {
     const db = createTestDb();
-    const { app } = createApp(db, testConfig);
+    const app = createApp(db, testConfig);
 
     const res = await request(app).get('/api/health');
     expect(res.status).toBe(200);
@@ -18,7 +18,7 @@ describe('health routes', () => {
 
   it('GET /api/nonexistent returns 404 with error envelope', async () => {
     const db = createTestDb();
-    const { app } = createApp(db, testConfig);
+    const app = createApp(db, testConfig);
 
     const res = await request(app).get('/api/nonexistent');
     expect(res.status).toBe(404);

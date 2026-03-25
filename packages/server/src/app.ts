@@ -34,12 +34,7 @@ import type { AppConfig } from "./config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export interface AppContext {
-  app: express.Express;
-  pushService: ReturnType<typeof createPushService>;
-}
-
-export function createApp(db: Database.Database, config: AppConfig): AppContext {
+export function createApp(db: Database.Database, config: AppConfig) {
   const app = express();
 
   // Trust proxy for Cloudflare Tunnel
@@ -99,5 +94,5 @@ export function createApp(db: Database.Database, config: AppConfig): AppContext 
   // Error handler (must be last)
   app.use(errorHandler);
 
-  return { app, pushService };
+  return app;
 }

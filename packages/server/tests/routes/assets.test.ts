@@ -21,11 +21,11 @@ function createTestApp() {
   const tmpDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "chore-app-assets-routes-"));
   const db = createTestDb();
   const config = createTestConfig({ dataDir: tmpDataDir });
-  const { app } = createApp(db, config);
+  const app = createApp(db, config);
   return { db, app, tmpDataDir };
 }
 
-async function loginAdmin(app: ReturnType<typeof createApp>["app"]) {
+async function loginAdmin(app: ReturnType<typeof createApp>) {
   const res = await request(app).post("/api/auth/verify").send({ pin: "123456" });
   return res.headers["set-cookie"] as string[];
 }

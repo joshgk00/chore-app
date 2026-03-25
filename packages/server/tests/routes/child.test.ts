@@ -24,7 +24,7 @@ afterEach(() => {
 });
 
 function buildApp() {
-  return createApp(db, testConfig).app;
+  return createApp(db, testConfig);
 }
 
 describe('child routes', () => {

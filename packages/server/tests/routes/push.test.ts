@@ -19,7 +19,7 @@ function getTestConfig() {
 async function createTestApp() {
   const db = createTestDb();
   await seedTestData(db);
-  const { app } = createApp(db, getTestConfig());
+  const app = createApp(db, getTestConfig());
   return { db, app };
 }
 
