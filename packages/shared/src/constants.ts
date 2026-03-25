@@ -52,6 +52,8 @@ export const ACTIVITY_EVENT_TYPES = [
   "asset_uploaded",
   "asset_generated",
   "asset_archived",
+  "backup_exported",
+  "backup_restored",
 ] as const;
 
 // Rate limiting (submission endpoints: POST /routine-completions, /chore-logs, /reward-requests)

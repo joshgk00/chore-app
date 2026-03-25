@@ -15,6 +15,7 @@ import { createAdminRewardsRoutes } from "./routes/admin-rewards.js";
 import { createAdminApprovalsRoutes } from "./routes/admin-approvals.js";
 import { createAdminLedgerRoutes } from "./routes/admin-ledger.js";
 import { createAdminAssetsRoutes } from "./routes/admin-assets.js";
+import { createAdminBackupRoutes } from "./routes/admin-backup.js";
 import { createChildRoutes } from "./routes/child.js";
 import { createSubmissionRoutes } from "./routes/submissions.js";
 import { adminAuth } from "./middleware/adminAuth.js";
@@ -28,6 +29,7 @@ import { createApprovalService } from "./services/approvalService.js";
 import { createPointsService } from "./services/pointsService.js";
 import { createBadgeService } from "./services/badgeService.js";
 import { createAssetService } from "./services/assetService.js";
+import { createBackupService } from "./services/backupService.js";
 import { createPushService } from "./services/pushService.js";
 import { createPushRoutes } from "./routes/push.js";
 import type { AppConfig } from "./config.js";
@@ -58,6 +60,7 @@ export function createApp(db: Database.Database, config: AppConfig) {
   const pointsService = createPointsService(db, activityService);
   const approvalService = createApprovalService(db, activityService, badgeService, pushService);
   const assetService = createAssetService(db, config.dataDir, activityService);
+  const backupService = createBackupService(db, config.dataDir, config, activityService);
 
   app.get("/api/health", (_req, res) => {
     res.json({ data: { status: "ok" } });
@@ -79,6 +82,7 @@ export function createApp(db: Database.Database, config: AppConfig) {
   app.use("/api/admin", createAdminApprovalsRoutes(approvalService));
   app.use("/api/admin", createAdminLedgerRoutes(pointsService));
   app.use("/api/admin", createAdminAssetsRoutes(assetService, config.dataDir, config.imageGenApiKey));
+  app.use("/api/admin", createAdminBackupRoutes(backupService, config.dataDir));
 
   app.all("/api/*", (_req, _res, next) => {
     next(new NotFoundError("API endpoint not found"));
