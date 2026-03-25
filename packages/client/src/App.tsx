@@ -68,7 +68,7 @@ function TabContent() {
 
 function AppShell() {
   return (
-    <div className="pb-16">
+    <div className="pb-[calc(4rem+env(safe-area-inset-bottom,0px))]">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-[var(--color-amber-500)] focus:px-4 focus:py-2 focus:text-white"

@@ -319,6 +319,8 @@ describe("AssetPicker", () => {
 
     await user.click(screen.getByRole("button", { name: "Browse" }));
 
-    expect(screen.getByText("Loading assets...")).toBeInTheDocument();
+    const loadingRegion = document.querySelector("[aria-live='polite']")!;
+    expect(loadingRegion).toBeInTheDocument();
+    expect(loadingRegion.children).toHaveLength(8);
   });
 });

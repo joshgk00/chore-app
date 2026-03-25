@@ -255,8 +255,10 @@ export default function AssetPicker({ value, imageUrl, onChange, label }: AssetP
           </div>
 
           {isLoadingAssets ? (
-            <div aria-live="polite" className="mt-3 text-center text-sm text-[var(--color-text-muted)]">
-              Loading assets...
+            <div aria-live="polite" className="mt-3 grid grid-cols-4 gap-2 tablet:grid-cols-6">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="aspect-square animate-pulse rounded-xl bg-[var(--color-surface-muted)]" />
+              ))}
             </div>
           ) : assets && assets.length > 0 ? (
             <div className="mt-3 grid grid-cols-4 gap-2 tablet:grid-cols-6" role="listbox" aria-label="Available assets">
