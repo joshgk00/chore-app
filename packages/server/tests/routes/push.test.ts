@@ -208,5 +208,37 @@ describe("push routes", () => {
       expect(res.status).toBe(422);
       db.close();
     });
+
+    it("rejects non-HTTPS endpoint", async () => {
+      const { db, app } = await createTestApp();
+
+      const res = await request(app)
+        .post("/api/push/subscribe")
+        .send({
+          role: "child",
+          endpoint: "http://push.example.com/sub1",
+          p256dh: "test-p256dh",
+          auth: "test-auth",
+        });
+
+      expect(res.status).toBe(422);
+      db.close();
+    });
+
+    it("rejects invalid URL endpoint", async () => {
+      const { db, app } = await createTestApp();
+
+      const res = await request(app)
+        .post("/api/push/subscribe")
+        .send({
+          role: "child",
+          endpoint: "not-a-url",
+          p256dh: "test-p256dh",
+          auth: "test-auth",
+        });
+
+      expect(res.status).toBe(422);
+      db.close();
+    });
   });
 });

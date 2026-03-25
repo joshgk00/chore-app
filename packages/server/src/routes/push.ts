@@ -51,11 +51,16 @@ export function createPushRoutes(
       if (typeof p256dh !== "string" || p256dh.trim().length === 0) {
         throw new ValidationError("p256dh is required");
       }
+      if (p256dh.length > 512) {
+        throw new ValidationError("p256dh is too long");
+      }
       if (typeof auth !== "string" || auth.trim().length === 0) {
         throw new ValidationError("auth is required");
       }
+      if (auth.length > 512) {
+        throw new ValidationError("auth is too long");
+      }
 
-      // Admin subscriptions require authentication
       if (role === "admin") {
         const token = req.cookies[SESSION_COOKIE_NAME];
         if (!token) {

@@ -51,7 +51,6 @@ export function usePushSupport(): PushSupport {
       setError(null);
 
       try {
-        // Ensure service worker is registered for push events
         await navigator.serviceWorker.register("/sw.js");
 
         const result = await Notification.requestPermission();

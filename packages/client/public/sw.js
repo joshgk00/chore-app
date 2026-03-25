@@ -1,8 +1,12 @@
 /* eslint-disable no-restricted-globals */
 
-// Service worker for push notifications
 self.addEventListener("push", (event) => {
-  const data = event.data?.json() ?? { title: "Chore App", body: "" };
+  let data = { title: "Chore App", body: "" };
+  try {
+    data = event.data?.json() ?? data;
+  } catch {
+    /* malformed payload — show default notification */
+  }
 
   event.waitUntil(
     self.registration.showNotification(data.title, {
@@ -15,5 +19,5 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  event.waitUntil(clients.openWindow("/"));
+  event.waitUntil(clients.openWindow("/").catch(() => {}));
 });
