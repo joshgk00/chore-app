@@ -19,7 +19,8 @@ export function createRetentionPurger(db: Database.Database) {
       | { value: string }
       | undefined;
 
-    const retentionDays = retentionRow ? Number(retentionRow.value) : 365;
+    const parsed = retentionRow ? Number(retentionRow.value) : NaN;
+    const retentionDays = Number.isInteger(parsed) && parsed >= 1 ? parsed : 365;
 
     const result = deleteExpiredStmt.run(`-${retentionDays} days`);
     return result.changes;

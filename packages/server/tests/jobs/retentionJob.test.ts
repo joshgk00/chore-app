@@ -1,7 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type Database from "better-sqlite3";
 import { createTestDb } from "../db-helpers.js";
-import { purgeExpiredActivityEvents } from "../../src/jobs/retentionJob.js";
+import {
+  purgeExpiredActivityEvents,
+  startRetentionJob,
+} from "../../src/jobs/retentionJob.js";
 
 let db: Database.Database;
 
@@ -171,6 +174,114 @@ describe("purgeExpiredActivityEvents", () => {
     const deleted = purgeExpiredActivityEvents(db);
 
     expect(deleted).toBe(1);
+    expect(countRows("activity_events")).toBe(1);
+  });
+
+  it("falls back to 365-day default for non-numeric retention value", () => {
+    db.prepare("UPDATE settings SET value = ? WHERE key = ?").run(
+      "not-a-number",
+      "activity_retention_days",
+    );
+
+    const twoYearsAgo = new Date(
+      Date.now() - 2 * 365 * 24 * 60 * 60 * 1000,
+    );
+    insertActivityEvent(
+      twoYearsAgo.toISOString().replace("T", " ").slice(0, 19),
+    );
+
+    const sixMonthsAgo = new Date(
+      Date.now() - 180 * 24 * 60 * 60 * 1000,
+    );
+    insertActivityEvent(
+      sixMonthsAgo.toISOString().replace("T", " ").slice(0, 19),
+    );
+
+    const deleted = purgeExpiredActivityEvents(db);
+
+    expect(deleted).toBe(1);
+    expect(countRows("activity_events")).toBe(1);
+  });
+
+  it("falls back to 365-day default for negative retention value", () => {
+    db.prepare("UPDATE settings SET value = ? WHERE key = ?").run(
+      "-10",
+      "activity_retention_days",
+    );
+
+    const twoYearsAgo = new Date(
+      Date.now() - 2 * 365 * 24 * 60 * 60 * 1000,
+    );
+    insertActivityEvent(
+      twoYearsAgo.toISOString().replace("T", " ").slice(0, 19),
+    );
+
+    const sixMonthsAgo = new Date(
+      Date.now() - 180 * 24 * 60 * 60 * 1000,
+    );
+    insertActivityEvent(
+      sixMonthsAgo.toISOString().replace("T", " ").slice(0, 19),
+    );
+
+    const deleted = purgeExpiredActivityEvents(db);
+
+    expect(deleted).toBe(1);
+    expect(countRows("activity_events")).toBe(1);
+  });
+
+  it("falls back to 365-day default for zero retention value", () => {
+    db.prepare("UPDATE settings SET value = ? WHERE key = ?").run(
+      "0",
+      "activity_retention_days",
+    );
+
+    const twoYearsAgo = new Date(
+      Date.now() - 2 * 365 * 24 * 60 * 60 * 1000,
+    );
+    insertActivityEvent(
+      twoYearsAgo.toISOString().replace("T", " ").slice(0, 19),
+    );
+
+    const sixMonthsAgo = new Date(
+      Date.now() - 180 * 24 * 60 * 60 * 1000,
+    );
+    insertActivityEvent(
+      sixMonthsAgo.toISOString().replace("T", " ").slice(0, 19),
+    );
+
+    const deleted = purgeExpiredActivityEvents(db);
+
+    expect(deleted).toBe(1);
+    expect(countRows("activity_events")).toBe(1);
+  });
+});
+
+describe("startRetentionJob", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("runs purge immediately on start", () => {
+    insertActivityEvent("2020-01-01 00:00:00");
+
+    const handle = startRetentionJob(db);
+
+    expect(countRows("activity_events")).toBe(0);
+    handle.stop();
+  });
+
+  it("stop() clears the interval", () => {
+    const handle = startRetentionJob(db);
+    handle.stop();
+
+    insertActivityEvent("2020-01-01 00:00:00");
+
+    vi.advanceTimersByTime(25 * 60 * 60 * 1000);
+
     expect(countRows("activity_events")).toBe(1);
   });
 });

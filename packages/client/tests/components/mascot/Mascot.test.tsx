@@ -57,4 +57,34 @@ describe("Mascot", () => {
     const svg = screen.getByRole("img", { name: /mascot/i });
     expect(svg.className.baseVal).toContain("mascot-celebrating");
   });
+
+  it("renders waiting state with correct data-state", () => {
+    renderWithProviders(<Mascot state="waiting" />);
+
+    const svg = screen.getByRole("img", { name: /mascot/i });
+    expect(svg).toHaveAttribute("data-state", "waiting");
+  });
+
+  it("renders encouraging state with correct data-state", () => {
+    renderWithProviders(<Mascot state="encouraging" />);
+
+    const svg = screen.getByRole("img", { name: /mascot/i });
+    expect(svg).toHaveAttribute("data-state", "encouraging");
+  });
+
+  it("renders with default dimensions", () => {
+    renderWithProviders(<Mascot state="greeting" />);
+
+    const svg = screen.getByRole("img", { name: /mascot/i });
+    expect(svg).toHaveAttribute("width", "80");
+    expect(svg).toHaveAttribute("height", "64");
+  });
+
+  it("applies custom size with correct height ratio", () => {
+    renderWithProviders(<Mascot state="greeting" size={120} />);
+
+    const svg = screen.getByRole("img", { name: /mascot/i });
+    expect(svg).toHaveAttribute("width", "120");
+    expect(svg).toHaveAttribute("height", "96");
+  });
 });

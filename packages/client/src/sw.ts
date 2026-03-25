@@ -27,7 +27,16 @@ registerRoute(
   ({ url, request }) =>
     request.method === 'GET' &&
     CACHEABLE_API_PATHS.some((path) => url.pathname === path || url.pathname.startsWith(`${path}/`)),
-  new NetworkFirst({ networkTimeoutSeconds: 3 }),
+  new NetworkFirst({
+    networkTimeoutSeconds: 3,
+    cacheName: 'api-cache',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 50,
+        maxAgeSeconds: 60 * 60 * 24,
+      }),
+    ],
+  }),
 );
 
 registerRoute(
@@ -49,7 +58,7 @@ self.addEventListener('push', (event) => {
   try {
     data = event.data?.json() ?? fallback;
   } catch {
-    /* malformed payload -- show default notification */
+    // Older server versions may send non-JSON payloads
   }
 
   event.waitUntil(

@@ -6,6 +6,7 @@ import {
   saveDraft,
   deleteDraft,
   getDraftsWithFailedSubmission,
+  hasAnyActiveDraft,
   resetDbCache,
   type Draft,
 } from "../../src/lib/draft.js";
@@ -128,6 +129,63 @@ describe("draft", () => {
       expect(failed).toHaveLength(3);
       const ids = failed.map((draft) => draft.routineId).sort();
       expect(ids).toEqual([10, 11, 12]);
+    });
+  });
+
+  describe("hasAnyActiveDraft", () => {
+    it("returns false when no drafts exist", async () => {
+      const result = await hasAnyActiveDraft();
+      expect(result).toBe(false);
+    });
+
+    it("returns false when all draft items are unchecked", async () => {
+      await saveDraft(
+        makeDraft(20, {
+          items: [
+            { itemId: 100, isChecked: false },
+            { itemId: 101, isChecked: false },
+          ],
+        }),
+      );
+      await saveDraft(
+        makeDraft(21, {
+          items: [{ itemId: 102, isChecked: false }],
+        }),
+      );
+
+      const result = await hasAnyActiveDraft();
+      expect(result).toBe(false);
+    });
+
+    it("returns true when at least one draft has a checked item", async () => {
+      await saveDraft(
+        makeDraft(22, {
+          items: [{ itemId: 103, isChecked: false }],
+        }),
+      );
+      await saveDraft(
+        makeDraft(23, {
+          items: [
+            { itemId: 104, isChecked: false },
+            { itemId: 105, isChecked: true },
+          ],
+        }),
+      );
+
+      const result = await hasAnyActiveDraft();
+      expect(result).toBe(true);
+    });
+
+    it("returns false on IndexedDB failure", async () => {
+      resetDbCache();
+      globalThis.indexedDB = {
+        open: () => {
+          throw new Error("IndexedDB is not available");
+        },
+      } as unknown as IDBFactory;
+
+      const result = await hasAnyActiveDraft();
+      expect(result).toBe(false);
     });
   });
 });

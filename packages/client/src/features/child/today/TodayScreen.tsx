@@ -19,7 +19,7 @@ export default function TodayScreen() {
   const [hasActiveDraft, setHasActiveDraft] = useState(false);
   useEffect(() => {
     hasAnyActiveDraft().then(setHasActiveDraft).catch(() => {});
-  }, []);
+  }, [bootstrap]);
 
   if (isLoading) {
     return (

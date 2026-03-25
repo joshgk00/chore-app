@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import { OnlineProvider } from "../../src/contexts/OnlineContext.js";
 import OfflineBanner from "../../src/components/OfflineBanner.js";
@@ -27,6 +27,10 @@ function goOnline() {
 
 describe("OfflineBanner", () => {
   beforeEach(() => {
+    Object.defineProperty(navigator, "onLine", { value: true, writable: true });
+  });
+
+  afterEach(() => {
     Object.defineProperty(navigator, "onLine", { value: true, writable: true });
   });
 

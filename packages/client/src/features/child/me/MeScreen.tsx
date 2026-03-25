@@ -1,18 +1,26 @@
-import { useRef, useMemo, useEffect } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { usePoints } from "../rewards/hooks/usePoints.js";
 import { useBadges } from "./hooks/useBadges.js";
 import { useRecentActivity } from "./hooks/useRecentActivity.js";
+import { useBootstrap } from "../today/hooks/useBootstrap.js";
 import PointsDisplay from "../rewards/PointsDisplay.js";
 import BadgeCollection from "../../../components/badges/BadgeCollection.js";
 import RecentActivity from "./RecentActivity.js";
 import NotificationOptIn from "./NotificationOptIn.js";
 import Mascot from "../../../components/mascot/Mascot.js";
 import { determineMascotState } from "../../../components/mascot/mascotStates.js";
+import { hasAnyActiveDraft } from "../../../lib/draft.js";
 
 export default function MeScreen() {
   const { data: points, isLoading: isLoadingPoints, error: pointsError, refetch: refetchPoints } = usePoints();
   const { data: badges, isLoading: isLoadingBadges, error: badgesError, refetch: refetchBadges } = useBadges();
   const { data: activity, isLoading: isLoadingActivity, error: activityError, refetch: refetchActivity } = useRecentActivity();
+  const { data: bootstrap } = useBootstrap();
+
+  const [hasActiveDraft, setHasActiveDraft] = useState(false);
+  useEffect(() => {
+    hasAnyActiveDraft().then(setHasActiveDraft).catch(() => {});
+  }, [badges]);
 
   const previousBadgeKeysRef = useRef<Set<string>>(new Set());
   const newlyEarnedKeys = useMemo(() => {
@@ -79,8 +87,13 @@ export default function MeScreen() {
     (b) => new Date(b.earnedAt) >= todayStart,
   );
 
+  const pendingCount = (bootstrap?.pendingRoutineCount ?? 0) + (bootstrap?.pendingChoreCount ?? 0) + (bootstrap?.pendingRewardCount ?? 0);
+
   const mascotState = determineMascotState({
     hasBadgeOrRewardApproval: hasBadgeEarnedToday,
+    hasPendingApprovals: pendingCount > 0,
+    hasActiveDraft,
+    slotConfig: bootstrap?.slotConfig,
   });
 
   return (
