@@ -222,23 +222,24 @@ export function createBackupService(
     try {
       fs.writeFileSync(dbPath, dbEntry.getData());
 
+      // Always reset assets directory so restored state matches the backup,
+      // even when the backup contains no assets (avoids stale/orphaned files).
+      if (fs.existsSync(assetsDir)) {
+        fs.rmSync(assetsDir, { recursive: true, force: true });
+      }
+      fs.mkdirSync(assetsDir, { recursive: true });
+
       const zipAssetsEntries = zip.getEntries().filter(
         (e) => e.entryName.startsWith("assets/") && !e.isDirectory,
       );
-      if (zipAssetsEntries.length > 0) {
-        if (fs.existsSync(assetsDir)) {
-          fs.rmSync(assetsDir, { recursive: true, force: true });
+      const resolvedAssetsDir = path.resolve(assetsDir);
+      for (const entry of zipAssetsEntries) {
+        const destPath = path.resolve(path.join(dataDir, entry.entryName));
+        if (!destPath.startsWith(resolvedAssetsDir + path.sep)) {
+          throw new ValidationError(`Illegal path in archive: ${entry.entryName}`);
         }
-        fs.mkdirSync(assetsDir, { recursive: true });
-        const resolvedDataDir = path.resolve(dataDir);
-        for (const entry of zipAssetsEntries) {
-          const destPath = path.resolve(path.join(dataDir, entry.entryName));
-          if (!destPath.startsWith(resolvedDataDir + path.sep)) {
-            throw new ValidationError(`Illegal path in archive: ${entry.entryName}`);
-          }
-          fs.mkdirSync(path.dirname(destPath), { recursive: true });
-          fs.writeFileSync(destPath, entry.getData());
-        }
+        fs.mkdirSync(path.dirname(destPath), { recursive: true });
+        fs.writeFileSync(destPath, entry.getData());
       }
 
       const webpushEntry = zip.getEntry("secrets/webpush.json");

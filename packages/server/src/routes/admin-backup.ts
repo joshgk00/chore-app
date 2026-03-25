@@ -62,7 +62,7 @@ export function createAdminBackupRoutes(
         // The original db handle is closed after restore — all other services are
         // now holding a dead reference. Wait for the response to flush, then exit
         // so the process manager (Docker, systemd) restarts with the restored database.
-        res.on("finish", () => setTimeout(() => process.exit(0), 200));
+        res.on("finish", () => process.exit(0));
         res.json({ data: { restored: true } });
       } catch (err) {
         next(err);
