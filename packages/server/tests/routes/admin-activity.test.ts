@@ -9,7 +9,7 @@ const testConfig = createTestConfig();
 async function createTestApp() {
   const db = createTestDb();
   await seedTestData(db);
-  const app = createApp(db, testConfig);
+  const { app } = createApp(db, testConfig);
   return { db, app };
 }
 

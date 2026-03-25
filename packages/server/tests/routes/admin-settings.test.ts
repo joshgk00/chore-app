@@ -8,11 +8,11 @@ const testConfig = createTestConfig();
 async function createTestApp() {
   const db = createTestDb();
   await seedTestData(db);
-  const app = createApp(db, testConfig);
+  const { app } = createApp(db, testConfig);
   return { db, app };
 }
 
-async function loginAdmin(app: ReturnType<typeof createApp>) {
+async function loginAdmin(app: ReturnType<typeof createApp>["app"]) {
   const loginRes = await request(app).post("/api/auth/verify").send({ pin: "123456" });
   return loginRes.headers["set-cookie"] as string[];
 }

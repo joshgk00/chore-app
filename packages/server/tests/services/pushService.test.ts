@@ -367,4 +367,140 @@ describe("pushService", () => {
       );
     });
   });
+
+  describe("cleanupStaleSubscriptions", () => {
+    function insertSubscription(
+      endpoint: string,
+      overrides: {
+        status?: string;
+        updatedAt?: string;
+        lastSuccessAt?: string | null;
+        createdAt?: string;
+      } = {},
+    ) {
+      const {
+        status = "active",
+        updatedAt = "2026-03-25 00:00:00",
+        lastSuccessAt = null,
+        createdAt = "2026-03-25 00:00:00",
+      } = overrides;
+
+      db.prepare(
+        `INSERT INTO push_subscriptions (role, endpoint, p256dh, auth, status, created_at, updated_at, last_success_at)
+         VALUES ('child', ?, 'key', 'auth', ?, ?, ?, ?)`,
+      ).run(endpoint, status, createdAt, updatedAt, lastSuccessAt);
+    }
+
+    it("deletes failed subscriptions older than 30 days", () => {
+      insertSubscription("https://push.example.com/old-failed", {
+        status: "failed",
+        updatedAt: "2026-01-01 00:00:00",
+      });
+
+      const result = pushService.cleanupStaleSubscriptions();
+
+      expect(result.deleted).toBe(1);
+      const row = db.prepare("SELECT * FROM push_subscriptions WHERE endpoint = ?")
+        .get("https://push.example.com/old-failed");
+      expect(row).toBeUndefined();
+    });
+
+    it("keeps recently failed subscriptions", () => {
+      insertSubscription("https://push.example.com/recent-failed", {
+        status: "failed",
+        updatedAt: new Date().toISOString(),
+      });
+
+      const result = pushService.cleanupStaleSubscriptions();
+
+      expect(result.deleted).toBe(0);
+      const row = db.prepare("SELECT * FROM push_subscriptions WHERE endpoint = ?")
+        .get("https://push.example.com/recent-failed");
+      expect(row).toBeDefined();
+    });
+
+    it("marks active subscriptions as expired when last_success_at is older than 90 days", () => {
+      insertSubscription("https://push.example.com/stale-active", {
+        status: "active",
+        lastSuccessAt: "2025-12-01 00:00:00",
+        createdAt: "2025-11-01 00:00:00",
+      });
+
+      const result = pushService.cleanupStaleSubscriptions();
+
+      expect(result.expired).toBe(1);
+      const row = db.prepare("SELECT status FROM push_subscriptions WHERE endpoint = ?")
+        .get("https://push.example.com/stale-active") as { status: string };
+      expect(row.status).toBe("expired");
+    });
+
+    it("uses created_at as fallback when last_success_at is null", () => {
+      insertSubscription("https://push.example.com/never-succeeded", {
+        status: "active",
+        lastSuccessAt: null,
+        createdAt: "2025-11-01 00:00:00",
+      });
+
+      const result = pushService.cleanupStaleSubscriptions();
+
+      expect(result.expired).toBe(1);
+      const row = db.prepare("SELECT status FROM push_subscriptions WHERE endpoint = ?")
+        .get("https://push.example.com/never-succeeded") as { status: string };
+      expect(row.status).toBe("expired");
+    });
+
+    it("leaves active subscriptions with recent success alone", () => {
+      insertSubscription("https://push.example.com/healthy", {
+        status: "active",
+        lastSuccessAt: new Date().toISOString(),
+      });
+
+      const result = pushService.cleanupStaleSubscriptions();
+
+      expect(result.expired).toBe(0);
+      const row = db.prepare("SELECT status FROM push_subscriptions WHERE endpoint = ?")
+        .get("https://push.example.com/healthy") as { status: string };
+      expect(row.status).toBe("active");
+    });
+
+    it("does not touch already-expired subscriptions", () => {
+      insertSubscription("https://push.example.com/already-expired", {
+        status: "expired",
+        updatedAt: "2025-01-01 00:00:00",
+      });
+
+      const result = pushService.cleanupStaleSubscriptions();
+
+      expect(result.deleted).toBe(0);
+      expect(result.expired).toBe(0);
+      const row = db.prepare("SELECT status FROM push_subscriptions WHERE endpoint = ?")
+        .get("https://push.example.com/already-expired") as { status: string };
+      expect(row.status).toBe("expired");
+    });
+
+    it("handles both deletions and expirations in a single call", () => {
+      insertSubscription("https://push.example.com/to-delete", {
+        status: "failed",
+        updatedAt: "2025-01-01 00:00:00",
+      });
+      insertSubscription("https://push.example.com/to-expire", {
+        status: "active",
+        lastSuccessAt: "2025-11-01 00:00:00",
+        createdAt: "2025-10-01 00:00:00",
+      });
+      insertSubscription("https://push.example.com/to-keep", {
+        status: "active",
+        lastSuccessAt: new Date().toISOString(),
+      });
+
+      const result = pushService.cleanupStaleSubscriptions();
+
+      expect(result.deleted).toBe(1);
+      expect(result.expired).toBe(1);
+
+      const remaining = db.prepare("SELECT endpoint, status FROM push_subscriptions ORDER BY endpoint").all() as { endpoint: string; status: string }[];
+      const kept = remaining.find(r => r.endpoint === "https://push.example.com/to-keep");
+      expect(kept?.status).toBe("active");
+    });
+  });
 });

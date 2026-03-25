@@ -24,8 +24,10 @@ async function main() {
     const settingsService = createSettingsService(db);
     await settingsService.bootstrapSettings(config);
 
-    const app = createApp(db, config);
+    const { app, pushService } = createApp(db, config);
     console.log("VAPID keys initialized.");
+
+    pushService.startCleanupInterval();
 
     const server = app.listen(config.port, () => {
       console.log(`Server listening on port ${config.port}`);
@@ -34,6 +36,7 @@ async function main() {
 
     const shutdown = () => {
       console.log("Shutting down...");
+      pushService.stopCleanupInterval();
 
       const forceExit = setTimeout(() => {
         console.error("Graceful shutdown timed out, forcing exit.");

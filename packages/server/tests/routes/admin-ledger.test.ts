@@ -11,11 +11,11 @@ async function createTestApp() {
   await seedTestData(db);
   seedRewardData(db);
   seedPointsLedger(db, 100);
-  const app = createApp(db, testConfig);
+  const { app } = createApp(db, testConfig);
   return { db, app };
 }
 
-async function loginAdmin(app: ReturnType<typeof createApp>) {
+async function loginAdmin(app: ReturnType<typeof createApp>["app"]) {
   const loginRes = await request(app).post("/api/auth/verify").send({ pin: "123456" });
   return loginRes.headers["set-cookie"] as string[];
 }
@@ -111,7 +111,7 @@ describe("admin ledger routes", () => {
       const db = createTestDb();
       await seedTestData(db);
       seedRewardData(db);
-      const app = createApp(db, testConfig);
+      const { app } = createApp(db, testConfig);
       const cookies = await loginAdmin(app);
 
       const res = await request(app)

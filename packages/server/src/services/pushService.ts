@@ -3,7 +3,12 @@ import fs from "node:fs";
 import path from "node:path";
 import type Database from "better-sqlite3";
 import type { PushRole } from "@chore-app/shared";
-import { MAX_PUSH_SUBSCRIPTIONS_PER_IP } from "@chore-app/shared";
+import {
+  MAX_PUSH_SUBSCRIPTIONS_PER_IP,
+  PUSH_CLEANUP_INTERVAL_HOURS,
+  PUSH_FAILED_TTL_DAYS,
+  PUSH_INACTIVE_TTL_DAYS,
+} from "@chore-app/shared";
 import { RateLimitError } from "../lib/errors.js";
 
 interface VapidKeys {
@@ -15,6 +20,9 @@ export interface PushService {
   getVapidPublicKey(): string;
   subscribe(role: PushRole, endpoint: string, keys: { p256dh: string; auth: string }, ipAddress?: string): void;
   sendNotification(role: PushRole, payload: { title: string; body: string; data?: Record<string, unknown> }): void;
+  cleanupStaleSubscriptions(): { deleted: number; expired: number };
+  startCleanupInterval(): void;
+  stopCleanupInterval(): void;
 }
 
 function isValidVapidKeys(keys: unknown): keys is VapidKeys {
@@ -226,9 +234,56 @@ export function createPushService(
     }
   }
 
+  const deleteStaleFailedStmt = db.prepare(
+    `DELETE FROM push_subscriptions
+     WHERE status = 'failed'
+       AND updated_at < datetime('now', '-' || ? || ' days')`,
+  );
+
+  const expireInactiveStmt = db.prepare(
+    `UPDATE push_subscriptions
+     SET status = 'expired', updated_at = datetime('now')
+     WHERE status = 'active'
+       AND COALESCE(last_success_at, created_at) < datetime('now', '-' || ? || ' days')`,
+  );
+
+  function cleanupStaleSubscriptions(): { deleted: number; expired: number } {
+    const deleteResult = deleteStaleFailedStmt.run(PUSH_FAILED_TTL_DAYS);
+    const expireResult = expireInactiveStmt.run(PUSH_INACTIVE_TTL_DAYS);
+
+    if (deleteResult.changes > 0 || expireResult.changes > 0) {
+      console.log(
+        `Push subscription cleanup: deleted ${deleteResult.changes} failed, expired ${expireResult.changes} inactive`,
+      );
+    }
+
+    return { deleted: deleteResult.changes, expired: expireResult.changes };
+  }
+
+  let cleanupTimer: ReturnType<typeof setInterval> | null = null;
+
+  function startCleanupInterval(): void {
+    cleanupStaleSubscriptions();
+    cleanupTimer = setInterval(
+      cleanupStaleSubscriptions,
+      PUSH_CLEANUP_INTERVAL_HOURS * 60 * 60 * 1000,
+    );
+    cleanupTimer.unref();
+  }
+
+  function stopCleanupInterval(): void {
+    if (cleanupTimer) {
+      clearInterval(cleanupTimer);
+      cleanupTimer = null;
+    }
+  }
+
   return {
     getVapidPublicKey,
     subscribe,
     sendNotification,
+    cleanupStaleSubscriptions,
+    startCleanupInterval,
+    stopCleanupInterval,
   };
 }
