@@ -25,7 +25,7 @@ export default function RoutineCard({ routine, showSlotBadge }: Props) {
     <Link
       to={`/routines/${routine.id}`}
       aria-label={`Go to ${routine.name}`}
-      className="flex items-center gap-3.5 rounded-3xl border-l-4 border-l-[var(--color-sky-500)] bg-[var(--color-surface)] p-4 shadow-card transition-all duration-200 hover:translate-y-[-1px] hover:shadow-elevated active:scale-[0.98]"
+      className="animate-card-press flex items-center gap-3.5 rounded-3xl border-l-4 border-l-[var(--color-sky-500)] bg-[var(--color-surface)] p-4 shadow-card transition-all duration-200 hover:translate-y-[-1px] hover:shadow-elevated"
     >
       {routine.imageUrl ? (
         <img

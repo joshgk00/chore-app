@@ -111,11 +111,11 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
           <p className="text-sm font-medium text-[var(--color-text-secondary)]">
             Redeem {reward.name} for {reward.pointsCost} points?
           </p>
-          <div className="mt-2 flex gap-2">
+          <div className="mt-3 flex gap-2">
             <button
               type="button"
               onClick={() => setIsConfirming(false)}
-              className="rounded-lg px-3 py-1.5 text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"
+              className="min-h-touch flex-1 rounded-xl px-4 py-2 text-sm font-display font-bold text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"
             >
               Cancel
             </button>
@@ -123,7 +123,7 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
               type="button"
               onClick={handleRequest}
               disabled={submitMutation.isPending}
-              className="rounded-lg bg-[var(--color-amber-500)] px-3 py-1.5 text-sm font-bold text-white hover:bg-[var(--color-amber-600)] disabled:opacity-50"
+              className="min-h-touch flex-1 rounded-xl bg-[var(--color-amber-500)] px-4 py-2 text-sm font-display font-bold text-white hover:bg-[var(--color-amber-600)] disabled:opacity-50"
             >
               {submitMutation.isPending ? "Requesting..." : "Confirm"}
             </button>

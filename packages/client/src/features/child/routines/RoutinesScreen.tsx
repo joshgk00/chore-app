@@ -72,7 +72,7 @@ export default function RoutinesScreen() {
       {!hasRoutines && (
         <div className="mt-12 text-center" aria-live="polite">
           <p className="text-5xl" data-emoji>&#127775;</p>
-          <p className="mt-4 font-display text-xl font-bold text-[var(--color-text-muted)]">No routines yet!</p>
+          <p className="mt-4 font-display text-xl font-bold text-[var(--color-text-secondary)]">No routines yet!</p>
           <p className="mt-2 text-[var(--color-text-muted)]">Ask a grown-up to set some up for you.</p>
         </div>
       )}

@@ -41,7 +41,7 @@ function ChildErrorFallback() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-bg)] p-4">
       <div className="text-center">
         <p className="text-5xl" data-emoji>&#128517;</p>
-        <h1 className="mt-4 text-xl font-bold text-[var(--color-text)]">Oops! Something broke.</h1>
+        <h1 className="mt-4 font-display text-xl font-bold text-[var(--color-text)]">Oops! Something broke.</h1>
         <p className="mt-2 text-[var(--color-text-muted)]">Let's go back and try again.</p>
         <a
           href="/today"
