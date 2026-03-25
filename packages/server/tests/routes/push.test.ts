@@ -240,5 +240,34 @@ describe("push routes", () => {
       expect(res.status).toBe(422);
       db.close();
     });
+
+    it("returns 429 when IP exceeds subscription cap", async () => {
+      const { db, app } = await createTestApp();
+      const testIp = "203.0.113.1";
+
+      // Pre-seed 10 active subscriptions so a single HTTP request
+      // triggers the DB cap without hitting the rate limiter
+      const insertStmt = db.prepare(
+        `INSERT INTO push_subscriptions (role, endpoint, p256dh, auth, ip_address, status, updated_at)
+         VALUES (?, ?, ?, ?, ?, 'active', datetime('now'))`,
+      );
+      for (let i = 0; i < 10; i++) {
+        insertStmt.run("child", `https://push.example.com/cap-${i}`, `p${i}`, `a${i}`, testIp);
+      }
+
+      const res = await request(app)
+        .post("/api/push/subscribe")
+        .set("X-Forwarded-For", testIp)
+        .send({
+          role: "child",
+          endpoint: "https://push.example.com/over-limit",
+          p256dh: "px",
+          auth: "ax",
+        });
+
+      expect(res.status).toBe(429);
+      expect(res.body.error.code).toBe("RATE_LIMITED");
+      db.close();
+    });
   });
 });

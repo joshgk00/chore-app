@@ -3,6 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import type Database from "better-sqlite3";
 import type { PushRole } from "@chore-app/shared";
+import { MAX_PUSH_SUBSCRIPTIONS_PER_IP } from "@chore-app/shared";
+import { RateLimitError } from "../lib/errors.js";
 
 interface VapidKeys {
   publicKey: string;
@@ -11,7 +13,7 @@ interface VapidKeys {
 
 export interface PushService {
   getVapidPublicKey(): string;
-  subscribe(role: PushRole, endpoint: string, keys: { p256dh: string; auth: string }): void;
+  subscribe(role: PushRole, endpoint: string, keys: { p256dh: string; auth: string }, ipAddress?: string): void;
   sendNotification(role: PushRole, payload: { title: string; body: string; data?: Record<string, unknown> }): void;
 }
 
@@ -107,14 +109,24 @@ export function createPushService(
   const vapidKeys = initVapidKeys(dataDir, publicOrigin);
 
   const upsertSubscriptionStmt = db.prepare(
-    `INSERT INTO push_subscriptions (role, endpoint, p256dh, auth, status, updated_at)
-     VALUES (?, ?, ?, ?, 'active', datetime('now'))
+    `INSERT INTO push_subscriptions (role, endpoint, p256dh, auth, ip_address, status, updated_at)
+     VALUES (?, ?, ?, ?, ?, 'active', datetime('now'))
      ON CONFLICT(endpoint) DO UPDATE SET
        role = excluded.role,
        p256dh = excluded.p256dh,
        auth = excluded.auth,
+       ip_address = COALESCE(excluded.ip_address, ip_address),
        status = 'active',
        updated_at = datetime('now')`,
+  );
+
+  const countActiveByIpStmt = db.prepare(
+    `SELECT COUNT(*) as count FROM push_subscriptions
+     WHERE ip_address = ? AND status = 'active'`,
+  );
+
+  const findByEndpointStmt = db.prepare(
+    `SELECT id, ip_address FROM push_subscriptions WHERE endpoint = ?`,
   );
 
   const selectActiveByRoleStmt = db.prepare(
@@ -139,12 +151,32 @@ export function createPushService(
     return vapidKeys.publicKey;
   }
 
+  const subscribeInTransaction = db.transaction(
+    (role: PushRole, endpoint: string, keys: { p256dh: string; auth: string }, ip: string | null) => {
+      if (ip) {
+        const existingRow = findByEndpointStmt.get(endpoint) as { id: number; ip_address: string | null } | undefined;
+        const isSameIp = existingRow?.ip_address === ip;
+        if (!isSameIp) {
+          const { count } = countActiveByIpStmt.get(ip) as { count: number };
+          if (count >= MAX_PUSH_SUBSCRIPTIONS_PER_IP) {
+            throw new RateLimitError(
+              `Too many subscriptions from this IP (max ${MAX_PUSH_SUBSCRIPTIONS_PER_IP})`,
+            );
+          }
+        }
+      }
+
+      upsertSubscriptionStmt.run(role, endpoint, keys.p256dh, keys.auth, ip);
+    },
+  );
+
   function subscribe(
     role: PushRole,
     endpoint: string,
     keys: { p256dh: string; auth: string },
+    ipAddress?: string,
   ): void {
-    upsertSubscriptionStmt.run(role, endpoint, keys.p256dh, keys.auth);
+    subscribeInTransaction(role, endpoint, keys, ipAddress ?? null);
   }
 
   function sendNotification(

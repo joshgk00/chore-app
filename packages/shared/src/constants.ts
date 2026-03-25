@@ -57,3 +57,6 @@ export const ACTIVITY_EVENT_TYPES = [
 // Rate limiting (submission endpoints: POST /routine-completions, /chore-logs, /reward-requests)
 export const SUBMISSION_RATE_LIMIT_MAX = 10;
 export const SUBMISSION_RATE_LIMIT_WINDOW_SECONDS = 10;
+
+// Push subscription caps
+export const MAX_PUSH_SUBSCRIPTIONS_PER_IP = 10;

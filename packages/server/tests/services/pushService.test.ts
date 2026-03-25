@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createTestDb, seedTestData } from "../db-helpers.js";
 import webpush from "web-push";
 import { createPushService } from "../../src/services/pushService.js";
@@ -18,6 +18,10 @@ beforeEach(async () => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "push-test-"));
   pushService = createPushService(db, tmpDir, "http://localhost:3000");
   vi.clearAllMocks();
+});
+
+afterEach(() => {
+  db.close();
 });
 
 describe("pushService", () => {
@@ -101,6 +105,148 @@ describe("pushService", () => {
       const reactivated = db.prepare("SELECT status FROM push_subscriptions WHERE endpoint = ?")
         .get("https://push.example.com/sub1") as Record<string, unknown>;
       expect(reactivated.status).toBe("active");
+    });
+
+    it("skips IP cap check when ipAddress is omitted", () => {
+      const ip = "10.0.0.99";
+      for (let i = 0; i < 10; i++) {
+        pushService.subscribe("child", `https://push.example.com/prefill${i}`, {
+          p256dh: `p${i}`,
+          auth: `a${i}`,
+        }, ip);
+      }
+
+      // Without ipAddress, cap check is bypassed
+      expect(() => {
+        pushService.subscribe("child", "https://push.example.com/no-ip", {
+          p256dh: "px",
+          auth: "ax",
+        });
+      }).not.toThrow();
+    });
+
+    it("stores ip_address when provided", () => {
+      pushService.subscribe("child", "https://push.example.com/sub1", {
+        p256dh: "test-p256dh",
+        auth: "test-auth",
+      }, "192.168.1.1");
+
+      const row = db.prepare("SELECT ip_address FROM push_subscriptions WHERE endpoint = ?")
+        .get("https://push.example.com/sub1") as Record<string, unknown>;
+      expect(row.ip_address).toBe("192.168.1.1");
+    });
+
+    it("allows exactly 10 subscriptions per IP then rejects the 11th", () => {
+      const ip = "10.0.0.1";
+      for (let i = 0; i < 9; i++) {
+        pushService.subscribe("child", `https://push.example.com/sub${i}`, {
+          p256dh: `p${i}`,
+          auth: `a${i}`,
+        }, ip);
+      }
+
+      // 10th should succeed
+      expect(() => {
+        pushService.subscribe("child", "https://push.example.com/sub9", {
+          p256dh: "p9",
+          auth: "a9",
+        }, ip);
+      }).not.toThrow();
+
+      // 11th should fail
+      expect(() => {
+        pushService.subscribe("child", "https://push.example.com/over-limit", {
+          p256dh: "px",
+          auth: "ax",
+        }, ip);
+      }).toThrow("Too many subscriptions from this IP");
+    });
+
+    it("allows re-subscription to existing endpoint even at cap", () => {
+      const ip = "10.0.0.2";
+      for (let i = 0; i < 10; i++) {
+        pushService.subscribe("child", `https://push.example.com/cap${i}`, {
+          p256dh: `p${i}`,
+          auth: `a${i}`,
+        }, ip);
+      }
+
+      // Re-subscribing to an existing endpoint should succeed
+      expect(() => {
+        pushService.subscribe("child", "https://push.example.com/cap5", {
+          p256dh: "updated-p",
+          auth: "updated-a",
+        }, ip);
+      }).not.toThrow();
+    });
+
+    it("allows subscription from different IP even if another IP is at cap", () => {
+      const ip1 = "10.0.0.3";
+      const ip2 = "10.0.0.4";
+      for (let i = 0; i < 10; i++) {
+        pushService.subscribe("child", `https://push.example.com/ip1-${i}`, {
+          p256dh: `p${i}`,
+          auth: `a${i}`,
+        }, ip1);
+      }
+
+      expect(() => {
+        pushService.subscribe("child", "https://push.example.com/ip2-new", {
+          p256dh: "px",
+          auth: "ax",
+        }, ip2);
+      }).not.toThrow();
+    });
+
+    it("rejects cross-IP endpoint migration when destination IP is at cap", () => {
+      const ipA = "10.0.0.10";
+      const ipB = "10.0.0.11";
+
+      // IP A owns one endpoint
+      pushService.subscribe("child", "https://push.example.com/from-a", {
+        p256dh: "pA",
+        auth: "aA",
+      }, ipA);
+
+      // IP B is at cap
+      for (let i = 0; i < 10; i++) {
+        pushService.subscribe("child", `https://push.example.com/ipb-${i}`, {
+          p256dh: `p${i}`,
+          auth: `a${i}`,
+        }, ipB);
+      }
+
+      // IP B tries to re-subscribe an endpoint owned by IP A — should be rejected
+      expect(() => {
+        pushService.subscribe("child", "https://push.example.com/from-a", {
+          p256dh: "stolen-p",
+          auth: "stolen-a",
+        }, ipB);
+      }).toThrow("Too many subscriptions from this IP");
+    });
+
+    it("does not count failed subscriptions toward IP cap", () => {
+      const ip = "10.0.0.5";
+      for (let i = 0; i < 10; i++) {
+        pushService.subscribe("child", `https://push.example.com/fail${i}`, {
+          p256dh: `p${i}`,
+          auth: `a${i}`,
+        }, ip);
+      }
+
+      // Mark 5 as failed
+      for (let i = 0; i < 5; i++) {
+        db.prepare("UPDATE push_subscriptions SET status = 'failed' WHERE endpoint = ?")
+          .run(`https://push.example.com/fail${i}`);
+      }
+
+      // Should now allow new subscriptions since only 5 are active
+      expect(() => {
+        pushService.subscribe("child", "https://push.example.com/after-fail", {
+          p256dh: "px",
+          auth: "ax",
+        }, ip);
+      }).not.toThrow();
     });
   });
 

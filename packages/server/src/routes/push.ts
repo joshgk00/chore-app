@@ -73,7 +73,7 @@ export function createPushRoutes(
         setSessionCookie(res, token, config);
       }
 
-      pushService.subscribe(role, endpoint, { p256dh, auth });
+      pushService.subscribe(role, endpoint, { p256dh, auth }, req.ip || "unknown");
       res.json({ data: { subscribed: true } });
     } catch (err) {
       next(err);
