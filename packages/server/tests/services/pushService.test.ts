@@ -103,6 +103,24 @@ describe("pushService", () => {
       expect(reactivated.status).toBe("active");
     });
 
+    it("skips IP cap check when ipAddress is omitted", () => {
+      const ip = "10.0.0.99";
+      for (let i = 0; i < 10; i++) {
+        pushService.subscribe("child", `https://push.example.com/prefill${i}`, {
+          p256dh: `p${i}`,
+          auth: `a${i}`,
+        }, ip);
+      }
+
+      // Without ipAddress, cap check is bypassed
+      expect(() => {
+        pushService.subscribe("child", "https://push.example.com/no-ip", {
+          p256dh: "px",
+          auth: "ax",
+        });
+      }).not.toThrow();
+    });
+
     it("stores ip_address when provided", () => {
       pushService.subscribe("child", "https://push.example.com/sub1", {
         p256dh: "test-p256dh",
