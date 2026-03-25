@@ -17,7 +17,11 @@
     "idb": "^8.0.3",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
-    "react-router-dom": "^7.0.0"
+    "react-router-dom": "^7.0.0",
+    "workbox-expiration": "^7.4.0",
+    "workbox-precaching": "^7.4.0",
+    "workbox-routing": "^7.4.0",
+    "workbox-strategies": "^7.4.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
@@ -26,6 +30,7 @@
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.2.0",
+    "vite-plugin-pwa": "^1.2.0",
     "autoprefixer": "^10.4.0",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^29.0.0",
