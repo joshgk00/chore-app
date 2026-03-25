@@ -28,6 +28,8 @@ import { createApprovalService } from "./services/approvalService.js";
 import { createPointsService } from "./services/pointsService.js";
 import { createBadgeService } from "./services/badgeService.js";
 import { createAssetService } from "./services/assetService.js";
+import { createPushService } from "./services/pushService.js";
+import { createPushRoutes } from "./routes/push.js";
 import type { AppConfig } from "./config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -49,11 +51,12 @@ export function createApp(db: Database.Database, config: AppConfig) {
   const settingsService = createSettingsService(db);
   const activityService = createActivityService(db);
   const badgeService = createBadgeService(db);
-  const routineService = createRoutineService(db, activityService, badgeService);
-  const choreService = createChoreService(db, activityService, badgeService);
-  const rewardService = createRewardService(db, activityService);
+  const pushService = createPushService(db, config.dataDir, config.publicOrigin);
+  const routineService = createRoutineService(db, activityService, badgeService, pushService);
+  const choreService = createChoreService(db, activityService, badgeService, pushService);
+  const rewardService = createRewardService(db, activityService, pushService);
   const pointsService = createPointsService(db, activityService);
-  const approvalService = createApprovalService(db, activityService, badgeService);
+  const approvalService = createApprovalService(db, activityService, badgeService, pushService);
   const assetService = createAssetService(db, config.dataDir, activityService);
 
   app.get("/api/health", (_req, res) => {
@@ -64,6 +67,8 @@ export function createApp(db: Database.Database, config: AppConfig) {
 
   app.use("/api", createChildRoutes(routineService, choreService, rewardService, pointsService, badgeService, activityService, settingsService));
   app.use("/api", createSubmissionRoutes(routineService, choreService, rewardService, settingsService));
+
+  app.use("/api/push", createPushRoutes(pushService, authService, config));
 
   app.use("/api/admin", adminAuth(authService, config));
   app.use("/api/admin", createAdminSettingsRoutes(settingsService, authService, config));

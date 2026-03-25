@@ -1,13 +1,19 @@
 import webpush from "web-push";
 import fs from "node:fs";
 import path from "node:path";
+import type Database from "better-sqlite3";
+import type { PushRole } from "@chore-app/shared";
 
 interface VapidKeys {
   publicKey: string;
   privateKey: string;
 }
 
-let vapidKeys: VapidKeys | null = null;
+export interface PushService {
+  getVapidPublicKey(): string;
+  subscribe(role: PushRole, endpoint: string, keys: { p256dh: string; auth: string }): void;
+  sendNotification(role: PushRole, payload: { title: string; body: string; data?: Record<string, unknown> }): void;
+}
 
 function isValidVapidKeys(keys: unknown): keys is VapidKeys {
   return (
@@ -38,11 +44,13 @@ function generateAndSaveKeys(keysPath: string): VapidKeys {
   return keys;
 }
 
-export function initVapidKeys(dataDir: string, publicOrigin: string): VapidKeys {
+function initVapidKeys(dataDir: string, publicOrigin: string): VapidKeys {
   const secretsDir = path.join(dataDir, "secrets");
   const keysPath = path.join(secretsDir, "webpush.json");
 
   fs.mkdirSync(secretsDir, { recursive: true });
+
+  let keys: VapidKeys;
 
   if (fs.existsSync(keysPath)) {
     console.log("Loading existing VAPID keys...");
@@ -51,28 +59,144 @@ export function initVapidKeys(dataDir: string, publicOrigin: string): VapidKeys 
       const parsed = JSON.parse(raw);
 
       if (isValidVapidKeys(parsed)) {
-        vapidKeys = parsed;
+        keys = parsed;
       } else {
         console.error("VAPID keys file has invalid structure, regenerating...");
-        vapidKeys = generateAndSaveKeys(keysPath);
+        keys = generateAndSaveKeys(keysPath);
       }
     } catch (err) {
       console.error("Failed to parse VAPID keys file, regenerating...", err);
-      vapidKeys = generateAndSaveKeys(keysPath);
+      keys = generateAndSaveKeys(keysPath);
     }
   } else {
-    vapidKeys = generateAndSaveKeys(keysPath);
+    keys = generateAndSaveKeys(keysPath);
   }
 
-  // web-push requires https: or mailto: for the VAPID subject
-  const vapidSubject = publicOrigin.startsWith("https://")
-    ? publicOrigin
-    : `mailto:vapid@${new URL(publicOrigin).hostname || "localhost"}`;
-  webpush.setVapidDetails(vapidSubject, vapidKeys.publicKey, vapidKeys.privateKey);
+  let vapidSubject: string;
+  if (publicOrigin.startsWith("https://")) {
+    vapidSubject = publicOrigin;
+  } else {
+    let hostname: string;
+    try {
+      hostname = new URL(publicOrigin).hostname || "localhost";
+    } catch {
+      throw new Error(
+        `Invalid PUBLIC_ORIGIN "${publicOrigin}". Expected an absolute URL such as "https://example.com".`,
+      );
+    }
+    vapidSubject = `mailto:vapid@${hostname}`;
+  }
+  webpush.setVapidDetails(vapidSubject, keys.publicKey, keys.privateKey);
 
-  return vapidKeys;
+  return keys;
 }
 
-export function getVapidPublicKey(): string | null {
-  return vapidKeys?.publicKey ?? null;
+interface SubscriptionRow {
+  id: number;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  status: string;
+}
+
+export function createPushService(
+  db: Database.Database,
+  dataDir: string,
+  publicOrigin: string,
+): PushService {
+  const vapidKeys = initVapidKeys(dataDir, publicOrigin);
+
+  const upsertSubscriptionStmt = db.prepare(
+    `INSERT INTO push_subscriptions (role, endpoint, p256dh, auth, status, updated_at)
+     VALUES (?, ?, ?, ?, 'active', datetime('now'))
+     ON CONFLICT(endpoint) DO UPDATE SET
+       role = excluded.role,
+       p256dh = excluded.p256dh,
+       auth = excluded.auth,
+       status = 'active',
+       updated_at = datetime('now')`,
+  );
+
+  const selectActiveByRoleStmt = db.prepare(
+    `SELECT id, endpoint, p256dh, auth, status
+     FROM push_subscriptions
+     WHERE role = ? AND status = 'active'`,
+  );
+
+  const markFailedStmt = db.prepare(
+    `UPDATE push_subscriptions
+     SET status = 'failed', last_failure_at = datetime('now'), updated_at = datetime('now')
+     WHERE id = ?`,
+  );
+
+  const updateLastSuccessStmt = db.prepare(
+    `UPDATE push_subscriptions
+     SET last_success_at = datetime('now'), updated_at = datetime('now')
+     WHERE id = ?`,
+  );
+
+  function getVapidPublicKey(): string {
+    return vapidKeys.publicKey;
+  }
+
+  function subscribe(
+    role: PushRole,
+    endpoint: string,
+    keys: { p256dh: string; auth: string },
+  ): void {
+    upsertSubscriptionStmt.run(role, endpoint, keys.p256dh, keys.auth);
+  }
+
+  function sendNotification(
+    role: PushRole,
+    payload: { title: string; body: string; data?: Record<string, unknown> },
+  ): void {
+    const subs = selectActiveByRoleStmt.all(role) as SubscriptionRow[];
+    const jsonPayload = JSON.stringify(payload);
+
+    for (const sub of subs) {
+      const pushSub = {
+        endpoint: sub.endpoint,
+        keys: { p256dh: sub.p256dh, auth: sub.auth },
+      };
+
+      webpush.sendNotification(pushSub, jsonPayload).then(
+        () => {
+          try { updateLastSuccessStmt.run(sub.id); } catch (err) {
+            console.error(`Failed to update last_success_at for subscription ${sub.id}`, err);
+          }
+        },
+        (err: unknown) => {
+          const statusCode = (err as { statusCode?: number })?.statusCode;
+          if (statusCode === 410 || statusCode === 404) {
+            try { markFailedStmt.run(sub.id); } catch (dbErr) {
+              console.error(`Failed to mark subscription ${sub.id} as failed after HTTP ${statusCode}`, dbErr);
+            }
+          } else {
+            // Transient failure — retry once
+            webpush.sendNotification(pushSub, jsonPayload).then(
+              () => {
+                try { updateLastSuccessStmt.run(sub.id); } catch (retryErr) {
+                  console.error(`Failed to update last_success_at for subscription ${sub.id} after retry`, retryErr);
+                }
+              },
+              (err2: unknown) => {
+                const statusCode2 = (err2 as { statusCode?: number })?.statusCode;
+                if (statusCode2 === 410 || statusCode2 === 404) {
+                  try { markFailedStmt.run(sub.id); } catch { /* best effort */ }
+                }
+                console.error(`Push delivery failed for subscription ${sub.id} after retry`);
+              },
+            );
+          }
+        },
+      );
+    }
+  }
+
+  return {
+    getVapidPublicKey,
+    subscribe,
+    sendNotification,
+  };
 }

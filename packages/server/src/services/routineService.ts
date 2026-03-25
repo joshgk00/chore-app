@@ -11,6 +11,7 @@ import { ConflictError, NotFoundError, ValidationError } from "../lib/errors.js"
 import { getCompletionWindowKey } from "../lib/timeSlots.js";
 import type { ActivityService } from "./activityService.js";
 import type { BadgeService } from "./badgeService.js";
+import type { PushService } from "./pushService.js";
 
 export interface SubmitCompletionData {
   routineId: number;
@@ -182,6 +183,7 @@ export function createRoutineService(
   db: Database.Database,
   activityService: ActivityService,
   badgeService?: BadgeService,
+  pushService?: PushService,
 ): RoutineService {
   const selectActiveRoutinesStmt = db.prepare(
     `SELECT r.id, r.name, r.time_slot, r.completion_rule, r.points, r.requires_approval,
@@ -459,7 +461,21 @@ export function createRoutineService(
   });
 
   function submitCompletion(data: SubmitCompletionData): RoutineCompletion {
-    return submitCompletionTx(data);
+    const result = submitCompletionTx(data);
+
+    if (result.status === "pending") {
+      try {
+        pushService?.sendNotification("admin", {
+          title: "Routine submitted for review",
+          body: `${result.routineNameSnapshot} needs approval`,
+          data: { type: "routine_completion", id: result.id },
+        });
+      } catch (err) {
+        console.error("Failed to send admin notification for routine completion", { id: result.id }, err);
+      }
+    }
+
+    return result;
   }
 
   function getPendingCompletionCount(): number {

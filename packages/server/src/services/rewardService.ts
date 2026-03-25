@@ -2,6 +2,7 @@ import type Database from "better-sqlite3";
 import type { Reward, RewardRequest, Status } from "@chore-app/shared";
 import { ConflictError, NotFoundError, ValidationError } from "../lib/errors.js";
 import type { ActivityService } from "./activityService.js";
+import type { PushService } from "./pushService.js";
 
 export interface SubmitRewardRequestData {
   rewardId: number;
@@ -97,6 +98,7 @@ function mapRequestRow(row: RequestRow): RewardRequest {
 export function createRewardService(
   db: Database.Database,
   activityService: ActivityService,
+  pushService?: PushService,
 ): RewardService {
   const selectActiveRewardsStmt = db.prepare(
     `SELECT rewards.id, rewards.name, rewards.points_cost, rewards.image_asset_id,
@@ -256,7 +258,21 @@ export function createRewardService(
   });
 
   function submitRequest(data: SubmitRewardRequestData): RewardRequest {
-    return submitRequestTx(data);
+    const result = submitRequestTx(data);
+
+    if (result.status === "pending") {
+      try {
+        pushService?.sendNotification("admin", {
+          title: "Reward requested",
+          body: `${result.rewardNameSnapshot} (${result.costSnapshot} pts) needs approval`,
+          data: { type: "reward_request", id: result.id },
+        });
+      } catch (err) {
+        console.error("Failed to send admin notification for reward request", { id: result.id }, err);
+      }
+    }
+
+    return result;
   }
 
   const cancelRequestTx = db.transaction((requestId: number): RewardRequest => {

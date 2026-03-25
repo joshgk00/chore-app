@@ -198,6 +198,13 @@ export interface Badge {
   earnedAt: string;
 }
 
+export interface PushSubscribePayload {
+  role: PushRole;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}
+
 export interface BootstrapData {
   routines?: Routine[];
   pendingRoutineCount?: number;

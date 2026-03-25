@@ -3,6 +3,7 @@ import type { Chore, ChoreTier, ChoreLog, Status } from "@chore-app/shared";
 import { ConflictError, NotFoundError, ValidationError } from "../lib/errors.js";
 import type { ActivityService } from "./activityService.js";
 import type { BadgeService } from "./badgeService.js";
+import type { PushService } from "./pushService.js";
 
 export interface SubmitChoreLogData {
   choreId: number;
@@ -141,6 +142,7 @@ export function createChoreService(
   db: Database.Database,
   activityService: ActivityService,
   badgeService?: BadgeService,
+  pushService?: PushService,
 ): ChoreService {
   const selectActiveChoresStmt = db.prepare(
     `SELECT id, name, requires_approval, active, sort_order, archived_at
@@ -354,7 +356,21 @@ export function createChoreService(
   });
 
   function submitChoreLog(data: SubmitChoreLogData): ChoreLog {
-    return submitChoreLogTx(data);
+    const result = submitChoreLogTx(data);
+
+    if (result.status === "pending") {
+      try {
+        pushService?.sendNotification("admin", {
+          title: "Chore submitted for review",
+          body: `${result.choreNameSnapshot} needs approval`,
+          data: { type: "chore_log", id: result.id },
+        });
+      } catch (err) {
+        console.error("Failed to send admin notification for chore log", { id: result.id }, err);
+      }
+    }
+
+    return result;
   }
 
   const cancelChoreLogTx = db.transaction((logId: number): ChoreLog => {
