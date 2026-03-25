@@ -240,5 +240,36 @@ describe("push routes", () => {
       expect(res.status).toBe(422);
       db.close();
     });
+
+    it("returns 429 when IP exceeds subscription cap", async () => {
+      const { db, app } = await createTestApp();
+
+      // Fill up 10 subscriptions
+      for (let i = 0; i < 10; i++) {
+        const subRes = await request(app)
+          .post("/api/push/subscribe")
+          .send({
+            role: "child",
+            endpoint: `https://push.example.com/cap-${i}`,
+            p256dh: `p${i}`,
+            auth: `a${i}`,
+          });
+        expect(subRes.status).toBe(200);
+      }
+
+      // 11th should be rejected
+      const res = await request(app)
+        .post("/api/push/subscribe")
+        .send({
+          role: "child",
+          endpoint: "https://push.example.com/over-limit",
+          p256dh: "px",
+          auth: "ax",
+        });
+
+      expect(res.status).toBe(429);
+      expect(res.body.error.code).toBe("RATE_LIMITED");
+      db.close();
+    });
   });
 });

@@ -102,6 +102,94 @@ describe("pushService", () => {
         .get("https://push.example.com/sub1") as Record<string, unknown>;
       expect(reactivated.status).toBe("active");
     });
+
+    it("stores ip_address when provided", () => {
+      pushService.subscribe("child", "https://push.example.com/sub1", {
+        p256dh: "test-p256dh",
+        auth: "test-auth",
+      }, "192.168.1.1");
+
+      const row = db.prepare("SELECT ip_address FROM push_subscriptions WHERE endpoint = ?")
+        .get("https://push.example.com/sub1") as Record<string, unknown>;
+      expect(row.ip_address).toBe("192.168.1.1");
+    });
+
+    it("rejects when IP exceeds subscription cap", () => {
+      const ip = "10.0.0.1";
+      for (let i = 0; i < 10; i++) {
+        pushService.subscribe("child", `https://push.example.com/sub${i}`, {
+          p256dh: `p${i}`,
+          auth: `a${i}`,
+        }, ip);
+      }
+
+      expect(() => {
+        pushService.subscribe("child", "https://push.example.com/over-limit", {
+          p256dh: "px",
+          auth: "ax",
+        }, ip);
+      }).toThrow("Too many subscriptions from this IP");
+    });
+
+    it("allows re-subscription to existing endpoint even at cap", () => {
+      const ip = "10.0.0.2";
+      for (let i = 0; i < 10; i++) {
+        pushService.subscribe("child", `https://push.example.com/cap${i}`, {
+          p256dh: `p${i}`,
+          auth: `a${i}`,
+        }, ip);
+      }
+
+      // Re-subscribing to an existing endpoint should succeed
+      expect(() => {
+        pushService.subscribe("child", "https://push.example.com/cap5", {
+          p256dh: "updated-p",
+          auth: "updated-a",
+        }, ip);
+      }).not.toThrow();
+    });
+
+    it("allows subscription from different IP even if another IP is at cap", () => {
+      const ip1 = "10.0.0.3";
+      const ip2 = "10.0.0.4";
+      for (let i = 0; i < 10; i++) {
+        pushService.subscribe("child", `https://push.example.com/ip1-${i}`, {
+          p256dh: `p${i}`,
+          auth: `a${i}`,
+        }, ip1);
+      }
+
+      expect(() => {
+        pushService.subscribe("child", "https://push.example.com/ip2-new", {
+          p256dh: "px",
+          auth: "ax",
+        }, ip2);
+      }).not.toThrow();
+    });
+
+    it("does not count failed subscriptions toward IP cap", () => {
+      const ip = "10.0.0.5";
+      for (let i = 0; i < 10; i++) {
+        pushService.subscribe("child", `https://push.example.com/fail${i}`, {
+          p256dh: `p${i}`,
+          auth: `a${i}`,
+        }, ip);
+      }
+
+      // Mark 5 as failed
+      for (let i = 0; i < 5; i++) {
+        db.prepare("UPDATE push_subscriptions SET status = 'failed' WHERE endpoint = ?")
+          .run(`https://push.example.com/fail${i}`);
+      }
+
+      // Should now allow new subscriptions since only 5 are active
+      expect(() => {
+        pushService.subscribe("child", "https://push.example.com/after-fail", {
+          p256dh: "px",
+          auth: "ax",
+        }, ip);
+      }).not.toThrow();
+    });
   });
 
   describe("sendNotification", () => {
