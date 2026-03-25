@@ -205,6 +205,31 @@ export interface PushSubscribePayload {
   auth: string;
 }
 
+export interface BackupManifest {
+  appVersion: string;
+  schemaVersion: string;
+  timezone: string;
+  exportedAt: string;
+}
+
+export interface Asset {
+  id: number;
+  source: AssetSource;
+  reusable: boolean;
+  status: AssetStatus;
+  originalFilename: string | null;
+  storedFilename: string;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  width: number | null;
+  height: number | null;
+  prompt: string | null;
+  model: string | null;
+  createdAt: string;
+  archivedAt: string | null;
+  url: string;
+}
+
 export interface BootstrapData {
   routines?: Routine[];
   pendingRoutineCount?: number;

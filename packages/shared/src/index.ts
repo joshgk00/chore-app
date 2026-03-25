@@ -28,6 +28,9 @@ export type {
   BootstrapData,
   ApprovalType,
   PendingApprovals,
+  BackupManifest,
+  Asset,
+  PushSubscribePayload,
 } from "./types.js";
 
 export {
