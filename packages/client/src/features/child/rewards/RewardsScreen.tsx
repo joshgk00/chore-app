@@ -57,8 +57,9 @@ export default function RewardsScreen() {
 
       {rewardList.length === 0 ? (
         <div className="mt-12 text-center" aria-live="polite">
-          <p className="text-xl font-bold text-[var(--color-text-muted)]">No rewards available yet.</p>
-          <p className="mt-2 text-[var(--color-text-muted)]">Keep earning points!</p>
+          <p className="text-4xl" data-emoji>&#127873;</p>
+          <p className="mt-2 text-xl font-bold text-[var(--color-text-muted)]">No rewards available yet.</p>
+          <p className="mt-1 text-[var(--color-text-muted)]">Keep earning points!</p>
         </div>
       ) : (
         <div className="mt-6 grid grid-cols-2 gap-4">

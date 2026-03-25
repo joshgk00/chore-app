@@ -319,6 +319,8 @@ describe("AssetPicker", () => {
 
     await user.click(screen.getByRole("button", { name: "Browse" }));
 
+    const loadingRegion = screen.getByRole("status");
+    expect(loadingRegion).toBeInTheDocument();
     expect(screen.getByText("Loading assets...")).toBeInTheDocument();
   });
 });
