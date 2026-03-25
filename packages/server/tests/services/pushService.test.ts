@@ -198,6 +198,33 @@ describe("pushService", () => {
       }).not.toThrow();
     });
 
+    it("rejects cross-IP endpoint migration when destination IP is at cap", () => {
+      const ipA = "10.0.0.10";
+      const ipB = "10.0.0.11";
+
+      // IP A owns one endpoint
+      pushService.subscribe("child", "https://push.example.com/from-a", {
+        p256dh: "pA",
+        auth: "aA",
+      }, ipA);
+
+      // IP B is at cap
+      for (let i = 0; i < 10; i++) {
+        pushService.subscribe("child", `https://push.example.com/ipb-${i}`, {
+          p256dh: `p${i}`,
+          auth: `a${i}`,
+        }, ipB);
+      }
+
+      // IP B tries to re-subscribe an endpoint owned by IP A — should be rejected
+      expect(() => {
+        pushService.subscribe("child", "https://push.example.com/from-a", {
+          p256dh: "stolen-p",
+          auth: "stolen-a",
+        }, ipB);
+      }).toThrow("Too many subscriptions from this IP");
+    });
+
     it("does not count failed subscriptions toward IP cap", () => {
       const ip = "10.0.0.5";
       for (let i = 0; i < 10; i++) {

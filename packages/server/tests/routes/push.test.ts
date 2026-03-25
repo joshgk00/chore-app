@@ -243,23 +243,21 @@ describe("push routes", () => {
 
     it("returns 429 when IP exceeds subscription cap", async () => {
       const { db, app } = await createTestApp();
+      const testIp = "203.0.113.1";
 
-      // Fill up 10 subscriptions
+      // Pre-seed 10 active subscriptions so a single HTTP request
+      // triggers the DB cap without hitting the rate limiter
+      const insertStmt = db.prepare(
+        `INSERT INTO push_subscriptions (role, endpoint, p256dh, auth, ip_address, status, updated_at)
+         VALUES (?, ?, ?, ?, ?, 'active', datetime('now'))`,
+      );
       for (let i = 0; i < 10; i++) {
-        const subRes = await request(app)
-          .post("/api/push/subscribe")
-          .send({
-            role: "child",
-            endpoint: `https://push.example.com/cap-${i}`,
-            p256dh: `p${i}`,
-            auth: `a${i}`,
-          });
-        expect(subRes.status).toBe(200);
+        insertStmt.run("child", `https://push.example.com/cap-${i}`, `p${i}`, `a${i}`, testIp);
       }
 
-      // 11th should be rejected
       const res = await request(app)
         .post("/api/push/subscribe")
+        .set("X-Forwarded-For", testIp)
         .send({
           role: "child",
           endpoint: "https://push.example.com/over-limit",

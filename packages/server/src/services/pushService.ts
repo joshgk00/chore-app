@@ -115,7 +115,7 @@ export function createPushService(
        role = excluded.role,
        p256dh = excluded.p256dh,
        auth = excluded.auth,
-       ip_address = excluded.ip_address,
+       ip_address = COALESCE(excluded.ip_address, ip_address),
        status = 'active',
        updated_at = datetime('now')`,
   );
@@ -125,8 +125,8 @@ export function createPushService(
      WHERE ip_address = ? AND status = 'active'`,
   );
 
-  const existsByEndpointStmt = db.prepare(
-    `SELECT id FROM push_subscriptions WHERE endpoint = ?`,
+  const findByEndpointStmt = db.prepare(
+    `SELECT id, ip_address FROM push_subscriptions WHERE endpoint = ?`,
   );
 
   const selectActiveByRoleStmt = db.prepare(
@@ -154,8 +154,9 @@ export function createPushService(
   const subscribeInTransaction = db.transaction(
     (role: PushRole, endpoint: string, keys: { p256dh: string; auth: string }, ip: string | null) => {
       if (ip) {
-        const existingRow = existsByEndpointStmt.get(endpoint) as { id: number } | undefined;
-        if (!existingRow) {
+        const existingRow = findByEndpointStmt.get(endpoint) as { id: number; ip_address: string | null } | undefined;
+        const isSameIp = existingRow?.ip_address === ip;
+        if (!isSameIp) {
           const { count } = countActiveByIpStmt.get(ip) as { count: number };
           if (count >= MAX_PUSH_SUBSCRIPTIONS_PER_IP) {
             throw new RateLimitError(
