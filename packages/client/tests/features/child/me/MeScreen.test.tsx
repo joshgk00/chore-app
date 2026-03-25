@@ -67,14 +67,12 @@ describe('MeScreen', () => {
     });
   });
 
-  it('renders notification opt-in placeholder', async () => {
+  it('renders notification opt-in section', async () => {
     renderWithProviders(<MeScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText('Notifications')).toBeInTheDocument();
+      expect(screen.getByText("Notifications aren't available on this device.")).toBeInTheDocument();
     });
-
-    expect(screen.getByText('Coming soon!')).toBeInTheDocument();
   });
 
   it('shows error state when API fails', async () => {
