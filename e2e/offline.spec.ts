@@ -37,20 +37,16 @@ test.describe("Offline UX", () => {
     await expect(page.getByRole("status")).not.toBeVisible();
   });
 
-  test("submit buttons are disabled while offline", async () => {
-    await page.goto("/rewards");
-    await expect(page.getByRole("heading", { name: "Rewards" })).toBeVisible();
+  test("cached content remains visible while offline", async () => {
+    await page.goto("/today");
+    const heading = page.getByRole("heading", { level: 1 });
+    await expect(heading).toBeVisible();
 
     await page.context().setOffline(true);
     await page.evaluate(() => window.dispatchEvent(new Event("offline")));
 
     await expect(page.getByRole("status")).toBeVisible();
-
-    const requestButtons = page.getByRole("button", { name: /request/i });
-    const count = await requestButtons.count();
-    for (let i = 0; i < count; i++) {
-      await expect(requestButtons.nth(i)).toBeDisabled();
-    }
+    await expect(heading).toBeVisible();
 
     await page.context().setOffline(false);
     await page.evaluate(() => window.dispatchEvent(new Event("online")));

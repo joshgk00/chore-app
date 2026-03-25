@@ -43,7 +43,7 @@ export default function BottomNav() {
   return (
     <nav
       aria-label="Main navigation"
-      className="fixed bottom-0 left-0 right-0 border-t bg-[var(--color-nav-bg)] pb-[env(safe-area-inset-bottom)] backdrop-blur-lg"
+      className="fixed bottom-0 left-0 right-0 border-t bg-[var(--color-nav-bg)] pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-lg"
       style={{ borderColor: "var(--color-border)" }}
     >
       <div className="mx-auto flex max-w-lg">
