@@ -26,6 +26,16 @@ export interface AssetPickerProps {
 
 const ACCEPTED_TYPES = "image/jpeg,image/png,image/webp";
 const UPLOAD_TIMEOUT_MS = 30_000;
+const GENERATE_TIMEOUT_MS = 45_000;
+
+async function parseErrorMessage(res: Response, fallback: string): Promise<string> {
+  try {
+    const body = await res.json();
+    return body.error?.message || fallback;
+  } catch {
+    return `${fallback} (${res.status})`;
+  }
+}
 
 async function uploadAsset(file: File): Promise<Asset> {
   const formData = new FormData();
@@ -43,8 +53,7 @@ async function uploadAsset(file: File): Promise<Asset> {
     });
 
     if (!res.ok) {
-      const errorBody = await res.json();
-      throw new Error(errorBody.error?.message || "Upload failed");
+      throw new Error(await parseErrorMessage(res, "Upload failed"));
     }
 
     const body = await res.json();
@@ -55,9 +64,32 @@ async function uploadAsset(file: File): Promise<Asset> {
 }
 
 async function generateAsset(prompt: string): Promise<Asset> {
-  const result = await api.post<Asset>("/api/admin/assets/generate", { prompt });
-  if (!result.ok) throw new Error(result.error.message);
-  return result.data;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), GENERATE_TIMEOUT_MS);
+
+  try {
+    const res = await fetch("/api/admin/assets/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt }),
+      credentials: "same-origin",
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      throw new Error(await parseErrorMessage(res, "Generation failed"));
+    }
+
+    const body = await res.json();
+    return body.data;
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("Image generation timed out. Please try again.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 type PickerMode = "idle" | "browse" | "generate";
