@@ -121,6 +121,7 @@ export function createChildRoutes(
           pointsSummary,
           pendingRewardCount,
           recentBadges,
+          slotConfig,
         },
       });
     } catch (err) {

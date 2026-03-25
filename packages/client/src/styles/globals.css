@@ -140,3 +140,25 @@ a,
 [data-emoji] {
   color-scheme: light;
 }
+
+/* Mascot transitions between states */
+.mascot circle,
+.mascot ellipse,
+.mascot path,
+.mascot text {
+  transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out, fill 0.4s ease-in-out, stroke 0.4s ease-in-out;
+}
+
+.mascot-accessory {
+  transition: opacity 0.4s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot circle,
+  .mascot ellipse,
+  .mascot path,
+  .mascot text,
+  .mascot-accessory {
+    transition: none;
+  }
+}
