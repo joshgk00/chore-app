@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { api } from "../../../api/client.js";
+import { useOnline } from "../../../contexts/OnlineContext.js";
 
 export default function PinEntry() {
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const isOnline = useOnline();
   const navigate = useNavigate();
   const pinRef = useRef<HTMLInputElement>(null);
 
@@ -51,6 +53,12 @@ export default function PinEntry() {
         <h1 className="mt-5 font-display text-2xl font-bold text-[var(--color-text)]">Admin Access</h1>
         <p className="mt-1 text-sm text-[var(--color-text-muted)]">Enter your PIN to manage chores</p>
 
+        {!isOnline && (
+          <p className="mt-4 text-sm font-medium text-[var(--color-amber-700)]" role="status">
+            PIN verification requires a connection.
+          </p>
+        )}
+
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div>
             <label htmlFor="pin" className="sr-only">
@@ -80,7 +88,7 @@ export default function PinEntry() {
           )}
           <button
             type="submit"
-            disabled={loading || pin.length < 6}
+            disabled={loading || pin.length < 6 || !isOnline}
             className="w-full rounded-xl font-display text-base font-semibold text-white shadow-glow-amber transition-all duration-200 hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-50"
             style={{ background: "linear-gradient(135deg, var(--color-amber-500), var(--color-amber-600))", padding: "14px" }}
           >

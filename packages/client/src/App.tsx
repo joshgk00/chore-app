@@ -5,6 +5,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary.js";
 import BottomNav from "./components/BottomNav.js";
 import AdminGuard from "./components/AdminGuard.js";
 import AdminLayout from "./layouts/AdminLayout.js";
+import OfflineBanner from "./components/OfflineBanner.js";
 import Today from "./pages/Today.js";
 import Routines from "./pages/Routines.js";
 import Rewards from "./pages/Rewards.js";
@@ -87,6 +88,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <OfflineBanner />
         <Routes>
           <Route path="/" element={<Navigate to="/today" replace />} />
 

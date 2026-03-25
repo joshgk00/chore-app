@@ -229,6 +229,7 @@ export default function RoutineChecklist() {
           type="button"
           onClick={handleSubmit}
           disabled={!isAllChecked || !isOnline || submitRoutine.isPending}
+          title={!isOnline ? "You're offline" : undefined}
           className="w-full rounded-full bg-[var(--color-emerald-500)] px-6 py-4 text-lg font-bold text-white shadow-card transition-all duration-200 enabled:hover:bg-[var(--color-emerald-600)] enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {submitRoutine.isPending ? "Submitting..." : "Complete Routine!"}

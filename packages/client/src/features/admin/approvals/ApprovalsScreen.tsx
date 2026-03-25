@@ -188,6 +188,7 @@ function ApprovalCard({
           type="button"
           onClick={handleReject}
           disabled={!isOnline || isActionPending}
+          title={!isOnline ? "You're offline" : undefined}
           className="min-h-touch rounded-xl px-5 py-2 font-display font-bold text-[var(--color-text-muted)] bg-[var(--color-surface-muted)] transition-colors hover:bg-[var(--color-red-600)] hover:text-white disabled:opacity-50"
         >
           {isThisRejectPending ? "Rejecting..." : "Reject"}
@@ -196,6 +197,7 @@ function ApprovalCard({
           type="button"
           onClick={handleApprove}
           disabled={!isOnline || isActionPending}
+          title={!isOnline ? "You're offline" : undefined}
           className="min-h-touch rounded-xl bg-[var(--color-emerald-500)] px-5 py-2 font-display font-bold text-white transition-colors hover:bg-[var(--color-emerald-600)] disabled:opacity-50"
         >
           {isThisApprovePending ? "Approving..." : "Approve"}

@@ -71,6 +71,7 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
           type="button"
           onClick={handleCancel}
           disabled={cancelMutation.isPending || !isOnline}
+          title={!isOnline ? "You're offline" : undefined}
           className="mt-3 text-sm font-medium text-[var(--color-red-600)] disabled:opacity-50"
         >
           {cancelMutation.isPending ? "Canceling..." : "Cancel Request"}
@@ -133,6 +134,7 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
           type="button"
           onClick={() => setIsConfirming(true)}
           disabled={!isAffordable || !isOnline || submitMutation.isPending}
+          title={!isOnline ? "You're offline" : undefined}
           className="mt-3 w-full rounded-xl bg-[var(--color-amber-500)] py-2.5 font-bold text-white transition-all duration-200 hover:bg-[var(--color-amber-600)] disabled:cursor-not-allowed disabled:bg-[var(--color-border)] disabled:text-[var(--color-text-faint)]"
         >
           {isAffordable ? "Request" : `Need ${reward.pointsCost - availablePoints} more pts`}

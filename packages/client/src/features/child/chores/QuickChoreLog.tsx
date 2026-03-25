@@ -152,6 +152,7 @@ export default function QuickChoreLog() {
                 type="button"
                 onClick={() => handleChoreSelect(chore)}
                 disabled={!isOnline}
+                title={!isOnline ? "You're offline" : undefined}
                 className="flex w-full items-center justify-between rounded-xl bg-[var(--color-surface-muted)] px-4 py-3 text-left font-medium text-[var(--color-text-secondary)] transition-all duration-200 hover:bg-[var(--color-amber-50)] hover:text-[var(--color-amber-700)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <span>{chore.name}</span>
@@ -179,6 +180,7 @@ export default function QuickChoreLog() {
               type="button"
               onClick={() => handleTierSelect(tier)}
               disabled={!isOnline || submitMutation.isPending}
+              title={!isOnline ? "You're offline" : undefined}
               className="flex w-full items-center justify-between rounded-xl bg-[var(--color-surface-muted)] px-4 py-3 text-left transition-all duration-200 hover:bg-[var(--color-emerald-50)] hover:ring-1 hover:ring-[var(--color-emerald-400)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <span className="font-medium text-[var(--color-text-secondary)]">{tier.name}</span>
