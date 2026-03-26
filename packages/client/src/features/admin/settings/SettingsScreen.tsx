@@ -88,7 +88,7 @@ export default function SettingsScreen() {
     }
   }, [query.data, isInitialized]);
 
-  const timeSlotMutation = useMutation({
+  const saveSettingsMutationOptions = {
     mutationFn: async (settings: Record<string, string>) => {
       const result = await api.put<SettingsResponse>("/api/admin/settings", settings);
       if (!result.ok) throw result.error;
@@ -97,18 +97,10 @@ export default function SettingsScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "settings"] });
     },
-  });
+  };
 
-  const generalMutation = useMutation({
-    mutationFn: async (settings: Record<string, string>) => {
-      const result = await api.put<SettingsResponse>("/api/admin/settings", settings);
-      if (!result.ok) throw result.error;
-      return result.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "settings"] });
-    },
-  });
+  const timeSlotMutation = useMutation(saveSettingsMutationOptions);
+  const generalMutation = useMutation(saveSettingsMutationOptions);
 
   const pinMutation = useMutation({
     mutationFn: async (payload: PinChangePayload) => {
