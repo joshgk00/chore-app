@@ -6,10 +6,10 @@ import BottomNav from "./components/BottomNav.js";
 import AdminGuard from "./components/AdminGuard.js";
 import AdminLayout from "./layouts/AdminLayout.js";
 import OfflineBanner from "./components/OfflineBanner.js";
-import Today from "./pages/Today.js";
-import Routines from "./pages/Routines.js";
-import Rewards from "./pages/Rewards.js";
-import Me from "./pages/Me.js";
+import TodayScreen from "./features/child/today/TodayScreen.js";
+import RoutinesScreen from "./features/child/routines/RoutinesScreen.js";
+import RewardsScreen from "./features/child/rewards/RewardsScreen.js";
+import MeScreen from "./features/child/me/MeScreen.js";
 import RoutineChecklist from "./features/child/routines/RoutineChecklist.js";
 import PinEntry from "./features/admin/pin/PinEntry.js";
 import AdminRoutinesList from "./features/admin/routines/AdminRoutinesList.js";
@@ -105,11 +105,11 @@ export default function App() {
           <Route path="/" element={<Navigate to="/today" replace />} />
 
           <Route element={<AppShell />}>
-            <Route path="/today" element={<Today />} />
-            <Route path="/routines" element={<Routines />} />
+            <Route path="/today" element={<TodayScreen />} />
+            <Route path="/routines" element={<RoutinesScreen />} />
             <Route path="/routines/:id" element={<RoutineChecklist />} />
-            <Route path="/rewards" element={<Rewards />} />
-            <Route path="/me" element={<Me />} />
+            <Route path="/rewards" element={<RewardsScreen />} />
+            <Route path="/me" element={<MeScreen />} />
           </Route>
 
           <Route path="/admin/pin" element={<PinEntry />} />
