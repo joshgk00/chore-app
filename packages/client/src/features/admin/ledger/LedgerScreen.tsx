@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
+import HelpTip from "../../../components/HelpTip.js";
 import type { PointsBalance, LedgerEntry, EntryType } from "@chore-app/shared";
 
 const PAGE_SIZE = 50;
@@ -141,9 +142,9 @@ function LoadingSkeleton() {
 
 function BalanceHeader({ balance }: { balance: PointsBalance }) {
   const cards = [
-    { label: "Total", value: balance.total },
-    { label: "Reserved", value: balance.reserved },
-    { label: "Available", value: balance.available },
+    { label: "Total", value: balance.total, helpId: "help-balance-total", helpText: "All points earned from routines, chores, and manual adjustments." },
+    { label: "Reserved", value: balance.reserved, helpId: "help-balance-reserved", helpText: "Points held by pending reward requests that haven't been approved yet." },
+    { label: "Available", value: balance.available, helpId: "help-balance-available", helpText: "Points the child can spend right now. This is Total minus Reserved minus already-spent points." },
   ];
 
   return (
@@ -153,9 +154,12 @@ function BalanceHeader({ balance }: { balance: PointsBalance }) {
           key={card.label}
           className="flex-1 rounded-2xl bg-[var(--color-surface)] p-4 shadow-card"
         >
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-            {card.label}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+              {card.label}
+            </span>
+            <HelpTip id={card.helpId} text={card.helpText} />
+          </div>
           <p className="mt-1 font-display text-2xl font-bold text-[var(--color-amber-700)]">
             {card.value}
           </p>
@@ -210,9 +214,15 @@ function AdjustmentForm({ isOnline, mutation }: AdjustmentFormProps) {
       className="rounded-2xl bg-[var(--color-surface)] p-4 shadow-card"
       aria-label="Manual point adjustment"
     >
-      <h2 className="font-display text-base font-bold text-[var(--color-text)]">
-        Manual Adjustment
-      </h2>
+      <div className="flex items-center gap-2">
+        <h2 className="font-display text-base font-bold text-[var(--color-text)]">
+          Manual Adjustment
+        </h2>
+        <HelpTip
+          id="help-manual-adjust"
+          text="Add or remove points directly. Use positive numbers to give bonus points, negative to deduct. A note is required so you remember why."
+        />
+      </div>
       <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start">
         <div className="flex-shrink-0 sm:w-32">
           <label htmlFor="adjust-amount" className="block text-xs font-semibold text-[var(--color-text-muted)]">
