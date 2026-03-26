@@ -66,6 +66,16 @@ export async function deleteDraft(routineId: number): Promise<void> {
   }
 }
 
+export async function hasAnyActiveDraft(): Promise<boolean> {
+  try {
+    const db = await getDb();
+    const allDrafts = (await db.getAll(STORE_NAME)) as Draft[];
+    return allDrafts.some((draft) => draft.items.some((item) => item.isChecked));
+  } catch {
+    return false;
+  }
+}
+
 export async function getDraftsWithFailedSubmission(): Promise<Draft[]> {
   try {
     const db = await getDb();

@@ -31,13 +31,13 @@ export default function ChecklistItem({ item, isChecked, onToggle }: Props) {
       <div
         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-2 transition-all duration-200 ${
           isChecked
-            ? "border-[var(--color-emerald-500)] bg-[var(--color-emerald-500)]"
+            ? "border-[var(--color-emerald-500)] bg-[var(--color-emerald-500)] animate-checkbox-pop"
             : "border-[var(--color-border)] bg-[var(--color-surface)]"
         }`}
       >
         {isChecked && (
           <svg
-            className="h-5 w-5 text-white"
+            className="h-5 w-5 text-white animate-checkmark-draw"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"

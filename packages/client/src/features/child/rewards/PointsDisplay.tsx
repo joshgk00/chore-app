@@ -1,10 +1,14 @@
 import type { PointsBalance } from "@chore-app/shared";
+import { useAnimatedNumber } from "../../../hooks/useAnimatedNumber.js";
 
 interface PointsDisplayProps {
   balance: PointsBalance;
 }
 
 export default function PointsDisplay({ balance }: PointsDisplayProps) {
+  const displayedAvailable = useAnimatedNumber(balance.available);
+  const displayedTotal = useAnimatedNumber(balance.total);
+
   return (
     <div
       className="relative overflow-hidden rounded-3xl p-6 text-white shadow-glow-amber"
@@ -24,11 +28,11 @@ export default function PointsDisplay({ balance }: PointsDisplayProps) {
       <div className="relative text-center">
         <p className="text-sm font-medium text-white/90">Available Points</p>
         <p className="font-display text-5xl font-bold" data-testid="available-points">
-          {balance.available}
+          {displayedAvailable}
         </p>
       </div>
       <div className="relative mt-2 flex justify-center gap-6 text-sm text-white/90">
-        <span>Total: {balance.total}</span>
+        <span>Total: {displayedTotal}</span>
         {balance.reserved > 0 && <span>Reserved: {balance.reserved}</span>}
       </div>
     </div>

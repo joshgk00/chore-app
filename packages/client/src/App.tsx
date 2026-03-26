@@ -1,10 +1,11 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useSyncOnReconnect } from "./lib/draft-sync.js";
 import { ErrorBoundary } from "./components/ErrorBoundary.js";
 import BottomNav from "./components/BottomNav.js";
 import AdminGuard from "./components/AdminGuard.js";
 import AdminLayout from "./layouts/AdminLayout.js";
+import OfflineBanner from "./components/OfflineBanner.js";
 import Today from "./pages/Today.js";
 import Routines from "./pages/Routines.js";
 import Rewards from "./pages/Rewards.js";
@@ -40,7 +41,7 @@ function ChildErrorFallback() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-bg)] p-4">
       <div className="text-center">
         <p className="text-5xl" data-emoji>&#128517;</p>
-        <h1 className="mt-4 text-xl font-bold text-[var(--color-text)]">Oops! Something broke.</h1>
+        <h1 className="mt-4 font-display text-xl font-bold text-[var(--color-text)]">Oops! Something broke.</h1>
         <p className="mt-2 text-[var(--color-text-muted)]">Let's go back and try again.</p>
         <a
           href="/today"
@@ -53,9 +54,21 @@ function ChildErrorFallback() {
   );
 }
 
+function TabContent() {
+  const location = useLocation();
+  // Re-key on the top-level path segment so the fade-in replays on tab switch
+  const tabKey = location.pathname.split("/")[1] || "today";
+
+  return (
+    <div key={tabKey} className="animate-tab-enter">
+      <Outlet />
+    </div>
+  );
+}
+
 function AppShell() {
   return (
-    <div className="pb-16">
+    <div className="pb-[calc(4rem+env(safe-area-inset-bottom,0px))]">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-[var(--color-amber-500)] focus:px-4 focus:py-2 focus:text-white"
@@ -64,7 +77,7 @@ function AppShell() {
       </a>
       <main id="main-content">
         <ErrorBoundary fallback={<ChildErrorFallback />}>
-          <Outlet />
+          <TabContent />
         </ErrorBoundary>
       </main>
       <BottomNav />
@@ -87,6 +100,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <OfflineBanner />
         <Routes>
           <Route path="/" element={<Navigate to="/today" replace />} />
 

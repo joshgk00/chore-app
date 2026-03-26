@@ -59,11 +59,34 @@ describe('MeScreen', () => {
     expect(screen.getByText(/completed morning routine/i)).toBeInTheDocument();
   });
 
-  it('renders mascot placeholder', async () => {
+  it('renders mascot SVG', async () => {
     renderWithProviders(<MeScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText(/mascot coming soon/i)).toBeInTheDocument();
+      expect(screen.getByRole('img', { name: /mascot/i })).toBeInTheDocument();
+    });
+  });
+
+  it('shows happy mascot when bootstrap includes a recent lastApprovalAt', async () => {
+    server.use(
+      http.get('/api/app/bootstrap', () =>
+        HttpResponse.json({
+          data: {
+            routines: [],
+            pendingRoutineCount: 0,
+            pendingChoreCount: 0,
+            pendingRewardCount: 0,
+            lastApprovalAt: new Date().toISOString(),
+          },
+        }),
+      ),
+    );
+
+    renderWithProviders(<MeScreen />);
+
+    await waitFor(() => {
+      const mascot = screen.getByRole('img', { name: /mascot/i });
+      expect(mascot).toHaveAttribute('data-state', 'happy');
     });
   });
 
@@ -138,7 +161,7 @@ describe('MeScreen', () => {
       expect(screen.getByText('First Step')).toBeInTheDocument();
     });
 
-    const allBadges = screen.getAllByRole('img');
+    const allBadges = screen.getAllByRole('img', { name: /locked/i });
     for (const badge of allBadges) {
       expect(badge).toHaveAccessibleName(expect.stringContaining('locked'));
     }

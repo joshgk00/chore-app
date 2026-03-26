@@ -43,16 +43,19 @@ Configure the service worker for app shell caching and offline support.
 
 **Work**:
 - Configure `vite-plugin-pwa` in `packages/client/vite.config.ts`:
-  - `generateSW` mode with precache for all built assets (JS, CSS, HTML, SVG)
+  - `injectManifest` mode — the existing `sw.js` has push notification handlers that must be preserved. `generateSW` would overwrite them. `injectManifest` lets us keep the push handlers and add precaching on top.
+  - Move `public/sw.js` to `src/sw.ts` as the source service worker. Import `precacheAndRoute` from `workbox-precaching` and add runtime caching via `workbox-routing` + `workbox-strategies`.
+  - Precache: all built assets (JS, CSS, HTML, SVG) via the injected `self.__WB_MANIFEST`
   - Runtime cache: `GET /api/*` with `NetworkFirst` strategy (3s timeout, fallback to cache)
   - Runtime cache: `/assets/*` with `CacheFirst` strategy (max 200 entries, 50MB limit)
+  - Preserve existing `push` and `notificationclick` event listeners from current `sw.js`
 - `public/manifest.json`:
   - `name: "Chores"`, `short_name: "Chores"`, `display: "standalone"`
   - `start_url: "/"`
   - Icons: `192x192` and `512x512` (PNG)
   - `background_color`, `theme_color`
 - Create app icons at both sizes
-- Register service worker in `main.tsx`
+- Register service worker in `main.tsx` (replace the manual registration in `lib/push.ts` if present)
 
 **Validation**:
 - [ ] `manifest.json` is served at `/manifest.json` with correct content
@@ -65,6 +68,7 @@ Configure the service worker for app shell caching and offline support.
 - [ ] Asset images are cached with CacheFirst: images load from cache on repeat views
 - [ ] Cache doesn't grow unbounded: max 200 entries for assets
 - [ ] New deployment triggers service worker update (new precache manifest)
+- [ ] Push notifications still work after SW migration (push + notificationclick handlers preserved)
 - [ ] App is installable as PWA from Chrome/Safari "Add to Home Screen"
 - [ ] Installed PWA opens in standalone mode (no browser chrome)
 - [ ] iOS Safari: app installs to home screen with correct icon and name
@@ -75,10 +79,12 @@ Configure the service worker for app shell caching and offline support.
 
 Build the read-only offline experience.
 
+**Already exists**:
+- `packages/client/src/contexts/OnlineContext.tsx`: `useOnline()` hook + `OnlineProvider` (tracks `navigator.onLine` + events)
+- `OnlineProvider` already wraps `<App />` in `main.tsx`
+- Tests already cover all three online/offline state transitions (`tests/contexts/OnlineContext.test.tsx`)
+
 **Work**:
-- `packages/client/src/lib/offline.ts`:
-  - `useOnlineStatus()` hook: tracks `navigator.onLine` + `online`/`offline` events
-  - Export `OnlineContext` provider
 - Offline banner component: thin bar at top of screen when offline
 - Disable all mutation buttons when offline (submit, approve, request, adjust, etc.)
 - Show tooltip/message on disabled buttons explaining offline state
@@ -180,8 +186,17 @@ Final pass on tablet-first responsive design and accessibility.
 
 Add resilience patterns for a polished UX.
 
+**Already exists**:
+- `packages/client/src/components/ErrorBoundary.tsx`: class component that catches render errors, shows fallback with reload button
+- App root and child page are already wrapped with `<ErrorBoundary>`
+
+**Needs improvement**:
+- Current "Try Again" reloads the entire page (`window.location.reload()`). Should reset error state and re-render the child tree instead.
+- Uses raw Tailwind colors (`text-gray-900`, `bg-indigo-600`) instead of design system tokens. Must switch to `var(--color-*)` tokens and `font-display`.
+- Add `aria-live="assertive"` to error fallback for screen reader announcement.
+
 **Work**:
-- React error boundary component: catches render errors, shows friendly message with retry
+- Enhance existing error boundary: in-place retry (state reset), design tokens, accessibility
 - Loading skeletons for:
   - Routine cards (Today screen)
   - Reward cards
@@ -211,15 +226,21 @@ Add resilience patterns for a polished UX.
 
 Write tests for mascot state logic, offline behavior, retention, and error boundaries.
 
+**Already exists**:
+- `packages/client/tests/contexts/OnlineContext.test.tsx`: 3 tests covering all online/offline state transitions. No additional online/offline hook tests needed.
+
 **Work**:
 
-**Test file locations** (following project convention — tests mirror `src/` structure under `tests/`):
-- `packages/client/tests/components/mascot/Mascot.test.tsx`
-- `packages/client/tests/components/mascot/mascotStates.test.ts` (actually `tests/components/mascot/` path mirrors `src/components/mascot/`)
-- `packages/client/tests/lib/offline.test.ts`
-- `packages/server/tests/jobs/retentionJob.test.ts`
+Tests ship with their corresponding PR — this task lists all new tests for reference.
 
-**Server unit tests**:
+**Test file locations** (following project convention — tests mirror `src/` structure under `tests/`):
+- `packages/client/tests/components/mascot/Mascot.test.tsx` (PR 1)
+- `packages/client/tests/components/mascot/mascotStates.test.ts` (PR 1)
+- `packages/server/tests/jobs/retentionJob.test.ts` (PR 3)
+- `packages/client/tests/components/OfflineBanner.test.tsx` (PR 3)
+- `packages/client/tests/components/ErrorBoundary.test.tsx` (PR 5)
+
+**Server unit tests** (PR 3):
 
 - `packages/server/tests/jobs/retentionJob.test.ts`:
   - Test: job deletes activity events older than retention period
@@ -230,7 +251,7 @@ Write tests for mascot state logic, offline behavior, retention, and error bound
   - Test: job handles empty `activity_events` table without error
   - Test: changing retention days setting affects which rows are deleted
 
-**Client unit tests**:
+**Client unit tests** (PR 1):
 
 - `packages/client/tests/components/mascot/mascotStates.test.ts`:
   - Test: morning time + no special context returns `greeting` state
@@ -241,26 +262,28 @@ Write tests for mascot state logic, offline behavior, retention, and error bound
   - Test: bedtime slot returns `sleeping` state
   - Test: state priority: `celebrating` > `happy` > `encouraging` > `waiting` > `greeting` > `sleeping`
 
-- `packages/client/tests/lib/offline.test.ts`:
-  - Test: `useOnlineStatus` returns `true` when `navigator.onLine` is true
-  - Test: `useOnlineStatus` returns `false` when offline event fires
-  - Test: `useOnlineStatus` returns `true` when online event fires after offline
+**Client component tests** (PRs 1, 3, 5):
 
-**Client component tests**:
-
-- `packages/client/tests/components/mascot/Mascot.test.tsx`:
+- `packages/client/tests/components/mascot/Mascot.test.tsx` (PR 1):
   - Test: renders SVG element
   - Test: different state prop produces different visual output (class or SVG path changes)
 
-- Error boundary test:
-  - Test: error boundary catches render error and shows fallback UI
-  - Test: "Try Again" button re-renders the child component
-  - Test: non-throwing component renders normally inside error boundary
-
-- Offline banner test:
+- `packages/client/tests/components/OfflineBanner.test.tsx` (PR 3):
   - Test: banner not visible when online
   - Test: banner visible when offline
   - Test: mutation buttons are disabled when offline
+
+- `packages/client/tests/components/ErrorBoundary.test.tsx` (PR 5):
+  - Test: error boundary catches render error and shows fallback UI
+  - Test: "Try Again" button re-renders the child (state reset, not page reload)
+  - Test: non-throwing component renders normally inside error boundary
+
+**E2E tests** (PR 5 — final PR):
+
+- `e2e/offline.spec.ts`:
+  - Test: offline banner appears when network is disabled
+  - Test: submit buttons are disabled while offline
+  - Test: banner disappears and submit works after going back online
 
 **Full regression suite**:
 
@@ -273,9 +296,105 @@ At the end of Milestone 5, run the complete test suite to verify no regressions:
 
 **Validation**:
 - [ ] `npm run test -- --run` passes with ALL tests across all milestones
+- [ ] `npm run test:e2e` passes including new offline E2E tests
 - [ ] Retention job tests confirm canonical tables are never touched
 - [ ] Mascot state logic covers all 6 states and priority ordering
 - [ ] Offline tests verify both detection and UI consequences
 - [ ] Error boundary tests verify graceful failure handling
 - [ ] Total test count provides meaningful coverage of all business rules
 - [ ] No flaky tests — all tests are deterministic (no real timers, no real network)
+
+---
+
+## PR Plan
+
+5 PRs. PRs 1–4 are independent and can be built in parallel. PR 5 goes last.
+
+```
+PR 1 (Mascot) ──────────────┐
+PR 2 (SW + PWA) ────────────┤
+PR 3 (Offline + Retention) ──┼──→ PR 5 (Polish + Loading States + E2E)
+PR 4 (Animations) ───────────┘
+```
+
+### PR 1: Mascot SVG Component (Task 5.1)
+
+**Scope**: Client-only. New feature, self-contained.
+**Tasks**: 5.1, mascot tests from 5.8
+**Est. size**: ~250 impl + ~200 test lines
+
+**Files**:
+- New: `packages/client/src/components/mascot/Mascot.tsx`
+- New: `packages/client/src/components/mascot/mascotStates.ts`
+- New: `packages/client/tests/components/mascot/Mascot.test.tsx`
+- New: `packages/client/tests/components/mascot/mascotStates.test.ts`
+- Modified: Today screen and Me screen (add `<Mascot />`)
+
+---
+
+### PR 2: Service Worker + PWA Manifest (Task 5.2)
+
+**Scope**: Client infrastructure. Config-heavy, less raw code.
+**Tasks**: 5.2
+**Est. size**: ~300 impl + ~50 config lines
+
+**Files**:
+- New: `packages/client/src/sw.ts` (migrated from `public/sw.js` + workbox precaching/routing)
+- New: `packages/client/public/manifest.json`
+- New: App icons (192x192, 512x512 PNG)
+- Modified: `packages/client/vite.config.ts` (add vite-plugin-pwa with injectManifest)
+- Modified: `packages/client/src/main.tsx` (SW registration)
+- Deleted: `packages/client/public/sw.js` (moved to `src/sw.ts`)
+
+**Risk**: Highest integration risk in M5. The `injectManifest` approach must preserve push notification handlers while adding workbox precaching. Test push notifications manually after this PR.
+
+---
+
+### PR 3: Offline UX + Activity Retention Job (Tasks 5.3 + 5.4)
+
+**Scope**: Mixed client + server. Both are resilience features with clean boundaries.
+**Tasks**: 5.3, 5.4, offline banner tests and retention tests from 5.8
+**Est. size**: ~300 impl + ~250 test lines
+**Why combined**: 5.3 is ~200 impl lines (OnlineContext already exists, just need banner + button disabling). 5.4 is ~150 impl lines (single job file + init). Both under 200 lines solo.
+
+**Files**:
+- New: `packages/client/src/components/OfflineBanner.tsx`
+- New: `packages/server/src/jobs/retentionJob.ts`
+- New: `packages/client/tests/components/OfflineBanner.test.tsx`
+- New: `packages/server/tests/jobs/retentionJob.test.ts`
+- Modified: Mutation components (add `useOnline()` disabled state to submit/approve/request buttons)
+- Modified: `packages/server/src/index.ts` (init retention job on startup)
+- Modified: `packages/client/src/App.tsx` or layout (mount `<OfflineBanner />`)
+
+---
+
+### PR 4: Animations and Transitions (Task 5.5)
+
+**Scope**: Client-only. Many small changes across existing components.
+**Tasks**: 5.5
+**Est. size**: ~400–500 impl lines across ~15 files
+
+**Files**:
+- New: `packages/client/src/styles/animations.css` (keyframes, reduced-motion media query)
+- Modified: Checklist items, routine completion flow, badge components, tab navigation, card components, points display, approval cards
+
+**Commit guidance**: Structure commits by animation type (checklist, celebrations, tab transitions, card feedback, points counter, approval slide-out) so review is manageable despite the wide file spread.
+
+---
+
+### PR 5: Error Boundaries, Loading States, Responsive Polish + E2E (Tasks 5.6 + 5.7 + E2E from 5.8)
+
+**Scope**: Client-only. Final polish pass over existing UI.
+**Tasks**: 5.6, 5.7, error boundary tests and E2E tests from 5.8
+**Est. size**: ~500–600 impl + ~150 test lines
+**Why combined**: Both are audit-and-improve passes over existing UI. Skeleton/empty-state components will be affected by responsive adjustments — doing them together avoids touching the same files twice.
+**Split guidance**: If this exceeds ~800 impl lines, split responsive audit (5.6) from error boundaries + loading states (5.7).
+
+**Files**:
+- Modified: `packages/client/src/components/ErrorBoundary.tsx` (retry via state reset, design tokens, a11y)
+- New: Skeleton components (routine card, reward card, points, approval items, activity entries)
+- New: Empty state components (no routines, no chores, no rewards, no approvals, no activity)
+- New: `packages/client/tests/components/ErrorBoundary.test.tsx`
+- New: `e2e/offline.spec.ts`
+- Modified: All screen components (integrate skeletons + empty states)
+- Modified: `packages/client/src/styles/globals.css` (touch targets, breakpoints, safe areas)

@@ -4,9 +4,10 @@ import BadgeIcon from "./BadgeIcon.js";
 
 interface BadgeCollectionProps {
   earnedBadges: Badge[];
+  newlyEarnedKeys?: Set<string>;
 }
 
-export default function BadgeCollection({ earnedBadges }: BadgeCollectionProps) {
+export default function BadgeCollection({ earnedBadges, newlyEarnedKeys }: BadgeCollectionProps) {
   const earnedKeySet = new Set(earnedBadges.map((badge) => badge.badgeKey));
 
   return (
@@ -16,7 +17,12 @@ export default function BadgeCollection({ earnedBadges }: BadgeCollectionProps) 
       aria-label={`Badges: ${earnedBadges.length} of ${Object.keys(BADGE_KEYS).length} earned`}
     >
       {Object.values(BADGE_KEYS).map((key) => (
-        <BadgeIcon key={key} badgeKey={key} isEarned={earnedKeySet.has(key)} />
+        <BadgeIcon
+          key={key}
+          badgeKey={key}
+          isEarned={earnedKeySet.has(key)}
+          isNewlyEarned={newlyEarnedKeys?.has(key)}
+        />
       ))}
     </div>
   );

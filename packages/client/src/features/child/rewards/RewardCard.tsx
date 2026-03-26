@@ -52,7 +52,7 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
 
   if (pendingRequest) {
     return (
-      <div className="rounded-3xl bg-[var(--color-surface)] p-4 shadow-card ring-1 ring-[var(--color-border)]">
+      <div className="animate-card-press rounded-3xl bg-[var(--color-surface)] p-4 shadow-card ring-1 ring-[var(--color-border)]">
         {reward.imageUrl && (
           <img
             src={reward.imageUrl}
@@ -71,6 +71,7 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
           type="button"
           onClick={handleCancel}
           disabled={cancelMutation.isPending || !isOnline}
+          title={!isOnline ? "You're offline" : undefined}
           className="mt-3 text-sm font-medium text-[var(--color-red-600)] disabled:opacity-50"
         >
           {cancelMutation.isPending ? "Canceling..." : "Cancel Request"}
@@ -80,7 +81,7 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
   }
 
   return (
-    <div className="rounded-3xl bg-[var(--color-surface)] p-4 shadow-card ring-1 ring-[var(--color-border)]">
+    <div className="animate-card-press rounded-3xl bg-[var(--color-surface)] p-4 shadow-card ring-1 ring-[var(--color-border)]">
       {reward.imageUrl && (
         <img
           src={reward.imageUrl}
@@ -110,11 +111,11 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
           <p className="text-sm font-medium text-[var(--color-text-secondary)]">
             Redeem {reward.name} for {reward.pointsCost} points?
           </p>
-          <div className="mt-2 flex gap-2">
+          <div className="mt-3 flex gap-2">
             <button
               type="button"
               onClick={() => setIsConfirming(false)}
-              className="rounded-lg px-3 py-1.5 text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"
+              className="min-h-touch flex-1 rounded-xl px-4 py-2 text-sm font-display font-bold text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"
             >
               Cancel
             </button>
@@ -122,7 +123,7 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
               type="button"
               onClick={handleRequest}
               disabled={submitMutation.isPending}
-              className="rounded-lg bg-[var(--color-amber-500)] px-3 py-1.5 text-sm font-bold text-white hover:bg-[var(--color-amber-600)] disabled:opacity-50"
+              className="min-h-touch flex-1 rounded-xl bg-[var(--color-amber-500)] px-4 py-2 text-sm font-display font-bold text-white hover:bg-[var(--color-amber-600)] disabled:opacity-50"
             >
               {submitMutation.isPending ? "Requesting..." : "Confirm"}
             </button>
@@ -133,7 +134,8 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
           type="button"
           onClick={() => setIsConfirming(true)}
           disabled={!isAffordable || !isOnline || submitMutation.isPending}
-          className="mt-3 w-full rounded-xl bg-[var(--color-amber-500)] py-2.5 font-bold text-white transition-all duration-200 hover:bg-[var(--color-amber-600)] disabled:cursor-not-allowed disabled:bg-[var(--color-border)] disabled:text-[var(--color-text-faint)]"
+          title={!isOnline ? "You're offline" : undefined}
+          className="mt-3 w-full rounded-xl bg-[var(--color-amber-500)] py-2.5 font-display font-bold text-white transition-all duration-200 hover:bg-[var(--color-amber-600)] disabled:cursor-not-allowed disabled:bg-[var(--color-border)] disabled:text-[var(--color-text-faint)]"
         >
           {isAffordable ? "Request" : `Need ${reward.pointsCost - availablePoints} more pts`}
         </button>

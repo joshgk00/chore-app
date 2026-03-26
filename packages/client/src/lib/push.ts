@@ -56,8 +56,6 @@ export function usePushSupport(): PushSupport {
       setError(null);
 
       try {
-        await navigator.serviceWorker.register("/sw.js");
-
         const result = await Notification.requestPermission();
 
         if (result !== "granted") {

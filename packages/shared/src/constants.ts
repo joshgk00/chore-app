@@ -60,5 +60,8 @@ export const ACTIVITY_EVENT_TYPES = [
 export const SUBMISSION_RATE_LIMIT_MAX = 10;
 export const SUBMISSION_RATE_LIMIT_WINDOW_SECONDS = 10;
 
+// Mascot "happy" state window — approval must be within this many ms to trigger
+export const RECENT_APPROVAL_WINDOW_MS = 10 * 60 * 1000;
+
 // Push subscription caps
 export const MAX_PUSH_SUBSCRIPTIONS_PER_IP = 10;

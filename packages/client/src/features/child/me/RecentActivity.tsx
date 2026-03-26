@@ -20,9 +20,11 @@ function getDotColor(eventType: string): string {
 export default function RecentActivity({ events }: RecentActivityProps) {
   if (events.length === 0) {
     return (
-      <p className="py-4 text-center text-[var(--color-text-muted)]" aria-live="polite">
-        No recent activity yet.
-      </p>
+      <div className="py-6 text-center" aria-live="polite">
+        <p className="text-4xl" data-emoji>&#128203;</p>
+        <p className="mt-2 font-display text-base font-semibold text-[var(--color-text-secondary)]">No recent activity yet.</p>
+        <p className="mt-1 text-sm text-[var(--color-text-muted)]">Complete routines and chores to see your history here.</p>
+      </div>
     );
   }
 

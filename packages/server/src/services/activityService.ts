@@ -28,6 +28,7 @@ export interface ActivityService {
   recordActivity(event: ActivityEvent): void;
   recordActivityOrThrow(event: ActivityEvent): void;
   getRecentActivity(limit?: number): ActivityEvent[];
+  getLastApprovalAt(): string | undefined;
   getActivityLog(filters: ActivityLogFilters): ActivityLogResult;
 }
 
@@ -42,6 +43,13 @@ export function createActivityService(db: Database.Database): ActivityService {
      FROM activity_events
      ORDER BY created_at DESC, id DESC
      LIMIT ?`,
+  );
+
+  const selectLastApprovalStmt = db.prepare(
+    `SELECT created_at FROM activity_events
+     WHERE event_type IN ('routine_approved', 'chore_approved', 'reward_approved')
+     ORDER BY created_at DESC, id DESC
+     LIMIT 1`,
   );
 
   function recordActivity(event: ActivityEvent): void {
@@ -141,5 +149,10 @@ export function createActivityService(db: Database.Database): ActivityService {
     return { events: rows.map(mapRowToLogEntry), total: countRow.total };
   }
 
-  return { recordActivity, recordActivityOrThrow, getRecentActivity, getActivityLog };
+  function getLastApprovalAt(): string | undefined {
+    const row = selectLastApprovalStmt.get() as { created_at: string } | undefined;
+    return row?.created_at;
+  }
+
+  return { recordActivity, recordActivityOrThrow, getRecentActivity, getLastApprovalAt, getActivityLog };
 }

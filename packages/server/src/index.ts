@@ -3,6 +3,7 @@ import { openDatabase } from "./db/connection.js";
 import { runMigrations } from "./db/migrate.js";
 import { createSettingsService } from "./services/settingsService.js";
 import { createApp } from "./app.js";
+import { startRetentionJob, type RetentionJobHandle } from "./jobs/retentionJob.js";
 
 const SHUTDOWN_TIMEOUT_MS = 5_000;
 
@@ -10,6 +11,7 @@ async function main() {
   console.log("Starting Chore App server...");
 
   let db: ReturnType<typeof openDatabase> | null = null;
+  let retentionJob: RetentionJobHandle | null = null;
 
   try {
     const config = loadConfig();
@@ -27,6 +29,8 @@ async function main() {
     const app = createApp(db, config);
     console.log("VAPID keys initialized.");
 
+    retentionJob = startRetentionJob(db);
+
     const server = app.listen(config.port, () => {
       console.log(`Server listening on port ${config.port}`);
       console.log(`Public origin: ${config.publicOrigin}`);
@@ -42,6 +46,7 @@ async function main() {
       forceExit.unref();
 
       server.close(() => {
+        retentionJob?.stop();
         db?.close();
         console.log("Server stopped.");
         process.exit(0);

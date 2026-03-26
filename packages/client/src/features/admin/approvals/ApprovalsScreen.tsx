@@ -125,6 +125,7 @@ function ApprovalCard({
   isOnline,
 }: ApprovalCardProps) {
   const [note, setNote] = useState("");
+  const [isSlidingOut, setIsSlidingOut] = useState(false);
 
   const isThisApprovePending =
     approveMutation.isPending &&
@@ -139,23 +140,21 @@ function ApprovalCard({
   const isActionPending = isThisApprovePending || isThisRejectPending;
 
   function handleApprove() {
-    approveMutation.mutate({
-      type,
-      id,
-      reviewNote: note.trim() || undefined,
-    });
+    approveMutation.mutate(
+      { type, id, reviewNote: note.trim() || undefined },
+      { onSuccess: () => setIsSlidingOut(true) },
+    );
   }
 
   function handleReject() {
-    rejectMutation.mutate({
-      type,
-      id,
-      reviewNote: note.trim() || undefined,
-    });
+    rejectMutation.mutate(
+      { type, id, reviewNote: note.trim() || undefined },
+      { onSuccess: () => setIsSlidingOut(true) },
+    );
   }
 
   return (
-    <div className="rounded-2xl bg-[var(--color-surface)] p-4 shadow-card">
+    <div className={`rounded-2xl bg-[var(--color-surface)] p-4 shadow-card ${isSlidingOut ? "animate-slide-out" : ""}`}>
       <div className="flex items-start justify-between gap-3">
         <h3 className="font-display text-base font-bold text-[var(--color-text)]">
           {name}
@@ -188,6 +187,7 @@ function ApprovalCard({
           type="button"
           onClick={handleReject}
           disabled={!isOnline || isActionPending}
+          title={!isOnline ? "You're offline" : undefined}
           className="min-h-touch rounded-xl px-5 py-2 font-display font-bold text-[var(--color-text-muted)] bg-[var(--color-surface-muted)] transition-colors hover:bg-[var(--color-red-600)] hover:text-white disabled:opacity-50"
         >
           {isThisRejectPending ? "Rejecting..." : "Reject"}
@@ -196,6 +196,7 @@ function ApprovalCard({
           type="button"
           onClick={handleApprove}
           disabled={!isOnline || isActionPending}
+          title={!isOnline ? "You're offline" : undefined}
           className="min-h-touch rounded-xl bg-[var(--color-emerald-500)] px-5 py-2 font-display font-bold text-white transition-colors hover:bg-[var(--color-emerald-600)] disabled:opacity-50"
         >
           {isThisApprovePending ? "Approving..." : "Approve"}

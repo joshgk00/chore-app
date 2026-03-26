@@ -1,15 +1,47 @@
+import { useState, useRef, useMemo, useEffect } from "react";
 import { usePoints } from "../rewards/hooks/usePoints.js";
 import { useBadges } from "./hooks/useBadges.js";
 import { useRecentActivity } from "./hooks/useRecentActivity.js";
+import { useBootstrap } from "../today/hooks/useBootstrap.js";
 import PointsDisplay from "../rewards/PointsDisplay.js";
 import BadgeCollection from "../../../components/badges/BadgeCollection.js";
 import RecentActivity from "./RecentActivity.js";
 import NotificationOptIn from "./NotificationOptIn.js";
+import Mascot from "../../../components/mascot/Mascot.js";
+import { determineMascotState, isRecentApproval } from "../../../components/mascot/mascotStates.js";
+import { hasAnyActiveDraft } from "../../../lib/draft.js";
 
 export default function MeScreen() {
   const { data: points, isLoading: isLoadingPoints, error: pointsError, refetch: refetchPoints } = usePoints();
   const { data: badges, isLoading: isLoadingBadges, error: badgesError, refetch: refetchBadges } = useBadges();
   const { data: activity, isLoading: isLoadingActivity, error: activityError, refetch: refetchActivity } = useRecentActivity();
+  const { data: bootstrap } = useBootstrap();
+
+  const [hasActiveDraft, setHasActiveDraft] = useState(false);
+  useEffect(() => {
+    hasAnyActiveDraft().then(setHasActiveDraft).catch(() => {});
+  }, [badges]);
+
+  const previousBadgeKeysRef = useRef<Set<string>>(new Set());
+  const newlyEarnedKeys = useMemo(() => {
+    if (!badges) return new Set<string>();
+    const currentKeys = new Set(badges.map((b) => b.badgeKey));
+    const newKeys = new Set<string>();
+    for (const key of currentKeys) {
+      if (!previousBadgeKeysRef.current.has(key)) {
+        newKeys.add(key);
+      }
+    }
+    const isInitialLoad = previousBadgeKeysRef.current.size === 0;
+    return isInitialLoad ? new Set<string>() : newKeys;
+  }, [badges]);
+
+  // Ref update must live in useEffect — mutating refs inside useMemo breaks Strict Mode double-render
+  useEffect(() => {
+    if (badges) {
+      previousBadgeKeysRef.current = new Set(badges.map((b) => b.badgeKey));
+    }
+  }, [badges]);
 
   const isLoading = isLoadingPoints || isLoadingBadges || isLoadingActivity;
   const error = pointsError || badgesError || activityError;
@@ -49,9 +81,30 @@ export default function MeScreen() {
   const earnedBadges = badges ?? [];
   const recentEvents = activity ?? [];
 
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const hasBadgeEarnedToday = earnedBadges.some(
+    (b) => new Date(b.earnedAt) >= todayStart,
+  );
+
+  const pendingCount = (bootstrap?.pendingRoutineCount ?? 0) + (bootstrap?.pendingChoreCount ?? 0) + (bootstrap?.pendingRewardCount ?? 0);
+
+  const hasRecentApproval = isRecentApproval(bootstrap?.lastApprovalAt);
+
+  const mascotState = determineMascotState({
+    hasBadgeOrRewardApproval: hasBadgeEarnedToday,
+    hasRecentApproval,
+    hasPendingApprovals: pendingCount > 0,
+    hasActiveDraft,
+    slotConfig: bootstrap?.slotConfig,
+  });
+
   return (
     <div className="min-h-screen bg-[var(--color-bg)] p-4">
-      <h1 className="font-display text-2xl font-bold text-[var(--color-text)]">Me</h1>
+      <div className="flex items-center gap-3">
+        <Mascot state={mascotState} size={56} />
+        <h1 className="font-display text-2xl font-bold text-[var(--color-text)]">Me</h1>
+      </div>
 
       <div className="mt-4">
         <PointsDisplay balance={balance} />
@@ -60,16 +113,7 @@ export default function MeScreen() {
       <div className="mt-8">
         <h2 className="font-display text-lg font-semibold text-[var(--color-text-secondary)]">Badges</h2>
         <div className="mt-3 rounded-3xl bg-[var(--color-surface)] p-4 shadow-card">
-          <BadgeCollection earnedBadges={earnedBadges} />
-        </div>
-      </div>
-
-      <div className="mt-8">
-        <div className="flex items-center justify-center rounded-3xl border-[1.5px] border-[var(--color-amber-100)] bg-[var(--color-amber-50)] p-6">
-          <div className="text-center">
-            <p className="text-[56px] leading-none" data-emoji aria-hidden="true">{"\uD83E\uDD16"}</p>
-            <p className="mt-2 font-display text-sm font-medium text-[var(--color-amber-700)]">Mascot coming soon!</p>
-          </div>
+          <BadgeCollection earnedBadges={earnedBadges} newlyEarnedKeys={newlyEarnedKeys} />
         </div>
       </div>
 

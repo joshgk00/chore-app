@@ -129,22 +129,22 @@ export default function AdminRoutinesList() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-[var(--color-border)]">
-                  <th className="px-4 py-3 font-display text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                  <th scope="col" className="px-4 py-3 font-display text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
                     Name
                   </th>
-                  <th className="px-4 py-3 font-display text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                  <th scope="col" className="px-4 py-3 font-display text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
                     Time Slot
                   </th>
-                  <th className="px-4 py-3 font-display text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                  <th scope="col" className="px-4 py-3 font-display text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
                     Points
                   </th>
-                  <th className="px-4 py-3 font-display text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                  <th scope="col" className="px-4 py-3 font-display text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
                     Rule
                   </th>
-                  <th className="px-4 py-3 font-display text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                  <th scope="col" className="px-4 py-3 font-display text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
                     Status
                   </th>
-                  <th className="px-4 py-3 font-display text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                  <th scope="col" className="px-4 py-3 font-display text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
                     <span className="sr-only">Actions</span>
                   </th>
                 </tr>
