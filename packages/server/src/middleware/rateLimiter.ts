@@ -13,39 +13,6 @@ interface AttemptRecord {
   cooldownLevel: number;
 }
 
-const store = new Map<string, AttemptRecord>();
-
-function getRecord(ip: string): AttemptRecord {
-  let record = store.get(ip);
-  if (!record) {
-    record = { attempts: [], cooldownUntil: null, cooldownLevel: 0 };
-    store.set(ip, record);
-  }
-  return record;
-}
-
-function pruneOldAttempts(record: AttemptRecord): void {
-  const cutoff = Date.now() - RATE_LIMIT_WINDOW_MINUTES * 60 * 1000;
-  record.attempts = record.attempts.filter((t) => t > cutoff);
-}
-
-function purgeStaleEntries(): void {
-  const now = Date.now();
-  const windowMs = RATE_LIMIT_WINDOW_MINUTES * 60 * 1000;
-
-  for (const [ip, record] of store) {
-    const hasCooldown = record.cooldownUntil !== null && record.cooldownUntil > now;
-    const hasRecentAttempts = record.attempts.some((t) => t > now - windowMs);
-
-    if (!hasCooldown && !hasRecentAttempts) {
-      store.delete(ip);
-    }
-  }
-}
-
-const cleanupTimer = setInterval(purgeStaleEntries, CLEANUP_INTERVAL_MS);
-cleanupTimer.unref();
-
 export interface RateLimiterMiddleware {
   (req: Request, res: Response, next: NextFunction): void;
   recordFailure: (ip: string) => void;
@@ -53,6 +20,33 @@ export interface RateLimiterMiddleware {
 }
 
 export function createRateLimiter(): RateLimiterMiddleware {
+  const store = new Map<string, AttemptRecord>();
+
+  function getRecord(ip: string): AttemptRecord {
+    let record = store.get(ip);
+    if (!record) {
+      record = { attempts: [], cooldownUntil: null, cooldownLevel: 0 };
+      store.set(ip, record);
+    }
+    return record;
+  }
+
+  function pruneOldAttempts(record: AttemptRecord): void {
+    const cutoff = Date.now() - RATE_LIMIT_WINDOW_MINUTES * 60 * 1000;
+    record.attempts = record.attempts.filter((t) => t > cutoff);
+  }
+
+  const cleanupTimer = setInterval(() => {
+    const now = Date.now();
+    const windowMs = RATE_LIMIT_WINDOW_MINUTES * 60 * 1000;
+    for (const [ip, record] of store) {
+      const hasCooldown = record.cooldownUntil !== null && record.cooldownUntil > now;
+      const hasRecentAttempts = record.attempts.some((t) => t > now - windowMs);
+      if (!hasCooldown && !hasRecentAttempts) store.delete(ip);
+    }
+  }, CLEANUP_INTERVAL_MS);
+  cleanupTimer.unref();
+
   const middleware: RateLimiterMiddleware = ((req: Request, res: Response, next: NextFunction) => {
     const ip = req.ip || "unknown";
     const record = getRecord(ip);

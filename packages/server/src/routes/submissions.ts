@@ -16,9 +16,7 @@ export function createSubmissionRoutes(
   const router = Router();
   const rateLimiter = createSubmissionRateLimiter();
 
-  router.use(rateLimiter);
-
-  router.post("/routine-completions", (req, res, next) => {
+  router.post("/routine-completions", rateLimiter, (req, res, next) => {
     try {
       const {
         routineId,
@@ -71,7 +69,7 @@ export function createSubmissionRoutes(
     }
   });
 
-  router.post("/chore-logs", (req, res, next) => {
+  router.post("/chore-logs", rateLimiter, (req, res, next) => {
     try {
       const { choreId, tierId, idempotencyKey, localDate } = req.body;
 
@@ -118,7 +116,7 @@ export function createSubmissionRoutes(
     }
   });
 
-  router.post("/reward-requests", (req, res, next) => {
+  router.post("/reward-requests", rateLimiter, (req, res, next) => {
     try {
       const { rewardId, idempotencyKey, localDate } = req.body;
 
