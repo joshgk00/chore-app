@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
+import HelpTip from "../../../components/HelpTip.js";
 import AssetPicker from "../assets/AssetPicker.js";
 import type { Routine, TimeSlot, CompletionRule } from "@chore-app/shared";
 
@@ -321,12 +322,18 @@ export default function AdminRoutineForm() {
 
               <div className="grid grid-cols-1 gap-4 tablet:grid-cols-3">
                 <div>
-                  <label
-                    htmlFor="routine-timeslot"
-                    className="block text-sm font-medium text-[var(--color-text-secondary)]"
-                  >
-                    Time Slot
-                  </label>
+                  <span className="flex items-center gap-1.5">
+                    <label
+                      htmlFor="routine-timeslot"
+                      className="text-sm font-medium text-[var(--color-text-secondary)]"
+                    >
+                      Time Slot
+                    </label>
+                    <HelpTip
+                      id="help-routine-timeslot"
+                      text="When this routine appears in the child's view. Time slot boundaries are configured in Settings. 'Any Time' routines show up all day."
+                    />
+                  </span>
                   <select
                     id="routine-timeslot"
                     value={form.timeSlot}
@@ -342,12 +349,18 @@ export default function AdminRoutineForm() {
                 </div>
 
                 <div>
-                  <label
-                    htmlFor="routine-rule"
-                    className="block text-sm font-medium text-[var(--color-text-secondary)]"
-                  >
-                    Completion Rule
-                  </label>
+                  <span className="flex items-center gap-1.5">
+                    <label
+                      htmlFor="routine-rule"
+                      className="text-sm font-medium text-[var(--color-text-secondary)]"
+                    >
+                      Completion Rule
+                    </label>
+                    <HelpTip
+                      id="help-routine-rule"
+                      text="'Once per day' can only be completed once. 'Once per slot' allows once per time slot (e.g. morning and bedtime). 'Unlimited' has no limit."
+                    />
+                  </span>
                   <select
                     id="routine-rule"
                     value={form.completionRule}
@@ -363,12 +376,18 @@ export default function AdminRoutineForm() {
                 </div>
 
                 <div>
-                  <label
-                    htmlFor="routine-points"
-                    className="block text-sm font-medium text-[var(--color-text-secondary)]"
-                  >
-                    Points
-                  </label>
+                  <span className="flex items-center gap-1.5">
+                    <label
+                      htmlFor="routine-points"
+                      className="text-sm font-medium text-[var(--color-text-secondary)]"
+                    >
+                      Points
+                    </label>
+                    <HelpTip
+                      id="help-routine-points"
+                      text="Points awarded when the child completes this entire routine. Unlike chores, routines have a single point value (no tiers)."
+                    />
+                  </span>
                   <input
                     id="routine-points"
                     type="number"
@@ -381,25 +400,37 @@ export default function AdminRoutineForm() {
               </div>
 
               <div className="flex flex-wrap gap-6">
-                <label className="flex min-h-touch items-center gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
-                  <input
-                    type="checkbox"
-                    checked={form.requiresApproval}
-                    onChange={(e) => updateField("requiresApproval", e.target.checked)}
-                    className="h-5 w-5 rounded border-[var(--color-border)] text-[var(--color-amber-500)] focus:ring-[var(--color-amber-500)]"
+                <div className="flex min-h-touch items-center gap-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
+                    <input
+                      type="checkbox"
+                      checked={form.requiresApproval}
+                      onChange={(e) => updateField("requiresApproval", e.target.checked)}
+                      className="h-5 w-5 rounded border-[var(--color-border)] text-[var(--color-amber-500)] focus:ring-[var(--color-amber-500)]"
+                    />
+                    Requires approval
+                  </label>
+                  <HelpTip
+                    id="help-routine-approval"
+                    text="When checked, a parent must approve each completion before points are awarded."
                   />
-                  Requires approval
-                </label>
+                </div>
 
-                <label className="flex min-h-touch items-center gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
-                  <input
-                    type="checkbox"
-                    checked={form.randomizeItems}
-                    onChange={(e) => updateField("randomizeItems", e.target.checked)}
-                    className="h-5 w-5 rounded border-[var(--color-border)] text-[var(--color-amber-500)] focus:ring-[var(--color-amber-500)]"
+                <div className="flex min-h-touch items-center gap-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
+                    <input
+                      type="checkbox"
+                      checked={form.randomizeItems}
+                      onChange={(e) => updateField("randomizeItems", e.target.checked)}
+                      className="h-5 w-5 rounded border-[var(--color-border)] text-[var(--color-amber-500)] focus:ring-[var(--color-amber-500)]"
+                    />
+                    Randomize items
+                  </label>
+                  <HelpTip
+                    id="help-routine-randomize"
+                    text="Shuffles the checklist order each time the child starts this routine. Good for keeping things fresh so they don't just go on autopilot."
                   />
-                  Randomize items
-                </label>
+                </div>
               </div>
             </div>
           </fieldset>
@@ -418,9 +449,15 @@ export default function AdminRoutineForm() {
 
         <div className="rounded-2xl bg-[var(--color-surface)] p-6 shadow-card">
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-lg font-semibold text-[var(--color-text-secondary)]">
-              Checklist Items
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="font-display text-lg font-semibold text-[var(--color-text-secondary)]">
+                Checklist Items
+              </h2>
+              <HelpTip
+                id="help-routine-items"
+                text="The steps the child checks off to complete this routine. Each item can have an optional image. The child must complete all items to finish the routine."
+              />
+            </div>
             <button
               type="button"
               onClick={addItem}
@@ -473,7 +510,7 @@ export default function AdminRoutineForm() {
                     type="text"
                     value={item.label}
                     onChange={(e) => updateItemLabel(item.key, e.target.value)}
-                    placeholder={`Item ${index + 1}`}
+                    placeholder={index === 0 ? "e.g. Brush teeth" : index === 1 ? "e.g. Make bed" : `Item ${index + 1}`}
                     className="flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 font-body text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-faint)] focus:border-[var(--color-amber-500)] focus:outline-none focus:ring-2 focus:ring-[var(--color-amber-500)]"
                   />
 

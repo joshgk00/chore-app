@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
+import HelpTip from "../../../components/HelpTip.js";
 import type { Chore } from "@chore-app/shared";
 
 interface DraftTier {
@@ -288,12 +289,18 @@ export default function AdminChoreForm() {
               </div>
 
               <div>
-                <label
-                  htmlFor="chore-sort-order"
-                  className="block text-sm font-medium text-[var(--color-text-secondary)]"
-                >
-                  Sort Order
-                </label>
+                <span className="flex items-center gap-1.5">
+                  <label
+                    htmlFor="chore-sort-order"
+                    className="text-sm font-medium text-[var(--color-text-secondary)]"
+                  >
+                    Sort Order
+                  </label>
+                  <HelpTip
+                    id="help-chore-sort"
+                    text="Controls the display order in the child's chore list. Lower numbers appear first. Chores with the same number are sorted by name."
+                  />
+                </span>
                 <input
                   id="chore-sort-order"
                   type="number"
@@ -304,24 +311,36 @@ export default function AdminChoreForm() {
                 />
               </div>
 
-              <label className="flex min-h-touch items-center gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
-                <input
-                  type="checkbox"
-                  checked={form.requiresApproval}
-                  onChange={(e) => updateField("requiresApproval", e.target.checked)}
-                  className="h-5 w-5 rounded border-[var(--color-border)] text-[var(--color-amber-500)] focus:ring-[var(--color-amber-500)]"
+              <div className="flex min-h-touch items-center gap-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
+                  <input
+                    type="checkbox"
+                    checked={form.requiresApproval}
+                    onChange={(e) => updateField("requiresApproval", e.target.checked)}
+                    className="h-5 w-5 rounded border-[var(--color-border)] text-[var(--color-amber-500)] focus:ring-[var(--color-amber-500)]"
+                  />
+                  Requires approval
+                </label>
+                <HelpTip
+                  id="help-requires-approval"
+                  text="When checked, a parent must approve each submission before points are awarded. Good for chores you want to verify were done properly."
                 />
-                Requires approval
-              </label>
+              </div>
             </div>
           </fieldset>
         </div>
 
         <div className="rounded-2xl bg-[var(--color-surface)] p-6 shadow-card">
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-lg font-semibold text-[var(--color-text-secondary)]">
-              Tiers
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="font-display text-lg font-semibold text-[var(--color-text-secondary)]">
+                Tiers
+              </h2>
+              <HelpTip
+                id="help-tiers"
+                text="Tiers let you set different effort levels for this chore, each worth different points. For example, 'Quick Clean' for 3 pts and 'Deep Clean' for 10 pts. Every chore needs at least one tier."
+              />
+            </div>
             <button
               type="button"
               onClick={addTier}
@@ -373,7 +392,7 @@ export default function AdminChoreForm() {
                   type="text"
                   value={tier.name}
                   onChange={(e) => updateTierName(tier.key, e.target.value)}
-                  placeholder={`Tier ${index + 1}`}
+                  placeholder={index === 0 ? "e.g. Quick Clean" : index === 1 ? "e.g. Deep Clean" : `Tier ${index + 1}`}
                   className="flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 font-body text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-faint)] focus:border-[var(--color-amber-500)] focus:outline-none focus:ring-2 focus:ring-[var(--color-amber-500)]"
                 />
 

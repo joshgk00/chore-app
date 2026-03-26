@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
+import HelpTip from "../../../components/HelpTip.js";
 import AssetPicker from "../assets/AssetPicker.js";
 import type { Reward } from "@chore-app/shared";
 
@@ -212,12 +213,18 @@ export default function AdminRewardForm() {
               </div>
 
               <div>
-                <label
-                  htmlFor="reward-points-cost"
-                  className="block text-sm font-medium text-[var(--color-text-secondary)]"
-                >
-                  Points Cost
-                </label>
+                <span className="flex items-center gap-1.5">
+                  <label
+                    htmlFor="reward-points-cost"
+                    className="text-sm font-medium text-[var(--color-text-secondary)]"
+                  >
+                    Points Cost
+                  </label>
+                  <HelpTip
+                    id="help-reward-cost"
+                    text="How many points the child spends to redeem this reward. Points are deducted from their available balance. Set to 0 for free rewards."
+                  />
+                </span>
                 <input
                   id="reward-points-cost"
                   type="number"
@@ -236,12 +243,18 @@ export default function AdminRewardForm() {
               </div>
 
               <div>
-                <label
-                  htmlFor="reward-sort-order"
-                  className="block text-sm font-medium text-[var(--color-text-secondary)]"
-                >
-                  Sort Order
-                </label>
+                <span className="flex items-center gap-1.5">
+                  <label
+                    htmlFor="reward-sort-order"
+                    className="text-sm font-medium text-[var(--color-text-secondary)]"
+                  >
+                    Sort Order
+                  </label>
+                  <HelpTip
+                    id="help-reward-sort"
+                    text="Controls the display order in the child's reward list. Lower numbers appear first."
+                  />
+                </span>
                 <input
                   id="reward-sort-order"
                   type="number"

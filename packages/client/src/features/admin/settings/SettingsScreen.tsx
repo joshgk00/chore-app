@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { PIN_MIN_LENGTH } from "@chore-app/shared";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
+import HelpTip from "../../../components/HelpTip.js";
 import BackupSettings from "./BackupSettings.js";
 import NotificationSettings from "./NotificationSettings.js";
 
@@ -268,9 +269,15 @@ export default function SettingsScreen() {
               className="rounded-2xl bg-[var(--color-surface)] p-6 shadow-card"
               aria-label="Time slot settings"
             >
-              <h2 className="font-display text-lg font-bold text-[var(--color-text)]">
-                Time Slots
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="font-display text-lg font-bold text-[var(--color-text)]">
+                  Time Slots
+                </h2>
+                <HelpTip
+                  id="help-time-slots"
+                  text="Define when morning, afternoon, and bedtime start and end. Routines assigned to a time slot only show up during that window."
+                />
+              </div>
               <div className="mt-4 space-y-4">
                 <TimeSlotRow
                   label="Morning"
@@ -357,12 +364,18 @@ export default function SettingsScreen() {
               </h2>
               <div className="mt-4 space-y-4">
                 <div>
-                  <label
-                    htmlFor="settings-timezone"
-                    className="block text-xs font-semibold text-[var(--color-text-muted)]"
-                  >
-                    Timezone
-                  </label>
+                  <span className="flex items-center gap-1.5">
+                    <label
+                      htmlFor="settings-timezone"
+                      className="text-xs font-semibold text-[var(--color-text-muted)]"
+                    >
+                      Timezone
+                    </label>
+                    <HelpTip
+                      id="help-timezone"
+                      text="Used to determine when each day starts and ends, and when time slots are active. Use IANA format like 'America/Chicago'."
+                    />
+                  </span>
                   <input
                     id="settings-timezone"
                     type="text"
@@ -382,12 +395,18 @@ export default function SettingsScreen() {
                   )}
                 </div>
                 <div>
-                  <label
-                    htmlFor="settings-retention"
-                    className="block text-xs font-semibold text-[var(--color-text-muted)]"
-                  >
-                    Activity retention (days)
-                  </label>
+                  <span className="flex items-center gap-1.5">
+                    <label
+                      htmlFor="settings-retention"
+                      className="text-xs font-semibold text-[var(--color-text-muted)]"
+                    >
+                      Activity retention (days)
+                    </label>
+                    <HelpTip
+                      id="help-retention"
+                      text="How many days of activity history to keep. Older entries are automatically deleted. Doesn't affect the points ledger or balances."
+                    />
+                  </span>
                   <input
                     id="settings-retention"
                     type="number"
@@ -437,9 +456,15 @@ export default function SettingsScreen() {
               className="rounded-2xl bg-[var(--color-surface)] p-6 shadow-card"
               aria-label="Change PIN"
             >
-              <h2 className="font-display text-lg font-bold text-[var(--color-text)]">
-                Change PIN
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="font-display text-lg font-bold text-[var(--color-text)]">
+                  Change PIN
+                </h2>
+                <HelpTip
+                  id="help-change-pin"
+                  text="The admin PIN protects access to these settings and the approval queue. Changing it will log you out."
+                />
+              </div>
               <div className="mt-4 space-y-4">
                 <div>
                   <label
