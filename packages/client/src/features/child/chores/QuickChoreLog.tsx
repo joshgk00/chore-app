@@ -3,7 +3,6 @@ import { useChores } from "./hooks/useChores.js";
 import { useSubmitChoreLog } from "./hooks/useSubmitChoreLog.js";
 import { useCancelChoreLog } from "./hooks/useCancelChoreLog.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
-import { generateIdempotencyKey } from "../../../lib/idempotency.js";
 import { formatLocalDate } from "../../../lib/draft-sync.js";
 import type { Chore, ChoreTier, ChoreLog } from "@chore-app/shared";
 
@@ -15,10 +14,10 @@ export default function QuickChoreLog() {
   const { data: chores, isLoading, error } = useChores();
   const submitMutation = useSubmitChoreLog();
   const cancelMutation = useCancelChoreLog();
-  const idempotencyKeyRef = useRef<string>(generateIdempotencyKey());
+  const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
 
   function handleChoreSelect(chore: Chore) {
-    idempotencyKeyRef.current = generateIdempotencyKey();
+    idempotencyKeyRef.current = crypto.randomUUID();
     setSelectedChore(chore);
   }
 

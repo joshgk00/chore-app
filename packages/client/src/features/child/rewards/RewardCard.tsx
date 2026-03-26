@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
 import { useOnline } from "../../../contexts/OnlineContext.js";
-import { generateIdempotencyKey } from "../../../lib/idempotency.js";
 import { formatLocalDate } from "../../../lib/draft-sync.js";
 import { useSubmitRewardRequest } from "./hooks/useSubmitRewardRequest.js";
 import { useCancelRewardRequest } from "./hooks/useCancelRewardRequest.js";
@@ -35,7 +34,7 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
     submitMutation.mutate(
       {
         rewardId: reward.id,
-        idempotencyKey: generateIdempotencyKey(),
+        idempotencyKey: crypto.randomUUID(),
         localDate: formatLocalDate(),
       },
       {
