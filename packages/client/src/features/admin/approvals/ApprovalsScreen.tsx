@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
+import { useAdminTimezone } from "../hooks/useAdminTimezone.js";
+import { formatTimestamp } from "../../../lib/format-timestamp.js";
 import type {
   PendingApprovals,
   RoutineCompletion,
@@ -73,15 +75,10 @@ function useRejectItem() {
   });
 }
 
-function formatDate(dateStr: string): string {
-  // SQLite datetime('now') produces "YYYY-MM-DD HH:MM:SS" which Safari can't parse.
-  // Replace the space with "T" to ensure ISO-8601 compatibility across all browsers.
-  const normalized = dateStr.includes("T") ? dateStr : dateStr.replace(" ", "T");
-  return new Date(normalized).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
-}
+const DATE_OPTIONS: Intl.DateTimeFormatOptions = {
+  month: "short",
+  day: "numeric",
+};
 
 function LoadingSkeleton() {
   return (
@@ -111,6 +108,7 @@ interface ApprovalCardProps {
   approveMutation: ReturnType<typeof useApproveItem>;
   rejectMutation: ReturnType<typeof useRejectItem>;
   isOnline: boolean;
+  timezone: string;
 }
 
 function ApprovalCard({
@@ -123,6 +121,7 @@ function ApprovalCard({
   approveMutation,
   rejectMutation,
   isOnline,
+  timezone,
 }: ApprovalCardProps) {
   const [note, setNote] = useState("");
   const [isSlidingOut, setIsSlidingOut] = useState(false);
@@ -167,7 +166,7 @@ function ApprovalCard({
       <p className="mt-1 text-sm text-[var(--color-text-muted)]">
         {detail}
         <span className="mx-1.5">&middot;</span>
-        {formatDate(submittedAt)}
+        {formatTimestamp(submittedAt, DATE_OPTIONS, timezone)}
       </p>
 
       <label className="mt-3 block">
@@ -227,6 +226,7 @@ function ApprovalSection({ title, borderClass, children }: ApprovalSectionProps)
 
 export default function ApprovalsScreen() {
   const isOnline = useOnline();
+  const timezone = useAdminTimezone();
   const { data, isLoading, error, refetch } = usePendingApprovals(isOnline);
   const approveMutation = useApproveItem();
   const rejectMutation = useRejectItem();
@@ -313,6 +313,7 @@ export default function ApprovalsScreen() {
                 approveMutation={approveMutation}
                 rejectMutation={rejectMutation}
                 isOnline={isOnline}
+                timezone={timezone}
               />
             ))}
           </ApprovalSection>
@@ -335,6 +336,7 @@ export default function ApprovalsScreen() {
                 approveMutation={approveMutation}
                 rejectMutation={rejectMutation}
                 isOnline={isOnline}
+                timezone={timezone}
               />
             ))}
           </ApprovalSection>
@@ -357,6 +359,7 @@ export default function ApprovalsScreen() {
                 approveMutation={approveMutation}
                 rejectMutation={rejectMutation}
                 isOnline={isOnline}
+                timezone={timezone}
               />
             ))}
           </ApprovalSection>

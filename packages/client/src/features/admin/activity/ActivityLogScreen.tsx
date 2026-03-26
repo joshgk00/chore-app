@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
+import { useAdminTimezone } from "../hooks/useAdminTimezone.js";
+import { formatTimestamp } from "../../../lib/format-timestamp.js";
 import { ACTIVITY_EVENT_TYPES } from "@chore-app/shared";
 import type { ActivityLogEntry } from "@chore-app/shared";
 
@@ -20,15 +22,12 @@ function formatEventTypeLabel(eventType: string): string {
   return eventType.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 }
 
-function formatDate(dateStr: string): string {
-  const normalized = dateStr.includes("T") ? dateStr : dateStr.replace(" ", "T");
-  return new Date(normalized).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
+const DATE_TIME_OPTIONS: Intl.DateTimeFormatOptions = {
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+};
 
 function eventTypeBadgeColor(eventType: string): string {
   if (eventType.startsWith("routine_")) {
@@ -75,6 +74,7 @@ function LoadingSkeleton() {
 
 export default function ActivityLogScreen() {
   const isOnline = useOnline();
+  const timezone = useAdminTimezone();
   const [eventTypeFilter, setEventTypeFilter] = useState<FilterEventType>("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -256,7 +256,7 @@ export default function ActivityLogScreen() {
                         className="border-b border-[var(--color-border)] last:border-b-0"
                       >
                         <td className="whitespace-nowrap px-4 py-3 text-[var(--color-text-muted)]">
-                          {formatDate(event.createdAt)}
+                          {formatTimestamp(event.createdAt, DATE_TIME_OPTIONS, timezone)}
                         </td>
                         <td className="px-4 py-3">
                           <EventTypeBadge eventType={event.eventType} />

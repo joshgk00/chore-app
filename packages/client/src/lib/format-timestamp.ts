@@ -1,0 +1,27 @@
+/**
+ * Parses a SQLite UTC timestamp and formats it in the given timezone.
+ *
+ * SQLite's datetime('now') produces "YYYY-MM-DD HH:MM:SS" with no timezone
+ * indicator. Browsers vary in whether they treat bare ISO strings as UTC or
+ * local time, so we normalise to an explicit UTC value before formatting.
+ */
+export function formatTimestamp(
+  dateStr: string,
+  options: Intl.DateTimeFormatOptions,
+  timezone?: string,
+): string {
+  // Ensure ISO-8601 separator (Safari rejects space-separated strings).
+  let normalized = dateStr.includes("T") ? dateStr : dateStr.replace(" ", "T");
+
+  // Append "Z" if there is no timezone indicator, so the value is always
+  // parsed as UTC rather than local time.
+  if (!normalized.endsWith("Z") && !/[+-]\d{2}:\d{2}$/.test(normalized)) {
+    normalized += "Z";
+  }
+
+  const resolvedOptions: Intl.DateTimeFormatOptions = timezone
+    ? { ...options, timeZone: timezone }
+    : options;
+
+  return new Date(normalized).toLocaleString(undefined, resolvedOptions);
+}

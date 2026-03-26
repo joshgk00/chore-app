@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
 import HelpTip from "../../../components/HelpTip.js";
+import { useAdminTimezone } from "../hooks/useAdminTimezone.js";
+import { formatTimestamp } from "../../../lib/format-timestamp.js";
 import type { PointsBalance, LedgerEntry, EntryType } from "@chore-app/shared";
 
 const PAGE_SIZE = 50;
@@ -92,16 +94,6 @@ function useAdjustPoints() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "ledger"] });
     },
-  });
-}
-
-function formatDate(dateStr: string): string {
-  const normalized = dateStr.includes("T") ? dateStr : dateStr.replace(" ", "T");
-  return new Date(normalized).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
   });
 }
 
@@ -310,11 +302,19 @@ function TypeBadge({ type }: { type: EntryType }) {
   );
 }
 
+const DATE_TIME_OPTIONS: Intl.DateTimeFormatOptions = {
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+};
+
 interface LedgerTableProps {
   entries: LedgerEntry[];
+  timezone: string;
 }
 
-function LedgerTable({ entries }: LedgerTableProps) {
+function LedgerTable({ entries, timezone }: LedgerTableProps) {
   return (
     <div className="overflow-x-auto rounded-2xl bg-[var(--color-surface)] shadow-card">
       <table className="w-full text-sm" aria-label="Points ledger entries">
@@ -342,7 +342,7 @@ function LedgerTable({ entries }: LedgerTableProps) {
               className="border-b border-[var(--color-border)] last:border-b-0"
             >
               <td className="whitespace-nowrap px-4 py-3 text-[var(--color-text-muted)]">
-                {formatDate(entry.createdAt)}
+                {formatTimestamp(entry.createdAt, DATE_TIME_OPTIONS, timezone)}
               </td>
               <td className="px-4 py-3">
                 <TypeBadge type={entry.entryType} />
@@ -369,6 +369,7 @@ function LedgerTable({ entries }: LedgerTableProps) {
 
 export default function LedgerScreen() {
   const isOnline = useOnline();
+  const timezone = useAdminTimezone();
   const [filter, setFilter] = useState<FilterType>("all");
   const ledger = useLedger(filter);
   const adjustMutation = useAdjustPoints();
@@ -448,7 +449,7 @@ export default function LedgerScreen() {
               </select>
             </div>
 
-            {hasEntries && <LedgerTable entries={ledger.entries} />}
+            {hasEntries && <LedgerTable entries={ledger.entries} timezone={timezone} />}
 
             {isEmpty && (
               <div
