@@ -243,7 +243,7 @@ export function createApprovalService(
         `Completed: ${row.routine_name_snapshot}`,
       );
 
-      badgeService?.evaluateBadges({ type: "routine_completion" });
+      badgeService?.evaluateBadges();
 
       activityService.recordActivityOrThrow({
         eventType: "routine_approved",
@@ -327,7 +327,7 @@ export function createApprovalService(
         `Chore: ${row.chore_name_snapshot} (${row.tier_name_snapshot})`,
       );
 
-      badgeService?.evaluateBadges({ type: "chore_log" });
+      badgeService?.evaluateBadges();
 
       activityService.recordActivityOrThrow({
         eventType: "chore_approved",
@@ -411,7 +411,7 @@ export function createApprovalService(
         `Redeemed: ${row.reward_name_snapshot}`,
       );
 
-      badgeService?.evaluateBadges({ type: "reward_request" });
+      badgeService?.evaluateBadges();
 
       activityService.recordActivityOrThrow({
         eventType: "reward_approved",

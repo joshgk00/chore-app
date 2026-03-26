@@ -446,7 +446,7 @@ export function createRoutineService(
         routine.points,
         "Completed: " + routine.name,
       );
-      badgeService?.evaluateBadges({ type: "routine_completion" });
+      badgeService?.evaluateBadges();
     }
 
     activityService.recordActivityOrThrow({
