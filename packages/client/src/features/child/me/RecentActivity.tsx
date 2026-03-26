@@ -1,13 +1,15 @@
 import type { ActivityEvent } from "@chore-app/shared";
+import { formatTimestamp } from "../../../lib/format-timestamp.js";
 
 interface RecentActivityProps {
   events: ActivityEvent[];
 }
 
+const DATE_OPTIONS: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
+
 function formatEventTime(createdAt?: string): string {
   if (!createdAt) return "";
-  const date = new Date(createdAt);
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return formatTimestamp(createdAt, DATE_OPTIONS);
 }
 
 function getDotColor(eventType: string): string {
