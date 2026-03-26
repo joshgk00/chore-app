@@ -226,7 +226,7 @@ describe('badgeService', () => {
            VALUES (1, 'Extra Screen Time', 20, '2026-03-15', 'approved', 'big-spender-key')`,
         ).run();
 
-        badgeService.evaluateBadges({ type: 'reward_request' });
+        badgeService.evaluateBadges();
 
         const badges = badgeService.getEarnedBadges();
         expect(badges.map((b) => b.badgeKey)).toContain(BADGE_KEYS.BIG_SPENDER);
@@ -238,7 +238,7 @@ describe('badgeService', () => {
            VALUES (1, 'Extra Screen Time', 20, '2026-03-15', 'pending', 'pending-reward-key')`,
         ).run();
 
-        badgeService.evaluateBadges({ type: 'reward_request' });
+        badgeService.evaluateBadges();
 
         const badges = badgeService.getEarnedBadges();
         expect(badges.map((b) => b.badgeKey)).not.toContain(BADGE_KEYS.BIG_SPENDER);

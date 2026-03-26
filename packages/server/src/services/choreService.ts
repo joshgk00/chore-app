@@ -341,7 +341,7 @@ export function createChoreService(
         tier.points,
         `Chore: ${chore.name} (${tier.name})`,
       );
-      badgeService?.evaluateBadges({ type: "chore_log" });
+      badgeService?.evaluateBadges();
     }
 
     activityService.recordActivityOrThrow({

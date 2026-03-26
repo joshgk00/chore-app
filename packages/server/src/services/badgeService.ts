@@ -2,14 +2,10 @@ import type Database from "better-sqlite3";
 import type { Badge } from "@chore-app/shared";
 import { BADGE_KEYS } from "@chore-app/shared";
 
-export interface BadgeEvaluationContext {
-  type: "routine_completion" | "chore_log" | "reward_request";
-}
-
 export interface BadgeService {
   getEarnedBadges(): Badge[];
   getRecentBadges(limit?: number): Badge[];
-  evaluateBadges(context: BadgeEvaluationContext): void;
+  evaluateBadges(): void;
 }
 
 interface BadgeRow {
@@ -131,7 +127,7 @@ export function createBadgeService(db: Database.Database): BadgeService {
     return streak;
   }
 
-  function evaluateBadges(_context: BadgeEvaluationContext): void {
+  function evaluateBadges(): void {
     if (!hasBadge(BADGE_KEYS.FIRST_STEP)) {
       const { count } = countRoutineCompletionsStmt.get() as { count: number };
       if (count >= 1) {
