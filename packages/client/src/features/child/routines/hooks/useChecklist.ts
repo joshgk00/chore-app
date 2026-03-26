@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getDraft, saveDraft, deleteDraft } from "../../../../lib/draft.js";
-import { generateIdempotencyKey } from "../../../../lib/idempotency.js";
 import { formatLocalDate } from "../../../../lib/draft-sync.js";
 import type { DraftItem } from "../../../../lib/draft.js";
 import type { Routine } from "@chore-app/shared";
@@ -18,7 +17,7 @@ function shuffleArray<T>(arr: T[]): T[] {
 
 export function useChecklist(routine: Routine | undefined) {
   const [draftItems, setDraftItems] = useState<DraftItem[]>([]);
-  const [idempotencyKey, setIdempotencyKey] = useState(generateIdempotencyKey);
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID() as string);
   const [isLoadingDraft, setIsLoadingDraft] = useState(true);
   const [isDraftInitialized, setIsDraftInitialized] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -90,7 +89,7 @@ export function useChecklist(routine: Routine | undefined) {
           showToast("Routine items changed -- starting fresh.");
         }
 
-        const newKey = generateIdempotencyKey();
+        const newKey = crypto.randomUUID();
         const now = new Date().toISOString();
         const localDate = formatLocalDate();
         let newItems = r.items.map((item) => ({
@@ -131,7 +130,7 @@ export function useChecklist(routine: Routine | undefined) {
           ? shuffled.map((item) => item.itemId)
           : null;
         setDraftItems(shuffled);
-        setIdempotencyKey(generateIdempotencyKey());
+        setIdempotencyKey(crypto.randomUUID());
       }
 
       setIsLoadingDraft(false);
