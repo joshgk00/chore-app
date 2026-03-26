@@ -12,8 +12,7 @@ npm run test -- --run --project client  # Client tests only
 
 ## Architecture
 
-- **Pages**: Top-level route components in `pages/`. Minimal logic -- delegate to features/components.
-- **Features**: Domain-specific components in `features/{domain}/`. Where most UI logic lives.
+- **Features**: Domain-specific components in `features/{domain}/`. Each domain's `*Screen` component is the top-level route target. Where most UI logic lives.
 - **Components**: Shared/reusable UI components in `components/`.
 - **Layouts**: Page chrome (nav, guards) in `layouts/`.
 - **API**: All server calls go through `api/client.ts` which returns `ApiResult<T>` discriminated unions.
