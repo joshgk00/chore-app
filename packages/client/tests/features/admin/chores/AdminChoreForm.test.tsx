@@ -247,7 +247,7 @@ describe("AdminChoreForm", () => {
     await user.click(screen.getByRole("button", { name: "Move tier 1 down" }));
 
     const inputs = screen.getAllByRole("textbox").filter(
-      (el) => el.getAttribute("placeholder")?.startsWith("Tier"),
+      (el) => el.id.startsWith("tier-name-"),
     );
     expect(inputs[0]).toHaveValue("Second");
     expect(inputs[1]).toHaveValue("First");

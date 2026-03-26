@@ -258,7 +258,7 @@ describe("AdminRoutineForm", () => {
     await user.click(screen.getByRole("button", { name: "Move item 1 down" }));
 
     const inputs = screen.getAllByRole("textbox").filter(
-      (el) => el.getAttribute("placeholder")?.startsWith("Item"),
+      (el) => el.id.startsWith("item-"),
     );
     expect(inputs[0]).toHaveValue("Second");
     expect(inputs[1]).toHaveValue("First");

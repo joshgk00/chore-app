@@ -17,7 +17,7 @@ describe("HelpTip", () => {
     render(<HelpTip id="test-tip" text="Some helpful text" />);
 
     expect(screen.queryByText("Some helpful text")).not.toBeInTheDocument();
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 
   it("opens tooltip on click showing the help text", async () => {
@@ -27,7 +27,7 @@ describe("HelpTip", () => {
     await user.click(screen.getByRole("button", { name: "Help" }));
 
     expect(screen.getByText("Some helpful text")).toBeInTheDocument();
-    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(screen.getByRole("tooltip")).toBeInTheDocument();
   });
 
   it("closes tooltip on second click", async () => {
@@ -48,13 +48,15 @@ describe("HelpTip", () => {
 
     const button = screen.getByRole("button", { name: "Help" });
     expect(button).toHaveAttribute("aria-expanded", "false");
-    expect(button).toHaveAttribute("aria-controls", "test-tip");
+    expect(button).not.toHaveAttribute("aria-describedby");
 
     await user.click(button);
     expect(button).toHaveAttribute("aria-expanded", "true");
+    expect(button).toHaveAttribute("aria-describedby", "test-tip");
 
     await user.click(button);
     expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(button).not.toHaveAttribute("aria-describedby");
   });
 
   it("closes on Escape and returns focus to the button", async () => {
@@ -97,14 +99,14 @@ describe("HelpTip", () => {
     expect(tooltip).toHaveTextContent("Custom tip");
   });
 
-  it("generates a fallback id from text when no id prop is provided", async () => {
+  it("generates a unique id when no id prop is provided", async () => {
     const user = userEvent.setup();
     render(<HelpTip text="Hello, world! Test" />);
 
     await user.click(screen.getByRole("button", { name: "Help" }));
 
-    const tooltip = document.getElementById("help-tip-HelloworldTest");
-    expect(tooltip).toBeInTheDocument();
+    const tooltip = screen.getByRole("tooltip");
+    expect(tooltip).toHaveAttribute("id");
     expect(tooltip).toHaveTextContent("Hello, world! Test");
   });
 });

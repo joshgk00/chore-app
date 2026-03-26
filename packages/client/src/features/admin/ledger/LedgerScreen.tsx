@@ -154,12 +154,12 @@ function BalanceHeader({ balance }: { balance: PointsBalance }) {
           key={card.label}
           className="flex-1 rounded-2xl bg-[var(--color-surface)] p-4 shadow-card"
         >
-          <span className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5">
             <span className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
               {card.label}
             </span>
             <HelpTip id={card.helpId} text={card.helpText} />
-          </span>
+          </div>
           <p className="mt-1 font-display text-2xl font-bold text-[var(--color-amber-700)]">
             {card.value}
           </p>
