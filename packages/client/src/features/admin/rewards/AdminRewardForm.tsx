@@ -230,6 +230,7 @@ export default function AdminRewardForm() {
                   type="number"
                   min={0}
                   value={form.pointsCost}
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => updateField("pointsCost", Number(e.target.value) || 0)}
                   aria-describedby={errors.pointsCost ? "points-cost-error" : undefined}
                   aria-invalid={!!errors.pointsCost}
@@ -260,6 +261,7 @@ export default function AdminRewardForm() {
                   type="number"
                   min={0}
                   value={form.sortOrder}
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => updateField("sortOrder", Number(e.target.value) || 0)}
                   aria-describedby={errors.sortOrder ? "sort-order-error" : undefined}
                   aria-invalid={!!errors.sortOrder}

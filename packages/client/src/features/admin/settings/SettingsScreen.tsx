@@ -413,6 +413,7 @@ export default function SettingsScreen() {
                     inputMode="numeric"
                     min="1"
                     value={retentionDays}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) => {
                       setRetentionDays(e.target.value);
                       if (generalErrors.retentionDays) setGeneralErrors((prev) => ({ ...prev, retentionDays: "" }));
