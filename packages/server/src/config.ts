@@ -88,10 +88,10 @@ export function loadConfig(startDir = process.cwd()): AppConfig {
     );
   }
 
-  const initialAdminPin = process.env.INITIAL_ADMIN_PIN || "123456";
-  if (!process.env.INITIAL_ADMIN_PIN) {
-    console.warn(
-      "WARNING: INITIAL_ADMIN_PIN not set - using default PIN. Set this env var in production.",
+  const initialAdminPin = process.env.INITIAL_ADMIN_PIN;
+  if (!initialAdminPin) {
+    throw new Error(
+      "INITIAL_ADMIN_PIN environment variable is required. Set it to a PIN of at least 6 digits in your .env file or container environment.",
     );
   }
 

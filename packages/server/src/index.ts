@@ -27,7 +27,7 @@ async function main() {
     await settingsService.bootstrapSettings(config);
 
     const app = createApp(db, config);
-    console.log("VAPID keys initialized.");
+    console.log("App initialized.");
 
     retentionJob = startRetentionJob(db);
 
@@ -63,6 +63,7 @@ async function main() {
 
 process.on("unhandledRejection", (reason) => {
   console.error("Unhandled rejection:", reason);
+  process.exit(1);
 });
 
 process.on("uncaughtException", (err) => {

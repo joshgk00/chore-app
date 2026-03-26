@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { loadConfig } from '../src/config.js';
 
 describe('loadConfig', () => {
@@ -10,14 +10,12 @@ describe('loadConfig', () => {
 
   beforeEach(() => {
     process.env = { ...originalEnv };
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
     tempCwd = fs.mkdtempSync(path.join(os.tmpdir(), 'chore-app-config-'));
   });
 
   afterEach(() => {
     fs.rmSync(tempCwd, { recursive: true, force: true });
     process.env = originalEnv;
-    vi.restoreAllMocks();
   });
 
   it('throws when PUBLIC_ORIGIN is missing', () => {
@@ -25,12 +23,12 @@ describe('loadConfig', () => {
     expect(() => loadConfig(tempCwd)).toThrow('PUBLIC_ORIGIN');
   });
 
-  it('returns defaults when only PUBLIC_ORIGIN is set', () => {
+  it('returns defaults when PUBLIC_ORIGIN and INITIAL_ADMIN_PIN are set', () => {
     process.env.PUBLIC_ORIGIN = 'https://chores.example.com';
+    process.env.INITIAL_ADMIN_PIN = '123456';
     delete process.env.PORT;
     delete process.env.DATA_DIR;
     delete process.env.TZ;
-    delete process.env.INITIAL_ADMIN_PIN;
     delete process.env.ACTIVITY_RETENTION_DAYS_DEFAULT;
     delete process.env.IMAGE_GEN_API_KEY;
 
@@ -65,28 +63,16 @@ describe('loadConfig', () => {
     expect(config.imageGenApiKey).toBe('sk-test-key-123');
   });
 
-  it('logs warning when INITIAL_ADMIN_PIN is not set', () => {
+  it('throws when INITIAL_ADMIN_PIN is not set', () => {
     process.env.PUBLIC_ORIGIN = 'https://chores.example.com';
     delete process.env.INITIAL_ADMIN_PIN;
 
-    loadConfig(tempCwd);
-
-    expect(console.warn).toHaveBeenCalledWith(
-      expect.stringContaining('INITIAL_ADMIN_PIN not set'),
-    );
-  });
-
-  it('does not warn when INITIAL_ADMIN_PIN is explicitly set', () => {
-    process.env.PUBLIC_ORIGIN = 'https://chores.example.com';
-    process.env.INITIAL_ADMIN_PIN = '654321';
-
-    loadConfig(tempCwd);
-
-    expect(console.warn).not.toHaveBeenCalled();
+    expect(() => loadConfig(tempCwd)).toThrow('INITIAL_ADMIN_PIN');
   });
 
   it('reads imageGenApiKey from IMAGE_GEN_API_KEY env var', () => {
     process.env.PUBLIC_ORIGIN = 'https://chores.example.com';
+    process.env.INITIAL_ADMIN_PIN = '123456';
     process.env.IMAGE_GEN_API_KEY = 'my-api-key';
 
     const config = loadConfig(tempCwd);
@@ -99,11 +85,12 @@ describe('loadConfig', () => {
     fs.mkdirSync(nestedDir, { recursive: true });
     fs.writeFileSync(
       path.join(tempCwd, '.env'),
-      'PUBLIC_ORIGIN=https://from-env-file.example\nPORT=4010\n',
+      'PUBLIC_ORIGIN=https://from-env-file.example\nPORT=4010\nINITIAL_ADMIN_PIN=111111\n',
     );
 
     delete process.env.PUBLIC_ORIGIN;
     delete process.env.PORT;
+    delete process.env.INITIAL_ADMIN_PIN;
 
     const config = loadConfig(nestedDir);
 

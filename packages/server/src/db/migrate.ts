@@ -6,7 +6,6 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export function runMigrations(db: Database.Database): void {
-  // Create migrations tracking table
   db.exec(`
     CREATE TABLE IF NOT EXISTS _migrations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -22,13 +21,11 @@ export function runMigrations(db: Database.Database): void {
     return;
   }
 
-  // Read and sort migration files
   const files = fs
     .readdirSync(migrationsDir)
     .filter((f) => f.endsWith(".sql"))
     .sort();
 
-  // Get already applied versions
   const applied = new Set(
     (db.prepare("SELECT version FROM _migrations").all() as Array<{ version: string }>).map(
       (row) => row.version,
