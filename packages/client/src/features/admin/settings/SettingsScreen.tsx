@@ -88,18 +88,7 @@ export default function SettingsScreen() {
     }
   }, [query.data, isInitialized]);
 
-  const timeSlotMutation = useMutation({
-    mutationFn: async (settings: Record<string, string>) => {
-      const result = await api.put<SettingsResponse>("/api/admin/settings", settings);
-      if (!result.ok) throw result.error;
-      return result.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "settings"] });
-    },
-  });
-
-  const generalMutation = useMutation({
+  const settingsMutation = useMutation({
     mutationFn: async (settings: Record<string, string>) => {
       const result = await api.put<SettingsResponse>("/api/admin/settings", settings);
       if (!result.ok) throw result.error;
@@ -143,7 +132,7 @@ export default function SettingsScreen() {
     e.preventDefault();
     if (!validateTimeSlots()) return;
     setTimeSlotSuccess(false);
-    timeSlotMutation.mutate(
+    settingsMutation.mutate(
       {
         morning_start: morningStart,
         morning_end: morningEnd,
@@ -175,7 +164,7 @@ export default function SettingsScreen() {
     e.preventDefault();
     if (!validateGeneral()) return;
     setGeneralSuccess(false);
-    generalMutation.mutate(
+    settingsMutation.mutate(
       {
         timezone,
         activity_retention_days: retentionDays,
@@ -334,10 +323,10 @@ export default function SettingsScreen() {
               <div className="mt-4 flex items-center gap-3">
                 <button
                   type="submit"
-                  disabled={!isOnline || timeSlotMutation.isPending}
+                  disabled={!isOnline || settingsMutation.isPending}
                   className="min-h-touch rounded-xl bg-[var(--color-amber-500)] px-5 py-2 font-display font-bold text-white transition-colors hover:bg-[var(--color-amber-600)] disabled:opacity-50"
                 >
-                  {timeSlotMutation.isPending ? "Saving..." : "Save Time Slots"}
+                  {settingsMutation.isPending ? "Saving..." : "Save Time Slots"}
                 </button>
                 {timeSlotSuccess && (
                   <p className="text-sm text-[var(--color-emerald-600)]" role="status">
@@ -345,7 +334,7 @@ export default function SettingsScreen() {
                   </p>
                 )}
               </div>
-              {timeSlotMutation.error && !timeSlotSuccess && (
+              {settingsMutation.error && !timeSlotSuccess && (
                 <div className="mt-3" role="alert">
                   <p className="text-sm text-[var(--color-red-600)]">
                     Failed to save time slots. Please try again.
@@ -431,10 +420,10 @@ export default function SettingsScreen() {
               <div className="mt-4 flex items-center gap-3">
                 <button
                   type="submit"
-                  disabled={!isOnline || generalMutation.isPending}
+                  disabled={!isOnline || settingsMutation.isPending}
                   className="min-h-touch rounded-xl bg-[var(--color-amber-500)] px-5 py-2 font-display font-bold text-white transition-colors hover:bg-[var(--color-amber-600)] disabled:opacity-50"
                 >
-                  {generalMutation.isPending ? "Saving..." : "Save General"}
+                  {settingsMutation.isPending ? "Saving..." : "Save General"}
                 </button>
                 {generalSuccess && (
                   <p className="text-sm text-[var(--color-emerald-600)]" role="status">
@@ -442,7 +431,7 @@ export default function SettingsScreen() {
                   </p>
                 )}
               </div>
-              {generalMutation.error && !generalSuccess && (
+              {settingsMutation.error && !generalSuccess && (
                 <div className="mt-3" role="alert">
                   <p className="text-sm text-[var(--color-red-600)]">
                     Failed to save settings. Please try again.
