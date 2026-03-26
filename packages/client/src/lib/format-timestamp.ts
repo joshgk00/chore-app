@@ -23,5 +23,16 @@ export function formatTimestamp(
     ? { ...options, timeZone: timezone }
     : options;
 
-  return new Date(normalized).toLocaleString(undefined, resolvedOptions);
+  const date = new Date(normalized);
+
+  try {
+    return date.toLocaleString(undefined, resolvedOptions);
+  } catch (error) {
+    // Guard against invalid IANA time zone names causing a RangeError.
+    if (error instanceof RangeError && timezone) {
+      const fallbackOptions: Intl.DateTimeFormatOptions = { ...options };
+      return date.toLocaleString(undefined, fallbackOptions);
+    }
+    throw error;
+  }
 }

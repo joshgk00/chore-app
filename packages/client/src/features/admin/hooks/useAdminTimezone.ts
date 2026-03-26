@@ -22,6 +22,6 @@ export function useAdminTimezone(): string {
   });
 
   return (
-    query.data?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+    query.data?.timezone?.trim() || Intl.DateTimeFormat().resolvedOptions().timeZone
   );
 }
