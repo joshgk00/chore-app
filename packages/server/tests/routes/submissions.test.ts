@@ -286,6 +286,52 @@ describe('chore-log submission routes', () => {
   });
 });
 
+describe('GET /api/chore-logs/:id', () => {
+  it('returns an existing chore log', async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post('/api/chore-logs')
+      .send(validChoreBody);
+    const logId = createRes.body.data.id;
+
+    const res = await request(app).get(`/api/chore-logs/${logId}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.id).toBe(logId);
+    expect(res.body.data.choreNameSnapshot).toBe('Clean Kitchen');
+    expect(res.body.data.status).toBe('approved');
+  });
+
+  it('returns pending status for approval-required chore', async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post('/api/chore-logs')
+      .send({ choreId: 2, tierId: 3, idempotencyKey: 'pending-test', localDate: '2026-03-15' });
+
+    const logId = createRes.body.data.id;
+    const res = await request(app).get(`/api/chore-logs/${logId}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe('pending');
+  });
+
+  it('nonexistent log returns 404', async () => {
+    const app = buildApp();
+    const res = await request(app).get('/api/chore-logs/999');
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('NOT_FOUND');
+  });
+
+  it('non-numeric ID returns 422', async () => {
+    const app = buildApp();
+    const res = await request(app).get('/api/chore-logs/abc');
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+});
+
 const validRewardBody = {
   rewardId: 1,
   idempotencyKey: 'reward-sub-key-1',

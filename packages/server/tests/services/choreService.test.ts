@@ -58,6 +58,21 @@ describe('choreService', () => {
     });
   });
 
+  describe('getChoreLog', () => {
+    it('returns a chore log by ID', () => {
+      const created = service.submitChoreLog(baseSubmission);
+      const fetched = service.getChoreLog(created.id);
+
+      expect(fetched.id).toBe(created.id);
+      expect(fetched.choreNameSnapshot).toBe('Clean Kitchen');
+      expect(fetched.status).toBe('approved');
+    });
+
+    it('throws NotFoundError for nonexistent ID', () => {
+      expect(() => service.getChoreLog(999)).toThrow(NotFoundError);
+    });
+  });
+
   describe('submitChoreLog', () => {
     it('creates log with correct snapshot fields', () => {
       const log = service.submitChoreLog(baseSubmission);

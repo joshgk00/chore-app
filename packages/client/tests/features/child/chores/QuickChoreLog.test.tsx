@@ -5,6 +5,19 @@ import { renderWithProviders, screen, waitFor } from '../../../test-utils.js';
 import { server } from '../../../msw/server.js';
 import QuickChoreLog from '../../../../src/features/child/chores/QuickChoreLog.js';
 
+const pendingChoreLog = {
+  id: 42,
+  choreId: 2,
+  choreNameSnapshot: "Yard Work",
+  tierId: 3,
+  tierNameSnapshot: "Basic",
+  pointsSnapshot: 10,
+  requiresApprovalSnapshot: true,
+  loggedAt: "2026-03-15T12:00:00.000Z",
+  localDate: "2026-03-15",
+  idempotencyKey: "test-pending",
+};
+
 describe('QuickChoreLog', () => {
   it('renders the log a chore button initially', () => {
     renderWithProviders(<QuickChoreLog />);
@@ -104,7 +117,7 @@ describe('QuickChoreLog', () => {
     await user.click(screen.getByText('Quick Clean'));
 
     await waitFor(() => {
-      expect(screen.getByText(/logged clean kitchen/i)).toBeInTheDocument();
+      expect(screen.getByText(/clean kitchen approved/i)).toBeInTheDocument();
     });
   });
 
@@ -196,4 +209,47 @@ describe('QuickChoreLog', () => {
     expect(screen.getByText('Clean Kitchen')).toBeInTheDocument();
     expect(screen.getByText('Yard Work')).toBeInTheDocument();
   });
+
+  it('updates banner when pending log is approved via polling', async () => {
+    let getCallCount = 0;
+    server.use(
+      http.post('/api/chore-logs', () =>
+        HttpResponse.json(
+          { data: { ...pendingChoreLog, status: "pending" } },
+          { status: 201 },
+        ),
+      ),
+      http.get('/api/chore-logs/:id', () => {
+        getCallCount++;
+        return HttpResponse.json({
+          data: {
+            ...pendingChoreLog,
+            status: getCallCount <= 1 ? "pending" : "approved",
+          },
+        });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<QuickChoreLog />);
+
+    await user.click(screen.getByRole('button', { name: /log a chore/i }));
+    await waitFor(() => {
+      expect(screen.getByText('Yard Work')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Yard Work'));
+    await user.click(screen.getByText('Basic'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/logged yard work/i)).toBeInTheDocument();
+    });
+    expect(screen.getByText(/waiting for approval/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText(/yard work approved/i)).toBeInTheDocument();
+    }, { timeout: 15_000 });
+    expect(screen.queryByRole('button', { name: /cancel/i })).not.toBeInTheDocument();
+  }, 20_000);
 });
