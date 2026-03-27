@@ -1,21 +1,7 @@
 import { useState, useRef, useId } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
-
-interface Asset {
-  id: number;
-  source: string;
-  storedFilename: string;
-  url: string;
-  status: string;
-  originalFilename: string | null;
-  mimeType: string;
-  sizeBytes: number;
-  width: number | null;
-  height: number | null;
-  prompt: string | null;
-  model: string | null;
-}
+import type { Asset } from "@chore-app/shared";
 
 export interface AssetPickerProps {
   value: number | null;
@@ -26,7 +12,17 @@ export interface AssetPickerProps {
 
 const ACCEPTED_TYPES = "image/jpeg,image/png,image/webp";
 const UPLOAD_TIMEOUT_MS = 30_000;
-const GENERATE_TIMEOUT_MS = 45_000;
+const GENERATE_TIMEOUT_MS = 75_000;
+
+const IMAGE_MODELS = [
+  { id: "flux-2-flex", label: "Flux 2 Flex", price: "~$0.03" },
+  { id: "flux-2-pro", label: "Flux 2 Pro", price: "~$0.05" },
+  { id: "nano-banana-pro", label: "Nano Banana Pro", price: "~$0.05" },
+  { id: "gpt-image-1", label: "GPT Image 1 (4o)", price: "~$0.08" },
+  { id: "gpt-image-1.5", label: "GPT Image 1.5", price: "~$0.19" },
+] as const;
+
+const DEFAULT_MODEL = IMAGE_MODELS[2].id;
 
 async function parseErrorMessage(res: Response, fallback: string): Promise<string> {
   try {
@@ -68,7 +64,8 @@ async function uploadAsset(file: File): Promise<Asset> {
   }
 }
 
-async function generateAsset(prompt: string): Promise<Asset> {
+async function generateAsset(prompt: string, model: string): Promise<Asset> {
+  // Raw fetch instead of api client — generation needs 75s timeout, api client caps at 10s
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), GENERATE_TIMEOUT_MS);
 
@@ -76,7 +73,7 @@ async function generateAsset(prompt: string): Promise<Asset> {
     const res = await fetch("/api/admin/assets/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify({ prompt, model }),
       credentials: "same-origin",
       signal: controller.signal,
     });
@@ -104,9 +101,11 @@ export default function AssetPicker({ value, imageUrl, onChange, label }: AssetP
   const [isUploading, setIsUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatePrompt, setGeneratePrompt] = useState("");
+  const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODEL);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const promptId = useId();
+  const modelId = useId();
 
   const { data: assets, isLoading: isLoadingAssets } = useQuery({
     queryKey: ["admin", "assets", { status: "active" }],
@@ -150,7 +149,7 @@ export default function AssetPicker({ value, imageUrl, onChange, label }: AssetP
     setIsGenerating(true);
     setError(null);
     try {
-      const asset = await generateAsset(trimmed);
+      const asset = await generateAsset(trimmed, selectedModel);
       onChange(asset.id, asset.url);
       setGeneratePrompt("");
       setMode("idle");
@@ -312,27 +311,47 @@ export default function AssetPicker({ value, imageUrl, onChange, label }: AssetP
             </button>
           </div>
 
-          <div className="mt-3 flex gap-2">
-            <label className="sr-only" htmlFor={promptId}>
-              Image description
-            </label>
-            <input
-              id={promptId}
-              type="text"
-              value={generatePrompt}
-              onChange={(e) => setGeneratePrompt(e.target.value)}
-              placeholder="Describe the image..."
-              disabled={isGenerating}
-              className="flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 font-body text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-faint)] focus:border-[var(--color-amber-500)] focus:outline-none focus:ring-2 focus:ring-[var(--color-amber-500)] disabled:opacity-50"
-            />
-            <button
-              type="button"
-              onClick={handleGenerate}
-              disabled={isGenerating || !generatePrompt.trim()}
-              className="min-h-touch rounded-lg bg-[var(--color-amber-500)] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[var(--color-amber-600)] disabled:opacity-50"
-            >
-              {isGenerating ? "Generating..." : "Generate"}
-            </button>
+          <div className="mt-3 flex flex-col gap-2">
+            <div>
+              <label htmlFor={modelId} className="mb-1 block text-xs font-medium text-[var(--color-text-muted)]">
+                Model
+              </label>
+              <select
+                id={modelId}
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                disabled={isGenerating}
+                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 font-body text-sm text-[var(--color-text)] focus:border-[var(--color-amber-500)] focus:outline-none focus:ring-2 focus:ring-[var(--color-amber-500)] disabled:opacity-50"
+              >
+                {IMAGE_MODELS.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label} ({m.price})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-2">
+              <label className="sr-only" htmlFor={promptId}>
+                Image description
+              </label>
+              <input
+                id={promptId}
+                type="text"
+                value={generatePrompt}
+                onChange={(e) => setGeneratePrompt(e.target.value)}
+                placeholder="Describe the image..."
+                disabled={isGenerating}
+                className="flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 font-body text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-faint)] focus:border-[var(--color-amber-500)] focus:outline-none focus:ring-2 focus:ring-[var(--color-amber-500)] disabled:opacity-50"
+              />
+              <button
+                type="button"
+                onClick={handleGenerate}
+                disabled={isGenerating || !generatePrompt.trim()}
+                className="min-h-touch rounded-lg bg-[var(--color-amber-500)] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[var(--color-amber-600)] disabled:opacity-50"
+              >
+                {isGenerating ? "Generating..." : "Generate"}
+              </button>
+            </div>
           </div>
         </div>
       )}

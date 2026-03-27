@@ -40,6 +40,10 @@ export default defineConfig(({ mode }) => {
           target: `http://localhost:${serverPort}`,
           changeOrigin: true,
         },
+        '/assets': {
+          target: `http://localhost:${serverPort}`,
+          changeOrigin: true,
+        },
       },
     },
     build: {
