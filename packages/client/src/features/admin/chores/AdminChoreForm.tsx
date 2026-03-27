@@ -306,6 +306,7 @@ export default function AdminChoreForm() {
                   type="number"
                   min={0}
                   value={form.sortOrder}
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => updateField("sortOrder", Number(e.target.value) || 0)}
                   className="mt-1 w-32 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 font-body text-[var(--color-text)] focus:border-[var(--color-amber-500)] focus:outline-none focus:ring-2 focus:ring-[var(--color-amber-500)]"
                 />
@@ -404,6 +405,7 @@ export default function AdminChoreForm() {
                   type="number"
                   min={0}
                   value={tier.points}
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => updateTierPoints(tier.key, Number(e.target.value) || 0)}
                   className="w-20 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 font-body text-sm text-[var(--color-text)] focus:border-[var(--color-amber-500)] focus:outline-none focus:ring-2 focus:ring-[var(--color-amber-500)]"
                 />
