@@ -138,10 +138,10 @@ export function createPointsService(db: Database.Database, activityService: Acti
 
     const rows = selectTodayEntriesStmt.all(todayStr) as Pick<LedgerRow, "id" | "entry_type" | "amount" | "note" | "created_at">[];
 
-    const totalBalance = (selectTotalStmt.get() as { total: number }).total;
+    const { available } = getBalance();
     const todaySum = rows.reduce((sum, row) => sum + row.amount, 0);
 
-    let running = totalBalance - todaySum;
+    let running = available - todaySum;
     const activities = rows.map((row) => {
       const balanceBefore = running;
       running += row.amount;
