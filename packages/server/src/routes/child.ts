@@ -124,6 +124,12 @@ export function createChildRoutes(
       } catch {
         lastApprovalAt = undefined;
       }
+      let todayActivity;
+      try {
+        todayActivity = pointsService.getTodayActivity(timezone);
+      } catch {
+        todayActivity = undefined;
+      }
       res.json({
         data: {
           routines: filteredRoutines,
@@ -134,6 +140,7 @@ export function createChildRoutes(
           recentBadges,
           slotConfig,
           lastApprovalAt,
+          todayActivity,
         },
       });
     } catch (err) {

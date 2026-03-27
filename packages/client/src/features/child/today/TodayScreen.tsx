@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useBootstrap } from "./hooks/useBootstrap.js";
 import RoutineCard from "../routines/RoutineCard.js";
 import QuickChoreLog from "../chores/QuickChoreLog.js";
+import TodayActivity from "./TodayActivity.js";
 import PointsBadge from "./PointsBadge.js";
 import Mascot from "../../../components/mascot/Mascot.js";
 import { determineMascotState, isRecentApproval } from "../../../components/mascot/mascotStates.js";
@@ -142,6 +143,10 @@ export default function TodayScreen() {
           <QuickChoreLog />
         </div>
       </div>
+
+      {bootstrap?.todayActivity?.length ? (
+        <TodayActivity activities={bootstrap.todayActivity} />
+      ) : null}
     </div>
   );
 }

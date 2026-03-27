@@ -423,6 +423,23 @@ describe('badge and activity routes', () => {
     expect(typeof res.body.data.lastApprovalAt).toBe('string');
   });
 
+  it('GET /api/app/bootstrap includes todayActivity with point entries', async () => {
+    seedPointsLedger(db, 25);
+
+    const app = buildApp();
+    const res = await request(app).get('/api/app/bootstrap');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveProperty('todayActivity');
+    expect(res.body.data.todayActivity).toBeInstanceOf(Array);
+    expect(res.body.data.todayActivity).toHaveLength(1);
+    expect(res.body.data.todayActivity[0]).toHaveProperty('amount', 25);
+    expect(res.body.data.todayActivity[0]).toHaveProperty('balanceBefore', 0);
+    expect(res.body.data.todayActivity[0]).toHaveProperty('balanceAfter', 25);
+    expect(res.body.data.todayActivity[0]).toHaveProperty('description');
+    expect(res.body.data.todayActivity[0]).toHaveProperty('entryType');
+  });
+
   it('badge awarded after completing a routine that grants immediate points', async () => {
     const app = buildApp();
 

@@ -230,6 +230,16 @@ export interface Asset {
   url: string;
 }
 
+export interface TodayPointActivity {
+  id: number;
+  entryType: EntryType;
+  amount: number;
+  description: string;
+  balanceBefore: number;
+  balanceAfter: number;
+  createdAt: string;
+}
+
 export interface BootstrapData {
   routines?: Routine[];
   pendingRoutineCount?: number;
@@ -239,4 +249,5 @@ export interface BootstrapData {
   recentBadges?: Badge[];
   slotConfig?: SlotConfig;
   lastApprovalAt?: string;
+  todayActivity?: TodayPointActivity[];
 }
