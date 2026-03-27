@@ -3,6 +3,7 @@ node_modules/
 
 # Build output
 dist/
+*.tsbuildinfo
 
 # Environment
 .env
@@ -11,6 +12,11 @@ dist/
 
 # Data directory (runtime)
 data/
+data-e2e/
+
+# Playwright
+test-results/
+playwright-report/
 
 # OS files
 .DS_Store
@@ -19,6 +25,8 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+.agent/
+AGENTS.md
 
 # Logs
 *.log

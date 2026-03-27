@@ -1,0 +1,283 @@
+import webpush from "web-push";
+import fs from "node:fs";
+import path from "node:path";
+import type Database from "better-sqlite3";
+import type { PushRole } from "@chore-app/shared";
+import { MAX_PUSH_SUBSCRIPTIONS_PER_IP } from "@chore-app/shared";
+import { RateLimitError } from "../lib/errors.js";
+import { getLogger } from "../lib/logger.js";
+
+const PUSH_CLEANUP_INTERVAL_HOURS = 24;
+const PUSH_FAILED_TTL_DAYS = 30;
+const PUSH_INACTIVE_TTL_DAYS = 90;
+
+interface VapidKeys {
+  publicKey: string;
+  privateKey: string;
+}
+
+export interface PushService {
+  getVapidPublicKey(): string;
+  subscribe(role: PushRole, endpoint: string, keys: { p256dh: string; auth: string }, ipAddress?: string): void;
+  sendNotification(role: PushRole, payload: { title: string; body: string; data?: Record<string, unknown> }): void;
+  cleanupStaleSubscriptions(): { deleted: number; expired: number };
+}
+
+function isValidVapidKeys(keys: unknown): keys is VapidKeys {
+  return (
+    typeof keys === "object" &&
+    keys !== null &&
+    typeof (keys as VapidKeys).publicKey === "string" &&
+    typeof (keys as VapidKeys).privateKey === "string" &&
+    (keys as VapidKeys).publicKey.length > 0 &&
+    (keys as VapidKeys).privateKey.length > 0
+  );
+}
+
+function generateAndSaveKeys(keysPath: string): VapidKeys {
+  getLogger().info("generating new VAPID keys");
+  const generated = webpush.generateVAPIDKeys();
+  const keys: VapidKeys = {
+    publicKey: generated.publicKey,
+    privateKey: generated.privateKey,
+  };
+
+  try {
+    fs.writeFileSync(keysPath, JSON.stringify(keys, null, 2), { mode: 0o600 });
+  } catch (err) {
+    getLogger().error({ err, keysPath }, "failed to write VAPID keys");
+    throw err;
+  }
+
+  return keys;
+}
+
+function initVapidKeys(dataDir: string, publicOrigin: string): VapidKeys {
+  const secretsDir = path.join(dataDir, "secrets");
+  const keysPath = path.join(secretsDir, "webpush.json");
+
+  fs.mkdirSync(secretsDir, { recursive: true });
+
+  let keys: VapidKeys;
+
+  if (fs.existsSync(keysPath)) {
+    getLogger().info("loading existing VAPID keys");
+    try {
+      const raw = fs.readFileSync(keysPath, "utf-8");
+      const parsed = JSON.parse(raw);
+
+      if (isValidVapidKeys(parsed)) {
+        keys = parsed;
+      } else {
+        getLogger().warn("VAPID keys file has invalid structure, regenerating");
+        keys = generateAndSaveKeys(keysPath);
+      }
+    } catch (err) {
+      getLogger().warn({ err }, "failed to parse VAPID keys file, regenerating");
+      keys = generateAndSaveKeys(keysPath);
+    }
+  } else {
+    keys = generateAndSaveKeys(keysPath);
+  }
+
+  let vapidSubject: string;
+  if (publicOrigin.startsWith("https://")) {
+    vapidSubject = publicOrigin;
+  } else {
+    let hostname: string;
+    try {
+      hostname = new URL(publicOrigin).hostname || "localhost";
+    } catch {
+      throw new Error(
+        `Invalid PUBLIC_ORIGIN "${publicOrigin}". Expected an absolute URL such as "https://example.com".`,
+      );
+    }
+    vapidSubject = `mailto:vapid@${hostname}`;
+  }
+  webpush.setVapidDetails(vapidSubject, keys.publicKey, keys.privateKey);
+
+  return keys;
+}
+
+interface SubscriptionRow {
+  id: number;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  status: string;
+}
+
+export function createPushService(
+  db: Database.Database,
+  dataDir: string,
+  publicOrigin: string,
+): PushService {
+  const vapidKeys = initVapidKeys(dataDir, publicOrigin);
+
+  const upsertSubscriptionStmt = db.prepare(
+    `INSERT INTO push_subscriptions (role, endpoint, p256dh, auth, ip_address, status, updated_at)
+     VALUES (?, ?, ?, ?, ?, 'active', datetime('now'))
+     ON CONFLICT(endpoint) DO UPDATE SET
+       role = excluded.role,
+       p256dh = excluded.p256dh,
+       auth = excluded.auth,
+       ip_address = COALESCE(excluded.ip_address, ip_address),
+       status = 'active',
+       updated_at = datetime('now')`,
+  );
+
+  const countActiveByIpStmt = db.prepare(
+    `SELECT COUNT(*) as count FROM push_subscriptions
+     WHERE ip_address = ? AND status = 'active'`,
+  );
+
+  const findByEndpointStmt = db.prepare(
+    `SELECT id, ip_address FROM push_subscriptions WHERE endpoint = ?`,
+  );
+
+  const selectActiveByRoleStmt = db.prepare(
+    `SELECT id, endpoint, p256dh, auth, status
+     FROM push_subscriptions
+     WHERE role = ? AND status = 'active'`,
+  );
+
+  const markFailedStmt = db.prepare(
+    `UPDATE push_subscriptions
+     SET status = 'failed', last_failure_at = datetime('now'), updated_at = datetime('now')
+     WHERE id = ?`,
+  );
+
+  const updateLastSuccessStmt = db.prepare(
+    `UPDATE push_subscriptions
+     SET last_success_at = datetime('now'), updated_at = datetime('now'), status = 'active'
+     WHERE id = ?`,
+  );
+
+  function getVapidPublicKey(): string {
+    return vapidKeys.publicKey;
+  }
+
+  const subscribeInTransaction = db.transaction(
+    (role: PushRole, endpoint: string, keys: { p256dh: string; auth: string }, ip: string | null) => {
+      if (ip) {
+        const existingRow = findByEndpointStmt.get(endpoint) as { id: number; ip_address: string | null } | undefined;
+        const isSameIp = existingRow?.ip_address === ip;
+        if (!isSameIp) {
+          const { count } = countActiveByIpStmt.get(ip) as { count: number };
+          if (count >= MAX_PUSH_SUBSCRIPTIONS_PER_IP) {
+            throw new RateLimitError(
+              `Too many subscriptions from this IP (max ${MAX_PUSH_SUBSCRIPTIONS_PER_IP})`,
+            );
+          }
+        }
+      }
+
+      upsertSubscriptionStmt.run(role, endpoint, keys.p256dh, keys.auth, ip);
+    },
+  );
+
+  function subscribe(
+    role: PushRole,
+    endpoint: string,
+    keys: { p256dh: string; auth: string },
+    ipAddress?: string,
+  ): void {
+    subscribeInTransaction(role, endpoint, keys, ipAddress ?? null);
+  }
+
+  function sendNotification(
+    role: PushRole,
+    payload: { title: string; body: string; data?: Record<string, unknown> },
+  ): void {
+    const subs = selectActiveByRoleStmt.all(role) as SubscriptionRow[];
+    const jsonPayload = JSON.stringify(payload);
+
+    for (const sub of subs) {
+      const pushSub = {
+        endpoint: sub.endpoint,
+        keys: { p256dh: sub.p256dh, auth: sub.auth },
+      };
+
+      webpush.sendNotification(pushSub, jsonPayload).then(
+        () => {
+          try { updateLastSuccessStmt.run(sub.id); } catch (err) {
+            getLogger().error({ err, subscriptionId: sub.id }, "failed to update last_success_at");
+          }
+        },
+        (err: unknown) => {
+          const statusCode = (err as { statusCode?: number })?.statusCode;
+          if (statusCode === 410 || statusCode === 404) {
+            try { markFailedStmt.run(sub.id); } catch (dbErr) {
+              getLogger().error({ err: dbErr, subscriptionId: sub.id, statusCode }, "failed to mark subscription as failed");
+            }
+          } else {
+            // Transient failure — retry once
+            webpush.sendNotification(pushSub, jsonPayload).then(
+              () => {
+                try { updateLastSuccessStmt.run(sub.id); } catch (retryErr) {
+                  getLogger().error({ err: retryErr, subscriptionId: sub.id }, "failed to update last_success_at after retry");
+                }
+              },
+              (err2: unknown) => {
+                const statusCode2 = (err2 as { statusCode?: number })?.statusCode;
+                if (statusCode2 === 410 || statusCode2 === 404) {
+                  try { markFailedStmt.run(sub.id); } catch { /* best effort */ }
+                }
+                getLogger().error({ subscriptionId: sub.id }, "push delivery failed after retry");
+              },
+            );
+          }
+        },
+      );
+    }
+  }
+
+  const deleteStaleFailedStmt = db.prepare(
+    `DELETE FROM push_subscriptions
+     WHERE status = 'failed'
+       AND updated_at < datetime('now', '-' || ? || ' days')`,
+  );
+
+  const expireInactiveStmt = db.prepare(
+    `UPDATE push_subscriptions
+     SET status = 'expired', updated_at = datetime('now')
+     WHERE status = 'active'
+       AND COALESCE(last_success_at, created_at) < datetime('now', '-' || ? || ' days')`,
+  );
+
+  function cleanupStaleSubscriptions(): { deleted: number; expired: number } {
+    const deleteResult = deleteStaleFailedStmt.run(PUSH_FAILED_TTL_DAYS);
+    const expireResult = expireInactiveStmt.run(PUSH_INACTIVE_TTL_DAYS);
+
+    if (deleteResult.changes > 0 || expireResult.changes > 0) {
+      getLogger().info(
+        { deleted: deleteResult.changes, expired: expireResult.changes },
+        "push subscription cleanup completed",
+      );
+    }
+
+    return { deleted: deleteResult.changes, expired: expireResult.changes };
+  }
+
+  try {
+    cleanupStaleSubscriptions();
+  } catch (err) {
+    getLogger().error({ err }, "push subscription cleanup failed on startup");
+  }
+
+  const cleanupTimer = setInterval(() => {
+    try {
+      cleanupStaleSubscriptions();
+    } catch (err) {
+      getLogger().error({ err }, "push subscription cleanup failed");
+    }
+  }, PUSH_CLEANUP_INTERVAL_HOURS * 60 * 60 * 1000);
+  cleanupTimer.unref();
+
+  return {
+    getVapidPublicKey,
+    subscribe,
+    sendNotification,
+    cleanupStaleSubscriptions,
+  };
+}
