@@ -215,6 +215,24 @@ export const handlers: RequestHandler[] = [
     ),
   ),
 
+  http.get('/api/chore-logs/:id', () =>
+    HttpResponse.json({
+      data: {
+        id: 1,
+        choreId: 1,
+        choreNameSnapshot: "Clean Kitchen",
+        tierId: 1,
+        tierNameSnapshot: "Quick Clean",
+        pointsSnapshot: 3,
+        requiresApprovalSnapshot: false,
+        loggedAt: "2026-03-15T12:00:00",
+        localDate: "2026-03-15",
+        status: "approved",
+        idempotencyKey: "test-key",
+      },
+    }),
+  ),
+
   http.post('/api/chore-logs/:id/cancel', () =>
     HttpResponse.json({
       data: {

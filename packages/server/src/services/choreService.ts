@@ -28,6 +28,7 @@ export interface UpdateChoreData {
 
 export interface ChoreService {
   getActiveChores(): Chore[];
+  getChoreLog(logId: number): ChoreLog;
   submitChoreLog(data: SubmitChoreLogData): ChoreLog;
   cancelChoreLog(logId: number): ChoreLog;
   getPendingChoreLogCount(): number;
@@ -355,6 +356,14 @@ export function createChoreService(
     return mapChoreLogRow(inserted);
   });
 
+  function getChoreLog(logId: number): ChoreLog {
+    const row = selectLogByIdStmt.get(logId) as ChoreLogRow | undefined;
+    if (!row) {
+      throw new NotFoundError("Chore log not found");
+    }
+    return mapChoreLogRow(row);
+  }
+
   function submitChoreLog(data: SubmitChoreLogData): ChoreLog {
     const result = submitChoreLogTx(data);
 
@@ -563,6 +572,7 @@ export function createChoreService(
 
   return {
     getActiveChores,
+    getChoreLog,
     submitChoreLog,
     cancelChoreLog,
     getPendingChoreLogCount,

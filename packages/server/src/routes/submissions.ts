@@ -99,6 +99,23 @@ export function createSubmissionRoutes(
     }
   });
 
+  router.get("/chore-logs/:id", (req, res, next) => {
+    try {
+      const idParam = req.params.id;
+      if (!/^\d+$/.test(idParam)) {
+        throw new ValidationError("Invalid chore log ID");
+      }
+      const id = Number(idParam);
+      if (!Number.isInteger(id) || id < 1) {
+        throw new ValidationError("Invalid chore log ID");
+      }
+      const log = choreService.getChoreLog(id);
+      res.json({ data: log });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   router.post("/chore-logs/:id/cancel", (req, res, next) => {
     try {
       const idParam = req.params.id;

@@ -1,7 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useChores } from "./hooks/useChores.js";
 import { useSubmitChoreLog } from "./hooks/useSubmitChoreLog.js";
 import { useCancelChoreLog } from "./hooks/useCancelChoreLog.js";
+import { useChoreLogStatus } from "./hooks/useChoreLogStatus.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
 import { formatLocalDate } from "../../../lib/draft-sync.js";
 import type { Chore, ChoreTier, ChoreLog } from "@chore-app/shared";
@@ -15,6 +17,19 @@ export default function QuickChoreLog() {
   const submitMutation = useSubmitChoreLog();
   const cancelMutation = useCancelChoreLog();
   const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
+  const queryClient = useQueryClient();
+
+  const pendingLogId = recentLog?.status === "pending" ? recentLog.id : null;
+  const { data: polledLog } = useChoreLogStatus(pendingLogId);
+
+  useEffect(() => {
+    if (polledLog && polledLog.status !== "pending") {
+      setRecentLog(polledLog);
+      queryClient.invalidateQueries({ queryKey: ["bootstrap"] });
+      queryClient.invalidateQueries({ queryKey: ["points"] });
+      queryClient.invalidateQueries({ queryKey: ["ledger"] });
+    }
+  }, [polledLog, queryClient]);
 
   function handleChoreSelect(chore: Chore) {
     idempotencyKeyRef.current = crypto.randomUUID();
@@ -121,19 +136,42 @@ export default function QuickChoreLog() {
       )}
 
       {recentLog && (
-        <div className="mt-3 rounded-xl bg-[var(--color-emerald-50)] p-3" aria-live="polite">
-          <p className="font-medium text-[var(--color-emerald-700)]">
-            Logged {recentLog.choreNameSnapshot} for +{recentLog.pointsSnapshot} pts
+        <div
+          className={`mt-3 rounded-xl p-3 ${
+            recentLog.status === "rejected"
+              ? "bg-[var(--color-surface-muted)]"
+              : "bg-[var(--color-emerald-50)]"
+          }`}
+          aria-live="polite"
+        >
+          <p
+            className={`font-medium ${
+              recentLog.status === "rejected"
+                ? "text-[var(--color-text-muted)]"
+                : "text-[var(--color-emerald-700)]"
+            }`}
+          >
+            {recentLog.status === "approved" &&
+              `${recentLog.choreNameSnapshot} approved! +${recentLog.pointsSnapshot} pts earned`}
+            {recentLog.status === "pending" &&
+              `Logged ${recentLog.choreNameSnapshot} for +${recentLog.pointsSnapshot} pts`}
+            {recentLog.status === "rejected" &&
+              `${recentLog.choreNameSnapshot} was not approved`}
           </p>
           {recentLog.status === "pending" && (
-            <button
-              type="button"
-              onClick={handleCancelLog}
-              disabled={cancelMutation.isPending}
-              className="mt-2 min-h-touch text-sm font-medium text-[var(--color-red-600)] disabled:opacity-50"
-            >
-              {cancelMutation.isPending ? "Canceling..." : "Cancel"}
-            </button>
+            <>
+              <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                Waiting for approval…
+              </p>
+              <button
+                type="button"
+                onClick={handleCancelLog}
+                disabled={cancelMutation.isPending}
+                className="mt-2 min-h-touch text-sm font-medium text-[var(--color-red-600)] disabled:opacity-50"
+              >
+                {cancelMutation.isPending ? "Canceling..." : "Cancel"}
+              </button>
+            </>
           )}
         </div>
       )}

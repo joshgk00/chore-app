@@ -104,7 +104,7 @@ describe('QuickChoreLog', () => {
     await user.click(screen.getByText('Quick Clean'));
 
     await waitFor(() => {
-      expect(screen.getByText(/logged clean kitchen/i)).toBeInTheDocument();
+      expect(screen.getByText(/clean kitchen approved/i)).toBeInTheDocument();
     });
   });
 
