@@ -90,13 +90,13 @@ describe('pointsService', () => {
     });
   });
 
-  describe('getLedger', () => {
+  describe('getLedgerFiltered', () => {
     it('returns entries in descending date order', () => {
       seedPointsLedger(db, 10);
       seedPointsLedger(db, 20);
       seedPointsLedger(db, 30);
 
-      const entries = service.getLedger({ limit: 10, offset: 0 });
+      const entries = service.getLedgerFiltered({ limit: 10, offset: 0 });
 
       expect(entries).toHaveLength(3);
       expect(entries[0].amount).toBe(30);
@@ -108,8 +108,8 @@ describe('pointsService', () => {
         seedPointsLedger(db, i * 10);
       }
 
-      const page1 = service.getLedger({ limit: 2, offset: 0 });
-      const page2 = service.getLedger({ limit: 2, offset: 2 });
+      const page1 = service.getLedgerFiltered({ limit: 2, offset: 0 });
+      const page2 = service.getLedgerFiltered({ limit: 2, offset: 2 });
 
       expect(page1).toHaveLength(2);
       expect(page2).toHaveLength(2);
@@ -120,7 +120,7 @@ describe('pointsService', () => {
     it('returns correct fields', () => {
       seedPointsLedger(db, 42);
 
-      const entries = service.getLedger({ limit: 10, offset: 0 });
+      const entries = service.getLedgerFiltered({ limit: 10, offset: 0 });
 
       expect(entries).toHaveLength(1);
       expect(entries[0].entryType).toBe('manual');
@@ -134,7 +134,7 @@ describe('pointsService', () => {
         seedPointsLedger(db, i);
       }
 
-      const entries = service.getLedger({ limit: 200, offset: 0 });
+      const entries = service.getLedgerFiltered({ limit: 200, offset: 0 });
 
       expect(entries).toHaveLength(5);
     });
