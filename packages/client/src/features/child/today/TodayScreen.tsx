@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useBootstrap } from "./hooks/useBootstrap.js";
 import RoutineCard from "../routines/RoutineCard.js";
 import QuickChoreLog from "../chores/QuickChoreLog.js";
+import PointsBadge from "./PointsBadge.js";
 import Mascot from "../../../components/mascot/Mascot.js";
 import { determineMascotState, isRecentApproval } from "../../../components/mascot/mascotStates.js";
 import { hasAnyActiveDraft } from "../../../lib/draft.js";
@@ -86,16 +87,21 @@ export default function TodayScreen() {
             <p className="mt-0.5 text-[15px] text-[var(--color-text-muted)]">Let's get some things done</p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => refetch()}
-          className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] transition-all duration-200 hover:bg-[var(--color-border)]"
-          aria-label="Refresh routines"
-        >
-          <svg className="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-2">
+          {bootstrap?.pointsSummary && (
+            <PointsBadge balance={bootstrap.pointsSummary} />
+          )}
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] transition-all duration-200 hover:bg-[var(--color-border)]"
+            aria-label="Refresh routines"
+          >
+            <svg className="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {routines.length === 0 ? (

@@ -185,6 +185,36 @@ describe("TodayScreen", () => {
     });
   });
 
+  it("shows available points badge when pointsSummary is present", async () => {
+    renderTodayScreen();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("points-badge-value")).toHaveTextContent("100");
+    });
+
+    expect(
+      screen.getByRole("button", { name: /100 points available/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("hides points badge when pointsSummary is absent", async () => {
+    server.use(
+      http.get("/api/app/bootstrap", () =>
+        HttpResponse.json({
+          data: { routines: [], pendingRoutineCount: 0 },
+        }),
+      ),
+    );
+
+    renderTodayScreen();
+
+    await waitFor(() => {
+      expect(screen.getByText("No routines right now!")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId("points-badge-value")).not.toBeInTheDocument();
+  });
+
   it("refetches when refresh button is clicked", async () => {
     let requestCount = 0;
     server.use(
