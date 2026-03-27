@@ -96,7 +96,7 @@ export default function AdminRoutineForm() {
   const [form, setForm] = useState<FormState>(INITIAL_STATE);
   const [errors, setErrors] = useState<FormErrors>({});
   const [hasPopulated, setHasPopulated] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isSaveSuccess, setSaveSuccess] = useState(false);
   const [saveIntent, setSaveIntent] = useState<"save" | "close" | null>(null);
   const successTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
@@ -607,7 +607,7 @@ export default function AdminRoutineForm() {
               ? "Saving..."
               : "Save & Close"}
           </button>
-          {saveSuccess && (
+          {isSaveSuccess && (
             <span className="text-sm font-medium text-[var(--color-emerald-600)]" role="status">
               Saved!
             </span>

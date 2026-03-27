@@ -1,21 +1,7 @@
 import { useState, useRef, useId } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
-
-interface Asset {
-  id: number;
-  source: string;
-  storedFilename: string;
-  url: string;
-  status: string;
-  originalFilename: string | null;
-  mimeType: string;
-  sizeBytes: number;
-  width: number | null;
-  height: number | null;
-  prompt: string | null;
-  model: string | null;
-}
+import type { Asset } from "@chore-app/shared";
 
 export interface AssetPickerProps {
   value: number | null;
@@ -79,6 +65,7 @@ async function uploadAsset(file: File): Promise<Asset> {
 }
 
 async function generateAsset(prompt: string, model: string): Promise<Asset> {
+  // Raw fetch instead of api client — generation needs 75s timeout, api client caps at 10s
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), GENERATE_TIMEOUT_MS);
 

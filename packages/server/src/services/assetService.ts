@@ -175,9 +175,12 @@ async function fetchGeneratedImageBytes(
       );
     }
 
-    const data = (await response.json()) as {
-      data: Array<{ url?: string; b64_json?: string }>;
-    };
+    let data: { data: Array<{ url?: string; b64_json?: string }> };
+    try {
+      data = await response.json();
+    } catch {
+      throw new AppError(502, "GENERATION_FAILED", "Image generation failed: invalid JSON from API");
+    }
 
     const result = data.data?.[0];
     if (!result) {
@@ -197,6 +200,11 @@ async function fetchGeneratedImageBytes(
     }
 
     clearTimeout(timeout);
+
+    const imageUrl = new URL(result.url);
+    if (imageUrl.protocol !== "https:" || !imageUrl.hostname.endsWith("ppq.ai")) {
+      throw new AppError(502, "GENERATION_FAILED", "Image generation failed: unexpected image URL");
+    }
 
     const downloadController = new AbortController();
     const downloadTimeout = setTimeout(() => downloadController.abort(), DOWNLOAD_TIMEOUT_MS);
