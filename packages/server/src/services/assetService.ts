@@ -201,8 +201,14 @@ async function fetchGeneratedImageBytes(
 
     clearTimeout(timeout);
 
-    const imageUrl = new URL(result.url);
-    if (imageUrl.protocol !== "https:" || !imageUrl.hostname.endsWith("ppq.ai")) {
+    let imageUrl: URL;
+    try {
+      imageUrl = new URL(result.url);
+    } catch {
+      throw new AppError(502, "GENERATION_FAILED", "Image generation failed: invalid image URL from API");
+    }
+    const hostname = imageUrl.hostname;
+    if (imageUrl.protocol !== "https:" || !(hostname === "ppq.ai" || hostname.endsWith(".ppq.ai"))) {
       throw new AppError(502, "GENERATION_FAILED", "Image generation failed: unexpected image URL");
     }
 

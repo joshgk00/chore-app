@@ -22,7 +22,7 @@ const IMAGE_MODELS = [
   { id: "gpt-image-1.5", label: "GPT Image 1.5", price: "~$0.19" },
 ] as const;
 
-const DEFAULT_MODEL = "nano-banana-pro";
+const DEFAULT_MODEL = IMAGE_MODELS[2].id;
 
 async function parseErrorMessage(res: Response, fallback: string): Promise<string> {
   try {
@@ -101,7 +101,7 @@ export default function AssetPicker({ value, imageUrl, onChange, label }: AssetP
   const [isUploading, setIsUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatePrompt, setGeneratePrompt] = useState("");
-  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
+  const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODEL);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const promptId = useId();

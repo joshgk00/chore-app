@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
@@ -6,8 +6,9 @@ import Database from "better-sqlite3";
 import { createTestDb, seedTestData } from "../db-helpers.js";
 import { createActivityService } from "../../src/services/activityService.js";
 import { createAssetService } from "../../src/services/assetService.js";
-import { ValidationError, NotFoundError } from "../../src/lib/errors.js";
+import { AppError, ValidationError, NotFoundError } from "../../src/lib/errors.js";
 import { createTestImageFixtures, type TestImageFixtures } from "../helpers/fixture-images.js";
+import sharp from "sharp";
 
 let fixtures: TestImageFixtures;
 
@@ -322,6 +323,105 @@ describe("assetService", () => {
       const active = service.getAssets({ status: "active" });
       expect(active).toHaveLength(1);
       expect(active[0].id).not.toBe(asset.id);
+    });
+  });
+
+  describe("generateImage", () => {
+    let validPngBuffer: Buffer;
+
+    beforeAll(async () => {
+      validPngBuffer = await sharp({
+        create: { width: 50, height: 50, channels: 3, background: { r: 0, g: 128, b: 255 } },
+      }).png().toBuffer();
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    function mockFetchForUrlResponse(imageBuffer: Buffer, imageHost = "api.ppq.ai") {
+      const generationResponse = {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: [{ url: `https://${imageHost}/v1/media/gen_abc/0?sig=test` }],
+        }),
+      };
+      const downloadResponse = {
+        ok: true,
+        status: 200,
+        arrayBuffer: async () => imageBuffer.buffer.slice(
+          imageBuffer.byteOffset,
+          imageBuffer.byteOffset + imageBuffer.byteLength
+        ),
+      };
+      let callCount = 0;
+      vi.spyOn(global, "fetch").mockImplementation(async () => {
+        callCount++;
+        return (callCount === 1 ? generationResponse : downloadResponse) as Response;
+      });
+    }
+
+    it("downloads image from signed URL and stores as webp", async () => {
+      const service = buildService();
+      mockFetchForUrlResponse(validPngBuffer);
+
+      const asset = await service.generateImage("a blue square", undefined, "sk-test");
+
+      expect(asset.source).toBe("ai_generated");
+      expect(asset.status).toBe("ready");
+      expect(asset.storedFilename).toMatch(/\.webp$/u);
+      expect(asset.prompt).toBe("a blue square");
+      expect(asset.model).toBe("nano-banana-pro");
+      expect(fs.existsSync(path.join(dataDir, "assets", asset.storedFilename))).toBe(true);
+    });
+
+    it("rejects URLs from non-ppq.ai hosts", async () => {
+      const service = buildService();
+      mockFetchForUrlResponse(validPngBuffer, "evilppq.ai");
+
+      await expect(
+        service.generateImage("test", undefined, "sk-test")
+      ).rejects.toThrow("unexpected image URL");
+    });
+
+    it("throws on malformed JSON from API", async () => {
+      const service = buildService();
+      vi.spyOn(global, "fetch").mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => { throw new SyntaxError("Unexpected token"); },
+      } as Response);
+
+      await expect(
+        service.generateImage("test", undefined, "sk-test")
+      ).rejects.toThrow("invalid JSON from API");
+    });
+
+    it("throws on invalid URL from API", async () => {
+      const service = buildService();
+      vi.spyOn(global, "fetch").mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ data: [{ url: "not-a-valid-url" }] }),
+      } as Response);
+
+      await expect(
+        service.generateImage("test", undefined, "sk-test")
+      ).rejects.toThrow("invalid image URL from API");
+    });
+
+    it("throws on empty API response", async () => {
+      const service = buildService();
+      vi.spyOn(global, "fetch").mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ data: [] }),
+      } as Response);
+
+      await expect(
+        service.generateImage("test", undefined, "sk-test")
+      ).rejects.toThrow("empty API response");
     });
   });
 });

@@ -217,7 +217,7 @@ export default function AdminRoutineForm() {
           navigate("/admin/routines");
         } else {
           if (!isEditing) {
-            navigate(`/admin/routines/${routine.id}`, { replace: true });
+            navigate(`/admin/routines/${routine.id}/edit`, { replace: true });
           }
           showSaveConfirmation();
         }
