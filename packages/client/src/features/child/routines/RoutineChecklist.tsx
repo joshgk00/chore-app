@@ -145,7 +145,7 @@ export default function RoutineChecklist() {
   const routineItemsById = new Map(routine.items.map((item) => [item.id, item]));
 
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--color-bg)]">
+    <div className="flex h-[calc(100dvh-4rem-env(safe-area-inset-bottom,0px))] flex-col bg-[var(--color-bg)]">
       <div aria-live="assertive" role="status" className="fixed left-4 right-4 top-4 z-50 pointer-events-none">
         {toastMessage && (
           <div className="rounded-2xl bg-[var(--color-text)] px-4 py-3 text-center font-medium text-white shadow-toast pointer-events-auto">
@@ -154,7 +154,7 @@ export default function RoutineChecklist() {
         )}
       </div>
 
-      <header className="sticky top-0 z-10 border-b border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_95%,transparent)] px-4 py-3 backdrop-blur">
+      <header className="shrink-0 z-10 border-b border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_95%,transparent)] px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
@@ -221,7 +221,7 @@ export default function RoutineChecklist() {
         })}
       </div>
 
-      <div className="sticky bottom-0 border-t border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_95%,transparent)] p-4 backdrop-blur">
+      <div className="shrink-0 border-t border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_95%,transparent)] p-4">
         {!isOnline && (
           <p className="mb-2 text-center text-sm font-medium text-[var(--color-amber-700)]">
             You're offline -- connect to submit.
