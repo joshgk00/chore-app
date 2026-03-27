@@ -2,6 +2,7 @@ import type Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { getLogger } from "../lib/logger.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -17,7 +18,7 @@ export function runMigrations(db: Database.Database): void {
   const migrationsDir = path.join(__dirname, "migrations");
 
   if (!fs.existsSync(migrationsDir)) {
-    console.log("No migrations directory found, skipping.");
+    getLogger().debug("no migrations directory found, skipping");
     return;
   }
 
@@ -38,7 +39,7 @@ export function runMigrations(db: Database.Database): void {
       continue;
     }
 
-    console.log(`Applying migration: ${file}`);
+    getLogger().info({ migration: file }, "applying migration");
     const sql = fs.readFileSync(path.join(migrationsDir, file), "utf-8");
 
     const applyMigration = db.transaction(() => {
@@ -47,6 +48,6 @@ export function runMigrations(db: Database.Database): void {
     });
 
     applyMigration();
-    console.log(`Migration ${file} applied successfully.`);
+    getLogger().info({ migration: file }, "migration applied");
   }
 }

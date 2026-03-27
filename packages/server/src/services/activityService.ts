@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
 import type { ActivityEvent, ActivityLogEntry, ActivityEventType } from "@chore-app/shared";
+import { getLogger } from "../lib/logger.js";
 
 interface ActivityRow {
   id: number;
@@ -62,7 +63,7 @@ export function createActivityService(db: Database.Database): ActivityService {
         event.metadata ? JSON.stringify(event.metadata) : null,
       );
     } catch (err) {
-      console.error("Failed to record activity event:", err);
+      getLogger().error({ err, eventType: event.eventType }, "failed to record activity event");
     }
   }
 

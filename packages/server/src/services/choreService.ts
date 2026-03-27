@@ -4,6 +4,7 @@ import { ConflictError, NotFoundError, ValidationError } from "../lib/errors.js"
 import type { ActivityService } from "./activityService.js";
 import type { BadgeService } from "./badgeService.js";
 import type { PushService } from "./pushService.js";
+import { getLogger } from "../lib/logger.js";
 
 export interface SubmitChoreLogData {
   choreId: number;
@@ -353,7 +354,7 @@ export function createChoreService(
           data: { type: "chore_log", id: result.id },
         });
       } catch (err) {
-        console.error("Failed to send admin notification for chore log", { id: result.id }, err);
+        getLogger().error({ err, id: result.id }, "failed to send admin notification for chore log");
       }
     }
 

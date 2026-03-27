@@ -19,6 +19,7 @@ import { createAdminBackupRoutes } from "./routes/admin-backup.js";
 import { createChildRoutes } from "./routes/child.js";
 import { createSubmissionRoutes } from "./routes/submissions.js";
 import { adminAuth } from "./middleware/adminAuth.js";
+import { requestLogger } from "./middleware/requestLogger.js";
 import { createAuthService } from "./services/authService.js";
 import { createSettingsService } from "./services/settingsService.js";
 import { createActivityService } from "./services/activityService.js";
@@ -45,6 +46,7 @@ export function createApp(db: Database.Database, config: AppConfig) {
   app.use(helmet());
   app.use(express.json({ limit: "1mb" }));
   app.use(cookieParser());
+  app.use(requestLogger());
 
   // Static asset serving (before API routes, no auth required)
   app.use("/assets", express.static(path.resolve(config.dataDir, "assets"), { maxAge: "7d" }));

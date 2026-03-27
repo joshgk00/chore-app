@@ -10,6 +10,7 @@ import { ConflictError, NotFoundError } from "../lib/errors.js";
 import type { ActivityService } from "./activityService.js";
 import type { BadgeService } from "./badgeService.js";
 import type { PushService } from "./pushService.js";
+import { getLogger } from "../lib/logger.js";
 
 export interface ApprovalService {
   getPendingApprovals(): PendingApprovals;
@@ -266,7 +267,7 @@ export function createApprovalService(
         data: { type: "routine_completion", id: result.id, action: "approved" },
       });
     } catch (err) {
-      console.error("Failed to send push notification", { entityType: "approval", id: result.id }, err);
+      getLogger().error({ err, entityType: "approval", id: result.id }, "failed to send push notification");
     }
     return result;
   }
@@ -304,7 +305,7 @@ export function createApprovalService(
         data: { type: "routine_completion", id: result.id, action: "rejected" },
       });
     } catch (err) {
-      console.error("Failed to send push notification", { entityType: "approval", id: result.id }, err);
+      getLogger().error({ err, entityType: "approval", id: result.id }, "failed to send push notification");
     }
     return result;
   }
@@ -350,7 +351,7 @@ export function createApprovalService(
         data: { type: "chore_log", id: result.id, action: "approved" },
       });
     } catch (err) {
-      console.error("Failed to send push notification", { entityType: "approval", id: result.id }, err);
+      getLogger().error({ err, entityType: "approval", id: result.id }, "failed to send push notification");
     }
     return result;
   }
@@ -388,7 +389,7 @@ export function createApprovalService(
         data: { type: "chore_log", id: result.id, action: "rejected" },
       });
     } catch (err) {
-      console.error("Failed to send push notification", { entityType: "approval", id: result.id }, err);
+      getLogger().error({ err, entityType: "approval", id: result.id }, "failed to send push notification");
     }
     return result;
   }
@@ -434,7 +435,7 @@ export function createApprovalService(
         data: { type: "reward_request", id: result.id, action: "approved" },
       });
     } catch (err) {
-      console.error("Failed to send push notification", { entityType: "approval", id: result.id }, err);
+      getLogger().error({ err, entityType: "approval", id: result.id }, "failed to send push notification");
     }
     return result;
   }
@@ -472,7 +473,7 @@ export function createApprovalService(
         data: { type: "reward_request", id: result.id, action: "rejected" },
       });
     } catch (err) {
-      console.error("Failed to send push notification", { entityType: "approval", id: result.id }, err);
+      getLogger().error({ err, entityType: "approval", id: result.id }, "failed to send push notification");
     }
     return result;
   }

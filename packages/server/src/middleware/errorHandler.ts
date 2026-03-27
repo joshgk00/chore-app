@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { AppError } from "../lib/errors.js";
+import { getLogger } from "../lib/logger.js";
 
 export function errorHandler(err: Error, _req: Request, res: Response, _next: NextFunction): void {
   if (err instanceof AppError) {
@@ -13,8 +14,7 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
     return;
   }
 
-  // Log unexpected errors but don't leak details
-  console.error("Unhandled error:", err);
+  getLogger().error({ err }, "unhandled error");
 
   res.status(500).json({
     error: {

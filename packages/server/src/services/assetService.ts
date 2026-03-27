@@ -5,6 +5,7 @@ import sharp from "sharp";
 import type Database from "better-sqlite3";
 import type { ActivityService } from "./activityService.js";
 import { AppError, NotFoundError, ValidationError } from "../lib/errors.js";
+import { getLogger } from "../lib/logger.js";
 
 const ACCEPTED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
@@ -149,6 +150,10 @@ async function fetchGeneratedImageBytes(
   model: string,
   apiKey: string
 ): Promise<Buffer> {
+  const log = getLogger();
+  const startTime = Date.now();
+  log.info({ model, promptLength: prompt.length }, "starting image generation");
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), GENERATION_TIMEOUT_MS);
 
@@ -168,6 +173,7 @@ async function fetchGeneratedImageBytes(
     });
 
     if (!response.ok) {
+      log.error({ model, status: response.status, duration: Date.now() - startTime }, "image generation API error");
       throw new AppError(
         502,
         "GENERATION_FAILED",
@@ -188,6 +194,7 @@ async function fetchGeneratedImageBytes(
     }
 
     if (result.b64_json) {
+      log.info({ model, duration: Date.now() - startTime, responseType: "b64_json" }, "image generation completed");
       return Buffer.from(result.b64_json, "base64");
     }
 
@@ -225,12 +232,14 @@ async function fetchGeneratedImageBytes(
       }
 
       const arrayBuffer = await imageResponse.arrayBuffer();
+      log.info({ model, duration: Date.now() - startTime, responseType: "url", downloadBytes: arrayBuffer.byteLength }, "image generation completed");
       return Buffer.from(arrayBuffer);
     } finally {
       clearTimeout(downloadTimeout);
     }
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
+      log.error({ model, duration: Date.now() - startTime }, "image generation timed out");
       throw new AppError(502, "GENERATION_FAILED", "Image generation failed: request timed out");
     }
     throw err;

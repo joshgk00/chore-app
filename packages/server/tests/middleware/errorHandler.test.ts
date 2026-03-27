@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
 import { errorHandler } from '../../src/middleware/errorHandler.js';
 import { AppError, AuthError, ValidationError, NotFoundError } from '../../src/lib/errors.js';
+import * as loggerModule from '../../src/lib/logger.js';
 
 function mockReq(): Partial<Request> {
   return {};
@@ -88,7 +89,8 @@ describe('errorHandler', () => {
   });
 
   it('returns 500 with generic message for unknown errors', () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const mockError = vi.fn();
+    vi.spyOn(loggerModule, 'getLogger').mockReturnValue({ error: mockError } as unknown as ReturnType<typeof loggerModule.getLogger>);
     const err = new Error('database connection lost');
     const res = mockRes();
 
@@ -101,12 +103,12 @@ describe('errorHandler', () => {
         message: 'An unexpected error occurred',
       },
     });
-    expect(consoleSpy).toHaveBeenCalledWith('Unhandled error:', err);
-    consoleSpy.mockRestore();
+    expect(mockError).toHaveBeenCalledWith({ err }, 'unhandled error');
+    vi.restoreAllMocks();
   });
 
   it('does not leak stack traces or internal details for unknown errors', () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(loggerModule, 'getLogger').mockReturnValue({ error: vi.fn() } as unknown as ReturnType<typeof loggerModule.getLogger>);
     const err = new Error('secret database password invalid');
     const res = mockRes();
 
@@ -120,7 +122,7 @@ describe('errorHandler', () => {
   });
 
   it('returns structured response even for errors with no message', () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(loggerModule, 'getLogger').mockReturnValue({ error: vi.fn() } as unknown as ReturnType<typeof loggerModule.getLogger>);
     const err = new Error();
     const res = mockRes();
 
