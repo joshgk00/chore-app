@@ -5,7 +5,6 @@ import type { ActivityService } from "./activityService.js";
 
 export interface PointsService {
   getBalance(): PointsBalance;
-  getLedger(options: { limit: number; offset: number }): LedgerEntry[];
   getLedgerFiltered(options: { limit: number; offset: number; entryType?: EntryType }): LedgerEntry[];
   createAdjustment(amount: number, note: string): LedgerEntry;
 }
@@ -76,13 +75,6 @@ export function createPointsService(db: Database.Database, activityService: Acti
     return { total, reserved, available: total - reserved };
   }
 
-  function getLedger(options: { limit: number; offset: number }): LedgerEntry[] {
-    const safeLimit = Math.max(1, Math.min(options.limit, 100));
-    const safeOffset = Math.max(0, options.offset);
-    const rows = selectLedgerStmt.all(safeLimit, safeOffset) as LedgerRow[];
-    return rows.map(mapLedgerRow);
-  }
-
   function getLedgerFiltered(options: { limit: number; offset: number; entryType?: EntryType }): LedgerEntry[] {
     const safeLimit = Math.max(1, Math.min(options.limit, 100));
     const safeOffset = Math.max(0, options.offset);
@@ -128,5 +120,5 @@ export function createPointsService(db: Database.Database, activityService: Acti
     return createAdjustmentTx(amount, trimmedNote);
   }
 
-  return { getBalance, getLedger, getLedgerFiltered, createAdjustment };
+  return { getBalance, getLedgerFiltered, createAdjustment };
 }

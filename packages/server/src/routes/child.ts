@@ -74,7 +74,7 @@ export function createChildRoutes(
     try {
       const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
       const offset = Math.max(Number(req.query.offset) || 0, 0);
-      const entries = pointsService.getLedger({ limit, offset });
+      const entries = pointsService.getLedgerFiltered({ limit, offset });
       res.json({ data: entries });
     } catch (err) {
       next(err);
