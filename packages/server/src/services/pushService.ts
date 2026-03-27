@@ -5,6 +5,7 @@ import type Database from "better-sqlite3";
 import type { PushRole } from "@chore-app/shared";
 import { MAX_PUSH_SUBSCRIPTIONS_PER_IP } from "@chore-app/shared";
 import { RateLimitError } from "../lib/errors.js";
+import { getLogger } from "../lib/logger.js";
 
 const PUSH_CLEANUP_INTERVAL_HOURS = 24;
 const PUSH_FAILED_TTL_DAYS = 30;
@@ -34,7 +35,7 @@ function isValidVapidKeys(keys: unknown): keys is VapidKeys {
 }
 
 function generateAndSaveKeys(keysPath: string): VapidKeys {
-  console.log("Generating new VAPID keys...");
+  getLogger().info("generating new VAPID keys");
   const generated = webpush.generateVAPIDKeys();
   const keys: VapidKeys = {
     publicKey: generated.publicKey,
@@ -44,7 +45,7 @@ function generateAndSaveKeys(keysPath: string): VapidKeys {
   try {
     fs.writeFileSync(keysPath, JSON.stringify(keys, null, 2), { mode: 0o600 });
   } catch (err) {
-    console.error(`Failed to write VAPID keys to ${keysPath}:`, err);
+    getLogger().error({ err, keysPath }, "failed to write VAPID keys");
     throw err;
   }
 
@@ -60,7 +61,7 @@ function initVapidKeys(dataDir: string, publicOrigin: string): VapidKeys {
   let keys: VapidKeys;
 
   if (fs.existsSync(keysPath)) {
-    console.log("Loading existing VAPID keys...");
+    getLogger().info("loading existing VAPID keys");
     try {
       const raw = fs.readFileSync(keysPath, "utf-8");
       const parsed = JSON.parse(raw);
@@ -68,11 +69,11 @@ function initVapidKeys(dataDir: string, publicOrigin: string): VapidKeys {
       if (isValidVapidKeys(parsed)) {
         keys = parsed;
       } else {
-        console.error("VAPID keys file has invalid structure, regenerating...");
+        getLogger().warn("VAPID keys file has invalid structure, regenerating");
         keys = generateAndSaveKeys(keysPath);
       }
     } catch (err) {
-      console.error("Failed to parse VAPID keys file, regenerating...", err);
+      getLogger().warn({ err }, "failed to parse VAPID keys file, regenerating");
       keys = generateAndSaveKeys(keysPath);
     }
   } else {
@@ -200,21 +201,21 @@ export function createPushService(
       webpush.sendNotification(pushSub, jsonPayload).then(
         () => {
           try { updateLastSuccessStmt.run(sub.id); } catch (err) {
-            console.error(`Failed to update last_success_at for subscription ${sub.id}`, err);
+            getLogger().error({ err, subscriptionId: sub.id }, "failed to update last_success_at");
           }
         },
         (err: unknown) => {
           const statusCode = (err as { statusCode?: number })?.statusCode;
           if (statusCode === 410 || statusCode === 404) {
             try { markFailedStmt.run(sub.id); } catch (dbErr) {
-              console.error(`Failed to mark subscription ${sub.id} as failed after HTTP ${statusCode}`, dbErr);
+              getLogger().error({ err: dbErr, subscriptionId: sub.id, statusCode }, "failed to mark subscription as failed");
             }
           } else {
             // Transient failure — retry once
             webpush.sendNotification(pushSub, jsonPayload).then(
               () => {
                 try { updateLastSuccessStmt.run(sub.id); } catch (retryErr) {
-                  console.error(`Failed to update last_success_at for subscription ${sub.id} after retry`, retryErr);
+                  getLogger().error({ err: retryErr, subscriptionId: sub.id }, "failed to update last_success_at after retry");
                 }
               },
               (err2: unknown) => {
@@ -222,7 +223,7 @@ export function createPushService(
                 if (statusCode2 === 410 || statusCode2 === 404) {
                   try { markFailedStmt.run(sub.id); } catch { /* best effort */ }
                 }
-                console.error(`Push delivery failed for subscription ${sub.id} after retry`);
+                getLogger().error({ subscriptionId: sub.id }, "push delivery failed after retry");
               },
             );
           }
@@ -249,8 +250,9 @@ export function createPushService(
     const expireResult = expireInactiveStmt.run(PUSH_INACTIVE_TTL_DAYS);
 
     if (deleteResult.changes > 0 || expireResult.changes > 0) {
-      console.log(
-        `Push subscription cleanup: deleted ${deleteResult.changes} failed, expired ${expireResult.changes} inactive`,
+      getLogger().info(
+        { deleted: deleteResult.changes, expired: expireResult.changes },
+        "push subscription cleanup completed",
       );
     }
 
@@ -260,14 +262,14 @@ export function createPushService(
   try {
     cleanupStaleSubscriptions();
   } catch (err) {
-    console.error("Push subscription cleanup failed on startup:", err);
+    getLogger().error({ err }, "push subscription cleanup failed on startup");
   }
 
   const cleanupTimer = setInterval(() => {
     try {
       cleanupStaleSubscriptions();
     } catch (err) {
-      console.error("Push subscription cleanup failed:", err);
+      getLogger().error({ err }, "push subscription cleanup failed");
     }
   }, PUSH_CLEANUP_INTERVAL_HOURS * 60 * 60 * 1000);
   cleanupTimer.unref();

@@ -3,6 +3,7 @@ import type { Reward, RewardRequest, Status } from "@chore-app/shared";
 import { ConflictError, NotFoundError, ValidationError } from "../lib/errors.js";
 import type { ActivityService } from "./activityService.js";
 import type { PushService } from "./pushService.js";
+import { getLogger } from "../lib/logger.js";
 
 export interface SubmitRewardRequestData {
   rewardId: number;
@@ -257,7 +258,7 @@ export function createRewardService(
           data: { type: "reward_request", id: result.id },
         });
       } catch (err) {
-        console.error("Failed to send admin notification for reward request", { id: result.id }, err);
+        getLogger().error({ err, id: result.id }, "failed to send admin notification for reward request");
       }
     }
 

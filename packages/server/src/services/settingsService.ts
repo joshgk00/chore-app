@@ -3,6 +3,7 @@ import { DEFAULT_TIME_SLOTS, PIN_MIN_LENGTH } from "@chore-app/shared";
 import { hashPin } from "../lib/crypto.js";
 import { ValidationError } from "../lib/errors.js";
 import type { AppConfig } from "../config.js";
+import { getLogger } from "../lib/logger.js";
 
 const SENSITIVE_KEYS = new Set(["admin_pin_hash"]);
 
@@ -77,11 +78,11 @@ export function createSettingsService(db: Database.Database): SettingsService {
   async function bootstrapSettings(config: AppConfig): Promise<void> {
     const existing = countStmt.get() as { count: number };
     if (existing.count > 0) {
-      console.log("Settings already exist, skipping bootstrap.");
+      getLogger().debug("settings already exist, skipping bootstrap");
       return;
     }
 
-    console.log("Bootstrapping default settings...");
+    getLogger().info("bootstrapping default settings");
 
     const pinHash = await hashPin(config.initialAdminPin);
 
@@ -98,7 +99,7 @@ export function createSettingsService(db: Database.Database): SettingsService {
     });
 
     bootstrap();
-    console.log("Settings bootstrapped.");
+    getLogger().info("settings bootstrapped");
   }
 
   function updateSettings(updates: Record<string, string>): Record<string, string> {

@@ -4,43 +4,50 @@ import { runMigrations } from "./db/migrate.js";
 import { createSettingsService } from "./services/settingsService.js";
 import { createApp } from "./app.js";
 import { startRetentionJob, type RetentionJobHandle } from "./jobs/retentionJob.js";
+import { initLogger, getLogger, shutdownLogger } from "./lib/logger.js";
 
 const SHUTDOWN_TIMEOUT_MS = 5_000;
 
 async function main() {
-  console.log("Starting Chore App server...");
+  const config = loadConfig();
+
+  initLogger({
+    level: config.logLevel ?? "info",
+    logDir: config.logDir,
+    maxFileSize: config.logMaxSize,
+  });
+
+  const log = getLogger();
+  log.info({ port: config.port, origin: config.publicOrigin }, "starting server");
 
   let db: ReturnType<typeof openDatabase> | null = null;
   let retentionJob: RetentionJobHandle | null = null;
 
   try {
-    const config = loadConfig();
-    console.log(`Config loaded: port=${config.port}, origin=${config.publicOrigin}`);
-
     db = openDatabase(config.dataDir);
-    console.log("Database opened.");
+    log.info("database opened");
 
     runMigrations(db);
-    console.log("Migrations complete.");
+    log.info("migrations complete");
 
     const settingsService = createSettingsService(db);
     await settingsService.bootstrapSettings(config);
 
     const app = createApp(db, config);
-    console.log("App initialized.");
+    log.info("app initialized");
 
     retentionJob = startRetentionJob(db);
 
     const server = app.listen(config.port, () => {
-      console.log(`Server listening on port ${config.port}`);
-      console.log(`Public origin: ${config.publicOrigin}`);
+      log.info({ port: config.port, origin: config.publicOrigin }, "server listening");
     });
 
     const shutdown = () => {
-      console.log("Shutting down...");
+      log.info("shutting down");
 
       const forceExit = setTimeout(() => {
-        console.error("Graceful shutdown timed out, forcing exit.");
+        log.error("graceful shutdown timed out, forcing exit");
+        shutdownLogger();
         process.exit(1);
       }, SHUTDOWN_TIMEOUT_MS);
       forceExit.unref();
@@ -48,7 +55,8 @@ async function main() {
       server.close(() => {
         retentionJob?.stop();
         db?.close();
-        console.log("Server stopped.");
+        log.info("server stopped");
+        shutdownLogger();
         process.exit(0);
       });
     };
@@ -62,16 +70,24 @@ async function main() {
 }
 
 process.on("unhandledRejection", (reason) => {
-  console.error("Unhandled rejection:", reason);
+  const log = getLogger();
+  if (reason instanceof Error) {
+    log.error({ err: reason }, "unhandled rejection");
+  } else {
+    log.error({ reason }, "unhandled rejection");
+  }
+  shutdownLogger();
   process.exit(1);
 });
 
 process.on("uncaughtException", (err) => {
-  console.error("Uncaught exception:", err);
+  getLogger().error({ err }, "uncaught exception");
+  shutdownLogger();
   process.exit(1);
 });
 
 main().catch((err) => {
-  console.error("Fatal: server failed to start", err);
+  getLogger().fatal({ err }, "server failed to start");
+  shutdownLogger();
   process.exit(1);
 });

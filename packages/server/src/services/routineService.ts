@@ -12,6 +12,7 @@ import { getCompletionWindowKey } from "../lib/timeSlots.js";
 import type { ActivityService } from "./activityService.js";
 import type { BadgeService } from "./badgeService.js";
 import type { PushService } from "./pushService.js";
+import { getLogger } from "../lib/logger.js";
 
 export interface SubmitCompletionData {
   routineId: number;
@@ -441,7 +442,7 @@ export function createRoutineService(
           data: { type: "routine_completion", id: result.id },
         });
       } catch (err) {
-        console.error("Failed to send admin notification for routine completion", { id: result.id }, err);
+        getLogger().error({ err, id: result.id }, "failed to send admin notification for routine completion");
       }
     }
 

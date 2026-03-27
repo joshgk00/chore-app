@@ -1,4 +1,5 @@
 import type Database from "better-sqlite3";
+import { getLogger } from "../lib/logger.js";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -38,10 +39,10 @@ export function startRetentionJob(db: Database.Database): RetentionJobHandle {
     try {
       const deleted = purge();
       if (deleted > 0) {
-        console.log(`Retention job: purged ${deleted} expired activity events.`);
+        getLogger().info({ deleted }, "retention job: purged expired activity events");
       }
     } catch (err) {
-      console.error("Retention job failed:", err);
+      getLogger().error({ err }, "retention job failed");
     }
   }
 

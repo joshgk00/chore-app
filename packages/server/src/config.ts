@@ -9,6 +9,9 @@ export interface AppConfig {
   initialAdminPin: string;
   activityRetentionDays: number;
   imageGenApiKey?: string;
+  logDir?: string;
+  logLevel?: string;
+  logMaxSize?: string;
 }
 
 function findNearestEnvFile(startDir: string): string | null {
@@ -103,5 +106,8 @@ export function loadConfig(startDir = process.cwd()): AppConfig {
     initialAdminPin,
     activityRetentionDays: parseInt(process.env.ACTIVITY_RETENTION_DAYS_DEFAULT || "365", 10),
     imageGenApiKey: process.env.IMAGE_GEN_API_KEY,
+    logDir: process.env.LOG_DIR || undefined,
+    logLevel: process.env.LOG_LEVEL || "info",
+    logMaxSize: process.env.LOG_MAX_SIZE || "10m",
   };
 }
