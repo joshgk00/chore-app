@@ -80,33 +80,11 @@ function mapChoreRow(row: ChoreRow): Chore {
     requiresApproval: row.requires_approval === 1,
     sortOrder: row.sort_order,
     tiers: [],
-  };
-}
-
-function mapTierRow(row: TierRow): ChoreTier {
-  return {
-    id: row.id,
-    choreId: row.chore_id,
-    name: row.name,
-    points: row.points,
-    sortOrder: row.sort_order,
-  };
-}
-
-type AdminTierRow = TierRow;
-
-function mapChoreRowAdmin(row: ChoreRow): Chore {
-  return {
-    id: row.id,
-    name: row.name,
-    requiresApproval: row.requires_approval === 1,
-    sortOrder: row.sort_order,
-    tiers: [],
     archivedAt: row.archived_at ?? undefined,
   };
 }
 
-function mapTierRowAdmin(row: AdminTierRow): ChoreTier {
+function mapTierRow(row: TierRow): ChoreTier {
   return {
     id: row.id,
     choreId: row.chore_id,
@@ -420,7 +398,7 @@ export function createChoreService(
 
   function listChoresAdmin(): Chore[] {
     const rows = selectAllChoresStmt.all() as ChoreRow[];
-    const allTierRows = selectAllTiersAdminBulkStmt.all() as AdminTierRow[];
+    const allTierRows = selectAllTiersAdminBulkStmt.all() as TierRow[];
 
     const tiersByChoreId = new Map<number, ChoreTier[]>();
     for (const tierRow of allTierRows) {
@@ -429,11 +407,11 @@ export function createChoreService(
         tiers = [];
         tiersByChoreId.set(tierRow.chore_id, tiers);
       }
-      tiers.push(mapTierRowAdmin(tierRow));
+      tiers.push(mapTierRow(tierRow));
     }
 
     return rows.map((row) => {
-      const chore = mapChoreRowAdmin(row);
+      const chore = mapChoreRow(row);
       chore.tiers = tiersByChoreId.get(row.id) ?? [];
       return chore;
     });
@@ -444,9 +422,9 @@ export function createChoreService(
     if (!row) {
       throw new NotFoundError("Chore not found");
     }
-    const chore = mapChoreRowAdmin(row);
-    const tierRows = selectAllTiersForChoreStmt.all(id) as AdminTierRow[];
-    chore.tiers = tierRows.map(mapTierRowAdmin);
+    const chore = mapChoreRow(row);
+    const tierRows = selectAllTiersForChoreStmt.all(id) as TierRow[];
+    chore.tiers = tierRows.map(mapTierRow);
     return chore;
   }
 
@@ -543,7 +521,7 @@ export function createChoreService(
       }
     }
 
-    const remainingTiers = selectAllTiersForChoreStmt.all(id) as AdminTierRow[];
+    const remainingTiers = selectAllTiersForChoreStmt.all(id) as TierRow[];
     const activeTierCount = remainingTiers.filter((t) => t.archived_at === null).length;
     if (activeTierCount === 0) {
       throw new ValidationError("A chore must have at least one active tier");

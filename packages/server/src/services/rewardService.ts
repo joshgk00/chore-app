@@ -67,17 +67,6 @@ function mapRewardRow(row: RewardRow): Reward {
     imageAssetId: row.image_asset_id ?? undefined,
     imageUrl: row.asset_stored_filename ? `/assets/${row.asset_stored_filename}` : undefined,
     sortOrder: row.sort_order,
-  };
-}
-
-function mapRewardRowAdmin(row: RewardRow): Reward {
-  return {
-    id: row.id,
-    name: row.name,
-    pointsCost: row.points_cost,
-    imageAssetId: row.image_asset_id ?? undefined,
-    imageUrl: row.asset_stored_filename ? `/assets/${row.asset_stored_filename}` : undefined,
-    sortOrder: row.sort_order,
     archivedAt: row.archived_at ?? undefined,
   };
 }
@@ -313,7 +302,7 @@ export function createRewardService(
 
   function listRewardsAdmin(): Reward[] {
     const rows = selectAllRewardsStmt.all() as RewardRow[];
-    return rows.map(mapRewardRowAdmin);
+    return rows.map(mapRewardRow);
   }
 
   function getRewardAdmin(id: number): Reward {
@@ -321,7 +310,7 @@ export function createRewardService(
     if (!row) {
       throw new NotFoundError("Reward not found");
     }
-    return mapRewardRowAdmin(row);
+    return mapRewardRow(row);
   }
 
   const createRewardTx = db.transaction((data: CreateRewardData): Reward => {
