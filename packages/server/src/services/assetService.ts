@@ -12,6 +12,7 @@ const MAX_LONG_EDGE_PX = 1200;
 const DEFAULT_GENERATION_MODEL = "nano-banana-pro";
 const PPQ_API_BASE_URL = "https://api.ppq.ai/v1";
 const GENERATION_TIMEOUT_MS = 60_000;
+const DOWNLOAD_TIMEOUT_MS = 30_000;
 
 interface AssetRow {
   id: number;
@@ -195,17 +196,25 @@ async function fetchGeneratedImageBytes(
       );
     }
 
-    const imageResponse = await fetch(result.url, { signal: controller.signal });
-    if (!imageResponse.ok) {
-      throw new AppError(
-        502,
-        "GENERATION_FAILED",
-        `Image generation failed: could not download image (${imageResponse.status})`
-      );
-    }
+    clearTimeout(timeout);
 
-    const arrayBuffer = await imageResponse.arrayBuffer();
-    return Buffer.from(arrayBuffer);
+    const downloadController = new AbortController();
+    const downloadTimeout = setTimeout(() => downloadController.abort(), DOWNLOAD_TIMEOUT_MS);
+    try {
+      const imageResponse = await fetch(result.url, { signal: downloadController.signal });
+      if (!imageResponse.ok) {
+        throw new AppError(
+          502,
+          "GENERATION_FAILED",
+          `Image generation failed: could not download image (${imageResponse.status})`
+        );
+      }
+
+      const arrayBuffer = await imageResponse.arrayBuffer();
+      return Buffer.from(arrayBuffer);
+    } finally {
+      clearTimeout(downloadTimeout);
+    }
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
       throw new AppError(502, "GENERATION_FAILED", "Image generation failed: request timed out");

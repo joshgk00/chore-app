@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
@@ -97,7 +97,12 @@ export default function AdminRoutineForm() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [hasPopulated, setHasPopulated] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const shouldCloseRef = useRef(false);
+  const [saveIntent, setSaveIntent] = useState<"save" | "close" | null>(null);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    return () => clearTimeout(successTimerRef.current);
+  }, []);
 
   useEffect(() => {
     if (existing && !hasPopulated) {
@@ -148,15 +153,8 @@ export default function AdminRoutineForm() {
       if (!result.ok) throw result.error;
       return result.data;
     },
-    onSuccess: (routine) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "routines"] });
-      if (shouldCloseRef.current) {
-        navigate("/admin/routines");
-      } else {
-        navigate(`/admin/routines/${routine.id}`, { replace: true });
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 2000);
-      }
     },
   });
 
@@ -196,24 +194,39 @@ export default function AdminRoutineForm() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "routines"] });
-      if (shouldCloseRef.current) {
-        navigate("/admin/routines");
-      } else {
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 2000);
-      }
     },
   });
 
   const mutation = isEditing ? updateMutation : createMutation;
 
+  const showSaveConfirmation = useCallback(() => {
+    setSaveSuccess(true);
+    clearTimeout(successTimerRef.current);
+    successTimerRef.current = setTimeout(() => setSaveSuccess(false), 2000);
+  }, []);
+
   function submitForm(shouldClose: boolean) {
     const validationErrors = validate(form);
     setErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) return;
-    shouldCloseRef.current = shouldClose;
+    setSaveIntent(shouldClose ? "close" : "save");
     setSaveSuccess(false);
-    mutation.mutate(form);
+    mutation.mutate(form, {
+      onSuccess: (routine) => {
+        if (shouldClose) {
+          navigate("/admin/routines");
+        } else {
+          if (!isEditing) {
+            navigate(`/admin/routines/${routine.id}`, { replace: true });
+          }
+          showSaveConfirmation();
+        }
+        setSaveIntent(null);
+      },
+      onError: () => {
+        setSaveIntent(null);
+      },
+    });
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -578,7 +591,7 @@ export default function AdminRoutineForm() {
             disabled={mutation.isPending || !isOnline}
             className="min-h-touch rounded-xl bg-[var(--color-amber-500)] px-6 py-2 font-display font-bold text-white shadow-card transition-colors hover:bg-[var(--color-amber-600)] disabled:opacity-50"
           >
-            {mutation.isPending && !shouldCloseRef.current
+            {saveIntent === "save"
               ? "Saving..."
               : isEditing
                 ? "Save"
@@ -590,7 +603,7 @@ export default function AdminRoutineForm() {
             onClick={() => submitForm(true)}
             className="min-h-touch rounded-xl border border-[var(--color-amber-500)] px-6 py-2 font-display font-bold text-[var(--color-amber-500)] transition-colors hover:bg-[var(--color-amber-50)] disabled:opacity-50"
           >
-            {mutation.isPending && shouldCloseRef.current
+            {saveIntent === "close"
               ? "Saving..."
               : "Save & Close"}
           </button>
