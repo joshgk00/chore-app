@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
@@ -96,6 +96,8 @@ export default function AdminRoutineForm() {
   const [form, setForm] = useState<FormState>(INITIAL_STATE);
   const [errors, setErrors] = useState<FormErrors>({});
   const [hasPopulated, setHasPopulated] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const shouldCloseRef = useRef(false);
 
   useEffect(() => {
     if (existing && !hasPopulated) {
@@ -146,9 +148,15 @@ export default function AdminRoutineForm() {
       if (!result.ok) throw result.error;
       return result.data;
     },
-    onSuccess: () => {
+    onSuccess: (routine) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "routines"] });
-      navigate("/admin/routines");
+      if (shouldCloseRef.current) {
+        navigate("/admin/routines");
+      } else {
+        navigate(`/admin/routines/${routine.id}`, { replace: true });
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 2000);
+      }
     },
   });
 
@@ -188,18 +196,29 @@ export default function AdminRoutineForm() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "routines"] });
-      navigate("/admin/routines");
+      if (shouldCloseRef.current) {
+        navigate("/admin/routines");
+      } else {
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 2000);
+      }
     },
   });
 
   const mutation = isEditing ? updateMutation : createMutation;
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function submitForm(shouldClose: boolean) {
     const validationErrors = validate(form);
     setErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) return;
+    shouldCloseRef.current = shouldClose;
+    setSaveSuccess(false);
     mutation.mutate(form);
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    submitForm(false);
   }
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -559,12 +578,27 @@ export default function AdminRoutineForm() {
             disabled={mutation.isPending || !isOnline}
             className="min-h-touch rounded-xl bg-[var(--color-amber-500)] px-6 py-2 font-display font-bold text-white shadow-card transition-colors hover:bg-[var(--color-amber-600)] disabled:opacity-50"
           >
-            {mutation.isPending
+            {mutation.isPending && !shouldCloseRef.current
               ? "Saving..."
               : isEditing
-                ? "Save Changes"
-                : "Create Routine"}
+                ? "Save"
+                : "Create"}
           </button>
+          <button
+            type="button"
+            disabled={mutation.isPending || !isOnline}
+            onClick={() => submitForm(true)}
+            className="min-h-touch rounded-xl border border-[var(--color-amber-500)] px-6 py-2 font-display font-bold text-[var(--color-amber-500)] transition-colors hover:bg-[var(--color-amber-50)] disabled:opacity-50"
+          >
+            {mutation.isPending && shouldCloseRef.current
+              ? "Saving..."
+              : "Save & Close"}
+          </button>
+          {saveSuccess && (
+            <span className="text-sm font-medium text-[var(--color-emerald-600)]" role="status">
+              Saved!
+            </span>
+          )}
           <button
             type="button"
             onClick={() => navigate("/admin/routines")}

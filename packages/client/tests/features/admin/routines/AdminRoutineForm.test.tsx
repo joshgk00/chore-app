@@ -78,7 +78,7 @@ describe("AdminRoutineForm", () => {
     expect(screen.getByLabelText("Points")).toBeInTheDocument();
     expect(screen.getByLabelText("Requires approval")).toBeInTheDocument();
     expect(screen.getByLabelText("Randomize items")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create Routine" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
   });
 
@@ -100,7 +100,7 @@ describe("AdminRoutineForm", () => {
     expect(screen.getByLabelText("Points")).toHaveValue(5);
     expect(screen.getByDisplayValue("Brush teeth")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Make bed")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Save Changes" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
   });
 
   it("submits create with correct data", async () => {
@@ -126,7 +126,7 @@ describe("AdminRoutineForm", () => {
     const itemInput = screen.getByLabelText("Checklist item 1");
     await user.type(itemInput, "Brush teeth");
 
-    await user.click(screen.getByRole("button", { name: "Create Routine" }));
+    await user.click(screen.getByRole("button", { name: "Save & Close" }));
 
     await waitFor(() => {
       expect(capturedBody).toBeTruthy();
@@ -164,7 +164,7 @@ describe("AdminRoutineForm", () => {
 
     await user.clear(screen.getByLabelText("Name"));
     await user.type(screen.getByLabelText("Name"), "Updated Routine");
-    await user.click(screen.getByRole("button", { name: "Save Changes" }));
+    await user.click(screen.getByRole("button", { name: "Save & Close" }));
 
     await waitFor(() => {
       expect(capturedBody).toBeTruthy();
@@ -185,7 +185,7 @@ describe("AdminRoutineForm", () => {
     const itemInput = screen.getByLabelText("Checklist item 1");
     await user.type(itemInput, "Brush teeth");
 
-    await user.click(screen.getByRole("button", { name: "Create Routine" }));
+    await user.click(screen.getByRole("button", { name: "Create" }));
 
     expect(screen.getByText("Name is required")).toBeInTheDocument();
   });
@@ -195,7 +195,7 @@ describe("AdminRoutineForm", () => {
     renderCreateForm();
 
     await user.type(screen.getByLabelText("Name"), "Test Routine");
-    await user.click(screen.getByRole("button", { name: "Create Routine" }));
+    await user.click(screen.getByRole("button", { name: "Create" }));
 
     expect(screen.getByText("At least one checklist item is required")).toBeInTheDocument();
   });
@@ -230,7 +230,7 @@ describe("AdminRoutineForm", () => {
 
     await user.type(screen.getByLabelText("Name"), "Test Routine");
     await user.type(screen.getByLabelText("Checklist item 1"), "Step 1");
-    await user.click(screen.getByRole("button", { name: "Create Routine" }));
+    await user.click(screen.getByRole("button", { name: "Create" }));
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Saving..." })).toBeDisabled();
