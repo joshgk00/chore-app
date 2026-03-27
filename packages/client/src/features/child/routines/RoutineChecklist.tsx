@@ -67,7 +67,7 @@ export default function RoutineChecklist() {
         onSuccess: async () => {
           try { await deleteDraft(routine.id); } catch { /* IndexedDB unavailable */ }
           setIsShowingCelebration(true);
-          navigationTimeoutRef.current = setTimeout(() => navigate("/routines"), 800);
+          navigationTimeoutRef.current = setTimeout(() => navigate("/today"), 800);
         },
         onError: async (error: unknown) => {
           const apiError = error && typeof error === "object" && "code" in error

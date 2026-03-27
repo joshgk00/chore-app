@@ -25,6 +25,7 @@ function renderChecklist(routineId = 1) {
           <Routes>
             <Route path="/routines/:id" element={<RoutineChecklist />} />
             <Route path="/routines" element={<div data-testid="routines-page">Routines</div>} />
+            <Route path="/today" element={<div data-testid="today-page">Today</div>} />
           </Routes>
         </OnlineProvider>
       </MemoryRouter>
@@ -122,7 +123,7 @@ describe("RoutineChecklist", () => {
     expect(submitButton).toBeEnabled();
   });
 
-  it("navigates back to routines after successful submit", async () => {
+  it("navigates to homepage after successful submit", async () => {
     const user = userEvent.setup();
     renderChecklist(1);
 
@@ -132,7 +133,7 @@ describe("RoutineChecklist", () => {
     await user.click(screen.getByRole("button", { name: /complete routine/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId("routines-page")).toBeInTheDocument();
+      expect(screen.getByTestId("today-page")).toBeInTheDocument();
     });
   });
 
@@ -146,7 +147,7 @@ describe("RoutineChecklist", () => {
     await user.click(screen.getByRole("button", { name: /complete routine/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId("routines-page")).toBeInTheDocument();
+      expect(screen.getByTestId("today-page")).toBeInTheDocument();
     });
 
     const draft = await getDraft(1);
