@@ -26,7 +26,7 @@ export interface AssetPickerProps {
 
 const ACCEPTED_TYPES = "image/jpeg,image/png,image/webp";
 const UPLOAD_TIMEOUT_MS = 30_000;
-const GENERATE_TIMEOUT_MS = 45_000;
+const GENERATE_TIMEOUT_MS = 75_000;
 
 async function parseErrorMessage(res: Response, fallback: string): Promise<string> {
   try {

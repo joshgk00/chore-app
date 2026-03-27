@@ -11,7 +11,7 @@ const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 const MAX_LONG_EDGE_PX = 1200;
 const DEFAULT_GENERATION_MODEL = "nano-banana-pro";
 const PPQ_API_BASE_URL = "https://api.ppq.ai/v1";
-const GENERATION_TIMEOUT_MS = 30_000;
+const GENERATION_TIMEOUT_MS = 60_000;
 
 interface AssetRow {
   id: number;
