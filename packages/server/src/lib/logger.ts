@@ -3,24 +3,28 @@ import fs from "node:fs";
 import path from "node:path";
 
 const DEFAULT_MAX_FILES = 5;
+const DEFAULT_MAX_FILE_SIZE = 10 * 1024 * 1024;
+const VALID_LEVELS = new Set(Object.keys(pino.levels.values));
 
 export interface LoggerConfig {
   level: string;
   logDir?: string;
-  maxFileSize: number;
+  maxFileSize?: string;
   maxFiles?: number;
 }
 
 let logger: pino.Logger = pino({ level: "info" });
-let fileStream: pino.DestinationStream | null = null;
+let fileStream: ReturnType<typeof pino.destination> | null = null;
 let rotationTimer: ReturnType<typeof setInterval> | null = null;
 let activeLogDir: string | undefined;
 let activeMaxFileSize = 0;
 let activeMaxFiles = DEFAULT_MAX_FILES;
 
-export function parseFileSize(value: string): number {
+function parseFileSize(value: string): number {
   const match = value.match(/^(\d+)\s*([kmg])?b?$/i);
-  if (!match) return 10 * 1024 * 1024;
+  if (!match) {
+    throw new Error(`Invalid LOG_MAX_SIZE "${value}". Use a number with optional k/m/g suffix (e.g., "10m", "500k").`);
+  }
 
   const num = parseInt(match[1], 10);
   const unit = (match[2] || "").toLowerCase();
@@ -70,9 +74,7 @@ function rotateIfNeeded(): void {
     const rotatedPath = path.join(activeLogDir, `app-${timestamp}.log`);
 
     fs.renameSync(logFile, rotatedPath);
-
-    // SonicBoom reopens the file descriptor at the original path
-    (fileStream as { reopen?: () => void }).reopen?.();
+    fileStream.reopen();
 
     cleanOldLogs(activeLogDir, activeMaxFiles);
   } catch {
@@ -81,6 +83,10 @@ function rotateIfNeeded(): void {
 }
 
 export function initLogger(config: LoggerConfig): pino.Logger {
+  if (!VALID_LEVELS.has(config.level)) {
+    throw new Error(`Invalid LOG_LEVEL "${config.level}". Valid levels: ${[...VALID_LEVELS].join(", ")}`);
+  }
+
   if (!config.logDir) {
     logger = pino({ level: config.level });
     return logger;
@@ -89,7 +95,7 @@ export function initLogger(config: LoggerConfig): pino.Logger {
   fs.mkdirSync(config.logDir, { recursive: true });
 
   activeLogDir = config.logDir;
-  activeMaxFileSize = config.maxFileSize;
+  activeMaxFileSize = config.maxFileSize ? parseFileSize(config.maxFileSize) : DEFAULT_MAX_FILE_SIZE;
   activeMaxFiles = config.maxFiles ?? DEFAULT_MAX_FILES;
 
   const logFile = getLogFilePath(config.logDir);
@@ -114,7 +120,11 @@ export function getLogger(): pino.Logger {
 }
 
 export function flushLogger(): void {
-  (fileStream as { flushSync?: () => void })?.flushSync?.();
+  try {
+    fileStream?.flushSync();
+  } catch {
+    // Stream may not be ready yet during early shutdown
+  }
 }
 
 export function shutdownLogger(): void {

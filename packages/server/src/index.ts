@@ -4,7 +4,7 @@ import { runMigrations } from "./db/migrate.js";
 import { createSettingsService } from "./services/settingsService.js";
 import { createApp } from "./app.js";
 import { startRetentionJob, type RetentionJobHandle } from "./jobs/retentionJob.js";
-import { initLogger, getLogger, shutdownLogger, parseFileSize } from "./lib/logger.js";
+import { initLogger, getLogger, shutdownLogger } from "./lib/logger.js";
 
 const SHUTDOWN_TIMEOUT_MS = 5_000;
 
@@ -14,7 +14,7 @@ async function main() {
   initLogger({
     level: config.logLevel,
     logDir: config.logDir,
-    maxFileSize: parseFileSize(config.logMaxSize),
+    maxFileSize: config.logMaxSize,
   });
 
   const log = getLogger();
