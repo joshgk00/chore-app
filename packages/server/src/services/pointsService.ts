@@ -1,12 +1,14 @@
 import type Database from "better-sqlite3";
-import type { PointsBalance, LedgerEntry, EntryType } from "@chore-app/shared";
+import type { PointsBalance, LedgerEntry, EntryType, TodayPointActivity } from "@chore-app/shared";
 import { ValidationError } from "../lib/errors.js";
+import { getTimeInTimezone } from "../lib/timeSlots.js";
 import type { ActivityService } from "./activityService.js";
 
 export interface PointsService {
   getBalance(): PointsBalance;
   getLedgerFiltered(options: { limit: number; offset: number; entryType?: EntryType }): LedgerEntry[];
   createAdjustment(amount: number, note: string): LedgerEntry;
+  getTodayActivity(timezone: string): TodayPointActivity[];
 }
 
 interface LedgerRow {
@@ -67,6 +69,13 @@ export function createPointsService(db: Database.Database, activityService: Acti
      FROM points_ledger WHERE id = ?`,
   );
 
+  const selectTodayEntriesStmt = db.prepare(
+    `SELECT id, entry_type, amount, note, created_at
+     FROM points_ledger
+     WHERE created_at >= ?
+     ORDER BY created_at ASC, id ASC`,
+  );
+
   function getBalance(): PointsBalance {
     const totalRow = selectTotalStmt.get() as { total: number };
     const reservedRow = selectReservedStmt.get() as { reserved: number };
@@ -120,5 +129,35 @@ export function createPointsService(db: Database.Database, activityService: Acti
     return createAdjustmentTx(amount, trimmedNote);
   }
 
-  return { getBalance, getLedgerFiltered, createAdjustment };
+  function getTodayActivity(timezone: string): TodayPointActivity[] {
+    const now = new Date();
+    const { hours, minutes } = getTimeInTimezone(now, timezone);
+    const localMsElapsed = (hours * 3600 + minutes * 60) * 1000;
+    const midnightUtc = new Date(now.getTime() - localMsElapsed);
+    const todayStr = midnightUtc.toISOString().replace("T", " ").replace("Z", "");
+
+    const rows = selectTodayEntriesStmt.all(todayStr) as Pick<LedgerRow, "id" | "entry_type" | "amount" | "note" | "created_at">[];
+
+    const totalBalance = (selectTotalStmt.get() as { total: number }).total;
+    const todaySum = rows.reduce((sum, row) => sum + row.amount, 0);
+
+    let running = totalBalance - todaySum;
+    const activities = rows.map((row) => {
+      const balanceBefore = running;
+      running += row.amount;
+      return {
+        id: row.id,
+        entryType: row.entry_type as EntryType,
+        amount: row.amount,
+        description: row.note ?? row.entry_type,
+        balanceBefore,
+        balanceAfter: running,
+        createdAt: row.created_at,
+      };
+    });
+    activities.reverse();
+    return activities;
+  }
+
+  return { getBalance, getLedgerFiltered, createAdjustment, getTodayActivity };
 }

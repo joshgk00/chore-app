@@ -26,6 +26,7 @@ export type {
   LedgerEntry,
   Badge,
   BootstrapData,
+  TodayPointActivity,
   ApprovalType,
   PendingApprovals,
   BackupManifest,

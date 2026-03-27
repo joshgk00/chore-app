@@ -51,6 +51,7 @@
   --color-violet-500: #8b5cf6;
 
   /* Danger */
+  --color-red-50: #fef2f2;
   --color-red-600: #dc2626;
 
   /* Points gradient */
@@ -104,6 +105,7 @@
     --gradient-points-from: #d97706;
     --gradient-points-to: #78350f;
 
+    --color-red-50: #450a0a;
     --color-red-600: #f87171;
 
     --color-nav-bg: rgba(15, 23, 42, 0.92);

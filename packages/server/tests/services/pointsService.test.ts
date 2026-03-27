@@ -140,6 +140,68 @@ describe('pointsService', () => {
     });
   });
 
+  describe('getTodayActivity', () => {
+    it('returns empty array when no entries exist', () => {
+      const result = service.getTodayActivity('UTC');
+      expect(result).toEqual([]);
+    });
+
+    it('returns today entries in descending order with correct running balances', () => {
+      seedPointsLedger(db, 10);
+      seedPointsLedger(db, 5);
+
+      const result = service.getTodayActivity('UTC');
+
+      expect(result).toHaveLength(2);
+      expect(result[0].amount).toBe(5);
+      expect(result[0].balanceBefore).toBe(10);
+      expect(result[0].balanceAfter).toBe(15);
+      expect(result[1].amount).toBe(10);
+      expect(result[1].balanceBefore).toBe(0);
+      expect(result[1].balanceAfter).toBe(10);
+    });
+
+    it('includes historical balance in starting total', () => {
+      // Insert an entry with yesterday's date
+      db.prepare(
+        `INSERT INTO points_ledger (entry_type, amount, note, created_at)
+         VALUES ('manual', 100, 'Yesterday points', datetime('now', '-1 day'))`,
+      ).run();
+
+      seedPointsLedger(db, 20);
+
+      const result = service.getTodayActivity('UTC');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].amount).toBe(20);
+      expect(result[0].balanceBefore).toBe(100);
+      expect(result[0].balanceAfter).toBe(120);
+    });
+
+    it('uses note as description with fallback to entry_type', () => {
+      seedPointsLedger(db, 10);
+
+      db.prepare(
+        `INSERT INTO points_ledger (entry_type, amount, note) VALUES ('chore', 5, NULL)`,
+      ).run();
+
+      const result = service.getTodayActivity('UTC');
+
+      expect(result[0].description).toBe('chore');
+      expect(result[1].description).toBe('Test points');
+    });
+
+    it('maps entryType correctly', () => {
+      db.prepare(
+        `INSERT INTO points_ledger (entry_type, amount, note) VALUES ('routine', 10, 'Completed: Morning Routine')`,
+      ).run();
+
+      const result = service.getTodayActivity('UTC');
+
+      expect(result[0].entryType).toBe('routine');
+    });
+  });
+
   describe('createAdjustment', () => {
     it('positive adjustment increases total', () => {
       seedPointsLedger(db, 50);

@@ -3,7 +3,7 @@ import { DEFAULT_TIME_SLOTS } from "@chore-app/shared";
 
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
 
-function getTimeInTimezone(date: Date, timezone: string): { hours: number; minutes: number } {
+export function getTimeInTimezone(date: Date, timezone: string): { hours: number; minutes: number } {
   let parts: Intl.DateTimeFormatPart[];
   try {
     let formatter = formatterCache.get(timezone);
