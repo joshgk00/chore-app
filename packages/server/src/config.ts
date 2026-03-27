@@ -10,8 +10,8 @@ export interface AppConfig {
   activityRetentionDays: number;
   imageGenApiKey?: string;
   logDir?: string;
-  logLevel: string;
-  logMaxSize: string;
+  logLevel?: string;
+  logMaxSize?: string;
 }
 
 function findNearestEnvFile(startDir: string): string | null {

@@ -63,6 +63,14 @@ describe("initLogger", () => {
     ).toThrow(/Invalid LOG_MAX_SIZE "abc"/);
   });
 
+  it("throws on zero maxFileSize", () => {
+    const dir = createTempLogDir();
+    tempDirs.push(dir);
+    expect(() =>
+      initLogger({ level: "info", logDir: dir, maxFileSize: "0m" }),
+    ).toThrow(/Size must be greater than zero/);
+  });
+
   it("parses maxFileSize with k suffix", () => {
     const dir = createTempLogDir();
     tempDirs.push(dir);

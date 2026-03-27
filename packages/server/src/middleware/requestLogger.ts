@@ -28,6 +28,16 @@ export function requestLogger() {
       }
     });
 
+    res.on("close", () => {
+      if (res.writableEnded) return;
+
+      const duration = Date.now() - startTime;
+      getLogger().warn(
+        { method: req.method, path: req.path, status: res.statusCode, duration, ip: req.ip, aborted: true },
+        "request aborted",
+      );
+    });
+
     next();
   };
 }

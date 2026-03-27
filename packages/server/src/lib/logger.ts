@@ -27,6 +27,10 @@ function parseFileSize(value: string): number {
   }
 
   const num = parseInt(match[1], 10);
+  if (num <= 0) {
+    throw new Error(`Invalid LOG_MAX_SIZE "${value}". Size must be greater than zero.`);
+  }
+
   const unit = (match[2] || "").toLowerCase();
 
   switch (unit) {
@@ -87,6 +91,9 @@ export function initLogger(config: LoggerConfig): pino.Logger {
     throw new Error(`Invalid LOG_LEVEL "${config.level}". Valid levels: ${[...VALID_LEVELS].join(", ")}`);
   }
 
+  // Clean up previous logger state if re-initialized
+  shutdownLogger();
+
   if (!config.logDir) {
     logger = pino({ level: config.level });
     return logger;
@@ -133,4 +140,14 @@ export function shutdownLogger(): void {
     rotationTimer = null;
   }
   flushLogger();
+  if (fileStream) {
+    try {
+      fileStream.end();
+    } catch {
+      try { fileStream.destroy(); } catch { /* best effort */ }
+    } finally {
+      fileStream = null;
+      activeLogDir = undefined;
+    }
+  }
 }

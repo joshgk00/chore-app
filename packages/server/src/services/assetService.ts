@@ -234,12 +234,18 @@ async function fetchGeneratedImageBytes(
       const arrayBuffer = await imageResponse.arrayBuffer();
       log.info({ model, duration: Date.now() - startTime, responseType: "url", downloadBytes: arrayBuffer.byteLength }, "image generation completed");
       return Buffer.from(arrayBuffer);
+    } catch (downloadErr) {
+      if (downloadErr instanceof Error && downloadErr.name === "AbortError") {
+        log.error({ model, duration: Date.now() - startTime, stage: "download" }, "image download timed out");
+        throw new AppError(502, "GENERATION_FAILED", "Image generation failed: image download timed out");
+      }
+      throw downloadErr;
     } finally {
       clearTimeout(downloadTimeout);
     }
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
-      log.error({ model, duration: Date.now() - startTime }, "image generation timed out");
+      log.error({ model, duration: Date.now() - startTime, stage: "generation" }, "image generation timed out");
       throw new AppError(502, "GENERATION_FAILED", "Image generation failed: request timed out");
     }
     throw err;

@@ -12,7 +12,7 @@ async function main() {
   const config = loadConfig();
 
   initLogger({
-    level: config.logLevel,
+    level: config.logLevel ?? "info",
     logDir: config.logDir,
     maxFileSize: config.logMaxSize,
   });
@@ -70,7 +70,12 @@ async function main() {
 }
 
 process.on("unhandledRejection", (reason) => {
-  getLogger().error({ err: reason }, "unhandled rejection");
+  const log = getLogger();
+  if (reason instanceof Error) {
+    log.error({ err: reason }, "unhandled rejection");
+  } else {
+    log.error({ reason }, "unhandled rejection");
+  }
   shutdownLogger();
   process.exit(1);
 });
