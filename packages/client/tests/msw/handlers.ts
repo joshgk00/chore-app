@@ -215,17 +215,17 @@ export const handlers: RequestHandler[] = [
     ),
   ),
 
-  http.get('/api/chore-logs/:id', () =>
+  http.get('/api/chore-logs/:id', ({ params }) =>
     HttpResponse.json({
       data: {
-        id: 1,
+        id: Number(params.id),
         choreId: 1,
         choreNameSnapshot: "Clean Kitchen",
         tierId: 1,
         tierNameSnapshot: "Quick Clean",
         pointsSnapshot: 3,
         requiresApprovalSnapshot: false,
-        loggedAt: "2026-03-15T12:00:00",
+        loggedAt: "2026-03-15T12:00:00.000Z",
         localDate: "2026-03-15",
         status: "approved",
         idempotencyKey: "test-key",
