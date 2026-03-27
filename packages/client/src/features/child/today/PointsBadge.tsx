@@ -14,7 +14,7 @@ export default function PointsBadge({ balance }: PointsBadgeProps) {
     <button
       type="button"
       onClick={() => navigate("/rewards")}
-      className="flex items-center gap-1.5 rounded-full border border-[var(--color-amber-200)] bg-[var(--color-amber-50)] px-3 py-1.5 font-display font-bold text-[var(--color-amber-700)] shadow-sm transition-all duration-150 active:scale-95"
+      className="flex items-center gap-1.5 rounded-full border border-[var(--color-amber-100)] bg-[var(--color-amber-50)] px-3 py-1.5 font-display font-bold text-[var(--color-amber-700)] shadow-sm transition-all duration-150 active:scale-95"
       aria-label={`${balance.available} points available. View rewards`}
     >
       <span data-emoji aria-hidden="true">⭐</span>
