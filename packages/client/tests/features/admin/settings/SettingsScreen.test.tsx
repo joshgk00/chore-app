@@ -327,6 +327,27 @@ describe("SettingsScreen", () => {
     });
   });
 
+  it("selects retention days value on focus so typing replaces it", async () => {
+    server.use(
+      http.get("/api/admin/settings", () =>
+        HttpResponse.json({ data: mockSettings }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("90")).toBeInTheDocument();
+    });
+
+    const retentionInput = screen.getByLabelText("Activity retention (days)");
+    await user.click(retentionInput);
+    await user.keyboard("30");
+
+    expect(retentionInput).toHaveValue(30);
+  });
+
   it("shows error when retention days is empty", async () => {
     server.use(
       http.get("/api/admin/settings", () =>
