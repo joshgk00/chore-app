@@ -9,7 +9,7 @@ import { AppError, NotFoundError, ValidationError } from "../lib/errors.js";
 const ACCEPTED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 const MAX_LONG_EDGE_PX = 1200;
-const DEFAULT_GENERATION_MODEL = "NanoBanano2";
+const DEFAULT_GENERATION_MODEL = "nano-banana-pro";
 const PPQ_API_BASE_URL = "https://api.ppq.ai/v1";
 const GENERATION_TIMEOUT_MS = 30_000;
 
@@ -162,7 +162,6 @@ async function fetchGeneratedImageBytes(
         model,
         prompt,
         n: 1,
-        response_format: "b64_json",
       }),
       signal: controller.signal,
     });
@@ -176,18 +175,37 @@ async function fetchGeneratedImageBytes(
     }
 
     const data = (await response.json()) as {
-      data: Array<{ b64_json?: string }>;
+      data: Array<{ url?: string; b64_json?: string }>;
     };
 
-    if (!data.data?.[0]?.b64_json) {
+    const result = data.data?.[0];
+    if (!result) {
+      throw new AppError(502, "GENERATION_FAILED", "Image generation failed: empty API response");
+    }
+
+    if (result.b64_json) {
+      return Buffer.from(result.b64_json, "base64");
+    }
+
+    if (!result.url) {
       throw new AppError(
         502,
         "GENERATION_FAILED",
-        "Image generation failed: invalid API response"
+        "Image generation failed: no image in API response"
       );
     }
 
-    return Buffer.from(data.data[0].b64_json, "base64");
+    const imageResponse = await fetch(result.url, { signal: controller.signal });
+    if (!imageResponse.ok) {
+      throw new AppError(
+        502,
+        "GENERATION_FAILED",
+        `Image generation failed: could not download image (${imageResponse.status})`
+      );
+    }
+
+    const arrayBuffer = await imageResponse.arrayBuffer();
+    return Buffer.from(arrayBuffer);
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
       throw new AppError(502, "GENERATION_FAILED", "Image generation failed: request timed out");
