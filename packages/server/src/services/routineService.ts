@@ -81,6 +81,7 @@ interface ChecklistItemRow {
   image_asset_id: number | null;
   asset_stored_filename: string | null;
   sort_order: number;
+  archived_at: string | null;
 }
 
 interface CompletionRow {
@@ -113,42 +114,11 @@ function mapRoutineRow(row: RoutineRow): Routine {
     randomizeItems: row.randomize_items === 1,
     sortOrder: row.sort_order,
     items: [],
-  };
-}
-
-function mapChecklistItemRow(row: ChecklistItemRow): ChecklistItem {
-  return {
-    id: row.id,
-    routineId: row.routine_id,
-    label: row.label,
-    imageAssetId: row.image_asset_id ?? undefined,
-    imageUrl: row.asset_stored_filename ? `/assets/${row.asset_stored_filename}` : undefined,
-    sortOrder: row.sort_order,
-  };
-}
-
-interface AdminChecklistItemRow extends ChecklistItemRow {
-  archived_at: string | null;
-}
-
-function mapRoutineRowAdmin(row: RoutineRow): Routine {
-  return {
-    id: row.id,
-    name: row.name,
-    timeSlot: row.time_slot as TimeSlot,
-    completionRule: row.completion_rule as CompletionRule,
-    points: row.points,
-    requiresApproval: row.requires_approval === 1,
-    imageAssetId: row.image_asset_id ?? undefined,
-    imageUrl: row.asset_stored_filename ? `/assets/${row.asset_stored_filename}` : undefined,
-    randomizeItems: row.randomize_items === 1,
-    sortOrder: row.sort_order,
-    items: [],
     archivedAt: row.archived_at ?? undefined,
   };
 }
 
-function mapChecklistItemRowAdmin(row: AdminChecklistItemRow): ChecklistItem {
+function mapChecklistItemRow(row: ChecklistItemRow): ChecklistItem {
   return {
     id: row.id,
     routineId: row.routine_id,
@@ -197,7 +167,7 @@ export function createRoutineService(
 
   const selectActiveItemsStmt = db.prepare(
     `SELECT ci.id, ci.routine_id, ci.label, ci.image_asset_id,
-            a.stored_filename AS asset_stored_filename, ci.sort_order
+            a.stored_filename AS asset_stored_filename, ci.sort_order, ci.archived_at
      FROM checklist_items ci
      LEFT JOIN assets a ON ci.image_asset_id = a.id
      WHERE ci.routine_id = ? AND ci.active = 1 AND ci.archived_at IS NULL
@@ -206,7 +176,7 @@ export function createRoutineService(
 
   const selectAllActiveItemsStmt = db.prepare(
     `SELECT ci.id, ci.routine_id, ci.label, ci.image_asset_id,
-            a.stored_filename AS asset_stored_filename, ci.sort_order
+            a.stored_filename AS asset_stored_filename, ci.sort_order, ci.archived_at
      FROM checklist_items ci
      INNER JOIN routines r ON ci.routine_id = r.id
      LEFT JOIN assets a ON ci.image_asset_id = a.id
@@ -485,7 +455,7 @@ export function createRoutineService(
 
   function listRoutinesAdmin(): Routine[] {
     const rows = selectAllRoutinesStmt.all() as RoutineRow[];
-    const allItemRows = selectAllItemsAdminBulkStmt.all() as AdminChecklistItemRow[];
+    const allItemRows = selectAllItemsAdminBulkStmt.all() as ChecklistItemRow[];
 
     const itemsByRoutineId = new Map<number, ChecklistItem[]>();
     for (const itemRow of allItemRows) {
@@ -494,11 +464,11 @@ export function createRoutineService(
         items = [];
         itemsByRoutineId.set(itemRow.routine_id, items);
       }
-      items.push(mapChecklistItemRowAdmin(itemRow));
+      items.push(mapChecklistItemRow(itemRow));
     }
 
     return rows.map((row) => {
-      const routine = mapRoutineRowAdmin(row);
+      const routine = mapRoutineRow(row);
       routine.items = itemsByRoutineId.get(row.id) ?? [];
       return routine;
     });
@@ -509,9 +479,9 @@ export function createRoutineService(
     if (!row) {
       throw new NotFoundError("Routine not found");
     }
-    const routine = mapRoutineRowAdmin(row);
-    const itemRows = selectAllItemsForRoutineStmt.all(id) as AdminChecklistItemRow[];
-    routine.items = itemRows.map(mapChecklistItemRowAdmin);
+    const routine = mapRoutineRow(row);
+    const itemRows = selectAllItemsForRoutineStmt.all(id) as ChecklistItemRow[];
+    routine.items = itemRows.map(mapChecklistItemRow);
     return routine;
   }
 
