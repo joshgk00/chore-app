@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { server } from "../../../msw/server.js";
+import { mockSettings } from "../../../msw/handlers.js";
 import SettingsScreen from "../../../../src/features/admin/settings/SettingsScreen.js";
 
 const mockNavigate = vi.fn();
@@ -15,17 +16,6 @@ vi.mock("react-router-dom", async () => {
     useNavigate: () => mockNavigate,
   };
 });
-
-const mockSettings: Record<string, string> = {
-  timezone: "America/Chicago",
-  activity_retention_days: "90",
-  morning_start: "05:00",
-  morning_end: "10:59",
-  afternoon_start: "15:00",
-  afternoon_end: "18:29",
-  bedtime_start: "18:30",
-  bedtime_end: "21:30",
-};
 
 function renderComponent() {
   const queryClient = new QueryClient({
@@ -58,12 +48,6 @@ describe("SettingsScreen", () => {
   });
 
   it("renders settings form with current values", async () => {
-    server.use(
-      http.get("/api/admin/settings", () =>
-        HttpResponse.json({ data: mockSettings }),
-      ),
-    );
-
     renderComponent();
 
     await waitFor(() => {
@@ -83,9 +67,6 @@ describe("SettingsScreen", () => {
     let savedBody: Record<string, unknown> = {};
 
     server.use(
-      http.get("/api/admin/settings", () =>
-        HttpResponse.json({ data: mockSettings }),
-      ),
       http.put("/api/admin/settings", async ({ request }) => {
         savedBody = (await request.json()) as Record<string, unknown>;
         return HttpResponse.json({ data: mockSettings });
@@ -117,9 +98,6 @@ describe("SettingsScreen", () => {
     let savedBody: Record<string, unknown> = {};
 
     server.use(
-      http.get("/api/admin/settings", () =>
-        HttpResponse.json({ data: mockSettings }),
-      ),
       http.put("/api/admin/settings", async ({ request }) => {
         savedBody = (await request.json()) as Record<string, unknown>;
         return HttpResponse.json({ data: mockSettings });
@@ -147,12 +125,6 @@ describe("SettingsScreen", () => {
   });
 
   it("shows validation error for invalid time format", async () => {
-    server.use(
-      http.get("/api/admin/settings", () =>
-        HttpResponse.json({ data: mockSettings }),
-      ),
-    );
-
     const user = userEvent.setup();
     renderComponent();
 
@@ -172,12 +144,6 @@ describe("SettingsScreen", () => {
   });
 
   it("requires current PIN, new PIN, and confirm PIN", async () => {
-    server.use(
-      http.get("/api/admin/settings", () =>
-        HttpResponse.json({ data: mockSettings }),
-      ),
-    );
-
     const user = userEvent.setup();
     renderComponent();
 
@@ -196,12 +162,6 @@ describe("SettingsScreen", () => {
   });
 
   it("shows error if PINs do not match", async () => {
-    server.use(
-      http.get("/api/admin/settings", () =>
-        HttpResponse.json({ data: mockSettings }),
-      ),
-    );
-
     const user = userEvent.setup();
     renderComponent();
 
@@ -221,15 +181,6 @@ describe("SettingsScreen", () => {
   });
 
   it("redirects after successful PIN change", async () => {
-    server.use(
-      http.get("/api/admin/settings", () =>
-        HttpResponse.json({ data: mockSettings }),
-      ),
-      http.put("/api/admin/settings/pin", () =>
-        HttpResponse.json({ data: { message: "PIN updated" } }),
-      ),
-    );
-
     const user = userEvent.setup();
     renderComponent();
 
@@ -279,12 +230,6 @@ describe("SettingsScreen", () => {
   });
 
   it("shows PIN error when new PIN is too short", async () => {
-    server.use(
-      http.get("/api/admin/settings", () =>
-        HttpResponse.json({ data: mockSettings }),
-      ),
-    );
-
     const user = userEvent.setup();
     renderComponent();
 
@@ -304,12 +249,6 @@ describe("SettingsScreen", () => {
   });
 
   it("shows error when timezone is empty", async () => {
-    server.use(
-      http.get("/api/admin/settings", () =>
-        HttpResponse.json({ data: mockSettings }),
-      ),
-    );
-
     const user = userEvent.setup();
     renderComponent();
 
@@ -328,12 +267,6 @@ describe("SettingsScreen", () => {
   });
 
   it("selects retention days value on focus so typing replaces it", async () => {
-    server.use(
-      http.get("/api/admin/settings", () =>
-        HttpResponse.json({ data: mockSettings }),
-      ),
-    );
-
     const user = userEvent.setup();
     renderComponent();
 
@@ -349,12 +282,6 @@ describe("SettingsScreen", () => {
   });
 
   it("shows error when retention days is empty", async () => {
-    server.use(
-      http.get("/api/admin/settings", () =>
-        HttpResponse.json({ data: mockSettings }),
-      ),
-    );
-
     const user = userEvent.setup();
     renderComponent();
 
