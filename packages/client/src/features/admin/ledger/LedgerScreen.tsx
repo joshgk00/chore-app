@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
+import { queryKeys } from "../../../lib/query-keys.js";
 import HelpTip from "../../../components/HelpTip.js";
 import { useAdminTimezone } from "../hooks/useAdminTimezone.js";
 import { formatTimestamp } from "../../../lib/format-timestamp.js";
@@ -33,7 +34,7 @@ function useLedger(filter: FilterType) {
   const [page, setPage] = useState(0);
 
   const query = useQuery({
-    queryKey: ["admin", "ledger", filter, page],
+    queryKey: queryKeys.admin.ledger(filter, page),
     queryFn: async () => {
       const params = new URLSearchParams({
         limit: String(PAGE_SIZE),
@@ -92,7 +93,7 @@ function useAdjustPoints() {
       return result.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "ledger"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.ledger() });
     },
   });
 }

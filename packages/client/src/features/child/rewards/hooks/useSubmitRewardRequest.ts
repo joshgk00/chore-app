@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api/client.js";
+import { invalidateBootstrapAndPoints } from "../../../../lib/query-keys.js";
 import type { RewardRequest } from "@chore-app/shared";
 
 interface SubmitRewardRequestPayload {
@@ -21,8 +22,7 @@ export function useSubmitRewardRequest() {
       return result.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["points"] });
-      queryClient.invalidateQueries({ queryKey: ["bootstrap"] });
+      invalidateBootstrapAndPoints(queryClient);
     },
   });
 }

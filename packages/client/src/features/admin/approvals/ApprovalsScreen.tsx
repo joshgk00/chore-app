@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
+import { queryKeys } from "../../../lib/query-keys.js";
 import { useAdminTimezone } from "../hooks/useAdminTimezone.js";
 import { formatTimestamp } from "../../../lib/format-timestamp.js";
 import type {
@@ -14,7 +15,7 @@ import type {
 
 function usePendingApprovals(isOnline: boolean) {
   return useQuery({
-    queryKey: ["admin", "approvals"],
+    queryKey: queryKeys.admin.approvals(),
     queryFn: async () => {
       const result = await api.get<PendingApprovals>("/api/admin/approvals");
       if (!result.ok) throw result.error;
@@ -45,7 +46,7 @@ function useApproveItem() {
       if (!result.ok) throw result.error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "approvals"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.approvals() });
     },
   });
 }
@@ -70,7 +71,7 @@ function useRejectItem() {
       if (!result.ok) throw result.error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "approvals"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.approvals() });
     },
   });
 }

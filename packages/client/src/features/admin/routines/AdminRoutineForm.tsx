@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
+import { queryKeys } from "../../../lib/query-keys.js";
 import HelpTip from "../../../components/HelpTip.js";
 import AssetPicker from "../assets/AssetPicker.js";
 import type { Routine, TimeSlot, CompletionRule } from "@chore-app/shared";
@@ -62,7 +63,7 @@ const COMPLETION_RULE_OPTIONS: { value: CompletionRule; label: string }[] = [
 
 function useExistingRoutine(id: string | undefined) {
   return useQuery({
-    queryKey: ["admin", "routines", id],
+    queryKey: queryKeys.admin.routine(id),
     queryFn: async () => {
       const result = await api.get<Routine>(`/api/admin/routines/${id}`);
       if (!result.ok) throw result.error;
@@ -154,7 +155,7 @@ export default function AdminRoutineForm() {
       return result.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "routines"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.routines() });
     },
   });
 
@@ -193,7 +194,7 @@ export default function AdminRoutineForm() {
       return result.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "routines"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.routines() });
     },
   });
 

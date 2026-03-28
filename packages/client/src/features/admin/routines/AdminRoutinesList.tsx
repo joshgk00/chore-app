@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
+import { queryKeys } from "../../../lib/query-keys.js";
 import type { Routine } from "@chore-app/shared";
 
 const TIME_SLOT_LABELS: Record<string, string> = {
@@ -19,7 +20,7 @@ const COMPLETION_RULE_LABELS: Record<string, string> = {
 
 function useAdminRoutines() {
   return useQuery({
-    queryKey: ["admin", "routines"],
+    queryKey: queryKeys.admin.routines(),
     queryFn: async () => {
       const result = await api.get<Routine[]>("/api/admin/routines");
       if (!result.ok) throw result.error;
@@ -40,7 +41,7 @@ function useArchiveToggle() {
       if (!result.ok) throw result.error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "routines"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.routines() });
     },
   });
 }

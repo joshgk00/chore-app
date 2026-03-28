@@ -6,6 +6,7 @@ import { useCancelChoreLog } from "./hooks/useCancelChoreLog.js";
 import { useChoreLogStatus } from "./hooks/useChoreLogStatus.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
 import { formatLocalDate } from "../../../lib/draft-sync.js";
+import { invalidatePointsRelated } from "../../../lib/query-keys.js";
 import type { Chore, ChoreTier, ChoreLog } from "@chore-app/shared";
 
 export default function QuickChoreLog() {
@@ -25,9 +26,7 @@ export default function QuickChoreLog() {
   useEffect(() => {
     if (polledLog && polledLog.status !== "pending") {
       setRecentLog(polledLog);
-      queryClient.invalidateQueries({ queryKey: ["bootstrap"] });
-      queryClient.invalidateQueries({ queryKey: ["points"] });
-      queryClient.invalidateQueries({ queryKey: ["ledger"] });
+      invalidatePointsRelated(queryClient);
     }
   }, [polledLog, queryClient]);
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
+import { queryKeys } from "../../../lib/query-keys.js";
 import { useAdminTimezone } from "../hooks/useAdminTimezone.js";
 import { formatTimestamp } from "../../../lib/format-timestamp.js";
 import { ACTIVITY_EVENT_TYPES } from "@chore-app/shared";
@@ -81,7 +82,7 @@ export default function ActivityLogScreen() {
   const [page, setPage] = useState(0);
 
   const query = useQuery({
-    queryKey: ["admin", "activity-log", eventTypeFilter, startDate, endDate, page],
+    queryKey: queryKeys.admin.activityLog(eventTypeFilter, startDate, endDate, page),
     queryFn: async () => {
       const params = new URLSearchParams({
         page: String(page),
