@@ -4,13 +4,13 @@ import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import type Database from "better-sqlite3";
 import type { ActivityService } from "./activityService.js";
+import { DEFAULT_IMAGE_MODEL } from "@chore-app/shared";
 import { AppError, NotFoundError, ValidationError } from "../lib/errors.js";
 import { getLogger } from "../lib/logger.js";
 
 const ACCEPTED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 const MAX_LONG_EDGE_PX = 1200;
-const DEFAULT_GENERATION_MODEL = "nano-banana-pro";
 const PPQ_API_BASE_URL = "https://api.ppq.ai/v1";
 const GENERATION_TIMEOUT_MS = 60_000;
 const DOWNLOAD_TIMEOUT_MS = 30_000;
@@ -351,7 +351,7 @@ export function createAssetService(
     fs.mkdirSync(assetsDir, { recursive: true });
     fs.mkdirSync(tempDir, { recursive: true });
 
-    const resolvedModel = model ?? DEFAULT_GENERATION_MODEL;
+    const resolvedModel = model ?? DEFAULT_IMAGE_MODEL;
     const imageBytes = await fetchGeneratedImageBytes(prompt, resolvedModel, apiKey);
 
     const tempPath = path.join(tempDir, `${randomUUID()}.tmp`);

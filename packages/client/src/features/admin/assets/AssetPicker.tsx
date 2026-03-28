@@ -2,7 +2,8 @@ import { useState, useRef, useId } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
 import { queryKeys } from "../../../lib/query-keys.js";
-import type { Asset } from "@chore-app/shared";
+import { IMAGE_MODELS, DEFAULT_IMAGE_MODEL } from "@chore-app/shared";
+import type { Asset, ImageModelId } from "@chore-app/shared";
 
 export interface AssetPickerProps {
   value: number | null;
@@ -15,15 +16,13 @@ const ACCEPTED_TYPES = "image/jpeg,image/png,image/webp";
 const UPLOAD_TIMEOUT_MS = 30_000;
 const GENERATE_TIMEOUT_MS = 75_000;
 
-const IMAGE_MODELS = [
-  { id: "flux-2-flex", label: "Flux 2 Flex", price: "~$0.03" },
-  { id: "flux-2-pro", label: "Flux 2 Pro", price: "~$0.05" },
-  { id: "nano-banana-pro", label: "Nano Banana Pro", price: "~$0.05" },
-  { id: "gpt-image-1", label: "GPT Image 1 (4o)", price: "~$0.08" },
-  { id: "gpt-image-1.5", label: "GPT Image 1.5", price: "~$0.19" },
-] as const;
-
-const DEFAULT_MODEL = IMAGE_MODELS[2].id;
+const MODEL_PRICES: Record<ImageModelId, string> = {
+  "flux-2-flex": "~$0.03",
+  "flux-2-pro": "~$0.05",
+  "nano-banana-pro": "~$0.05",
+  "gpt-image-1": "~$0.08",
+  "gpt-image-1.5": "~$0.19",
+};
 
 async function parseErrorMessage(res: Response, fallback: string): Promise<string> {
   try {
@@ -102,7 +101,7 @@ export default function AssetPicker({ value, imageUrl, onChange, label }: AssetP
   const [isUploading, setIsUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatePrompt, setGeneratePrompt] = useState("");
-  const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODEL);
+  const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_IMAGE_MODEL);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const promptId = useId();
@@ -326,7 +325,7 @@ export default function AssetPicker({ value, imageUrl, onChange, label }: AssetP
               >
                 {IMAGE_MODELS.map((m) => (
                   <option key={m.id} value={m.id}>
-                    {m.label} ({m.price})
+                    {m.label} ({MODEL_PRICES[m.id]})
                   </option>
                 ))}
               </select>
