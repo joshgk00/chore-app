@@ -14,9 +14,9 @@ import type { PushService } from "./pushService.js";
 
 export interface ApprovalService {
   getPendingApprovals(): PendingApprovals;
-  approveRoutineCompletion(id: number, reviewNote?: string): RoutineCompletion;
+  approveRoutineCompletion(id: number, reviewNote?: string, bonusPoints?: number): RoutineCompletion;
   rejectRoutineCompletion(id: number, reviewNote?: string): RoutineCompletion;
-  approveChoreLog(id: number, reviewNote?: string): ChoreLog;
+  approveChoreLog(id: number, reviewNote?: string, bonusPoints?: number): ChoreLog;
   rejectChoreLog(id: number, reviewNote?: string): ChoreLog;
   approveRewardRequest(id: number, reviewNote?: string): RewardRequest;
   rejectRewardRequest(id: number, reviewNote?: string): RewardRequest;
@@ -214,6 +214,28 @@ export function createApprovalService(
      VALUES ('reward', 'reward_requests', ?, ?, ?)`,
   );
 
+  const insertBonusLedgerStmt = db.prepare(
+    `INSERT INTO points_ledger (entry_type, reference_table, reference_id, amount, note)
+     VALUES ('bonus', ?, ?, ?, ?)`,
+  );
+
+  function insertBonusIfPositive(
+    referenceTable: string,
+    referenceId: number,
+    bonusPoints: number | undefined,
+    entityName: string,
+  ): number {
+    const bonus = bonusPoints && bonusPoints > 0 ? bonusPoints : 0;
+    if (bonus > 0) {
+      insertBonusLedgerStmt.run(referenceTable, referenceId, bonus, `Bonus: ${entityName}`);
+    }
+    return bonus;
+  }
+
+  function formatBonusText(bonus: number): string {
+    return bonus > 0 ? ` (+${bonus} bonus)` : "";
+  }
+
   function loadPendingRecord<T extends { status: string }>(
     stmt: Statement,
     id: number,
@@ -238,7 +260,7 @@ export function createApprovalService(
   }
 
   const approveRoutineCompletionTx = db.transaction(
-    (id: number, reviewNote?: string): RoutineCompletion => {
+    (id: number, reviewNote?: string, bonusPoints?: number): RoutineCompletion => {
       const row = loadPendingRecord<CompletionRow>(selectCompletionByIdStmt, id, "Routine completion not found");
       updateCompletionStatusStmt.run("approved", reviewNote ?? null, id);
 
@@ -248,13 +270,15 @@ export function createApprovalService(
         `Completed: ${row.routine_name_snapshot}`,
       );
 
+      const bonus = insertBonusIfPositive("routine_completions", id, bonusPoints, row.routine_name_snapshot);
+
       badgeService?.evaluateBadges();
 
       activityService.recordActivityOrThrow({
         eventType: "routine_approved",
         entityType: "routine_completion",
         entityId: id,
-        summary: `Approved ${row.routine_name_snapshot} for ${row.points_snapshot} points`,
+        summary: `Approved ${row.routine_name_snapshot} for ${row.points_snapshot} points${formatBonusText(bonus)}`,
       });
 
       const updated = selectCompletionByIdStmt.get(id) as CompletionRow;
@@ -262,11 +286,13 @@ export function createApprovalService(
     },
   );
 
-  function approveRoutineCompletion(id: number, reviewNote?: string): RoutineCompletion {
-    const result = approveRoutineCompletionTx(id, reviewNote);
+  function approveRoutineCompletion(id: number, reviewNote?: string, bonusPoints?: number): RoutineCompletion {
+    const result = approveRoutineCompletionTx(id, reviewNote, bonusPoints);
+    const bonus = bonusPoints && bonusPoints > 0 ? bonusPoints : 0;
+    const body = result.pointsSnapshot > 0 ? `+${result.pointsSnapshot} points${formatBonusText(bonus)}` : "Great job!";
     pushService?.sendNotificationSafe("child", {
       title: `${result.routineNameSnapshot} approved!`,
-      body: result.pointsSnapshot > 0 ? `+${result.pointsSnapshot} points` : "Great job!",
+      body,
       data: { type: "routine_completion", id: result.id, action: "approved" },
     }, { entityType: "approval", id: result.id });
     return result;
@@ -300,7 +326,7 @@ export function createApprovalService(
   }
 
   const approveChoreLogTx = db.transaction(
-    (id: number, reviewNote?: string): ChoreLog => {
+    (id: number, reviewNote?: string, bonusPoints?: number): ChoreLog => {
       const row = loadPendingRecord<ChoreLogRow>(selectChoreLogByIdStmt, id, "Chore log not found");
       updateChoreLogStatusStmt.run("approved", reviewNote ?? null, id);
 
@@ -310,13 +336,15 @@ export function createApprovalService(
         `Chore: ${row.chore_name_snapshot} (${row.tier_name_snapshot})`,
       );
 
+      const bonus = insertBonusIfPositive("chore_logs", id, bonusPoints, row.chore_name_snapshot);
+
       badgeService?.evaluateBadges();
 
       activityService.recordActivityOrThrow({
         eventType: "chore_approved",
         entityType: "chore_log",
         entityId: id,
-        summary: `Approved ${row.chore_name_snapshot} (${row.tier_name_snapshot}) for ${row.points_snapshot} points`,
+        summary: `Approved ${row.chore_name_snapshot} (${row.tier_name_snapshot}) for ${row.points_snapshot} points${formatBonusText(bonus)}`,
       });
 
       const updated = selectChoreLogByIdStmt.get(id) as ChoreLogRow;
@@ -324,11 +352,13 @@ export function createApprovalService(
     },
   );
 
-  function approveChoreLog(id: number, reviewNote?: string): ChoreLog {
-    const result = approveChoreLogTx(id, reviewNote);
+  function approveChoreLog(id: number, reviewNote?: string, bonusPoints?: number): ChoreLog {
+    const result = approveChoreLogTx(id, reviewNote, bonusPoints);
+    const bonus = bonusPoints && bonusPoints > 0 ? bonusPoints : 0;
+    const body = result.pointsSnapshot > 0 ? `+${result.pointsSnapshot} points${formatBonusText(bonus)}` : "Great job!";
     pushService?.sendNotificationSafe("child", {
       title: `${result.choreNameSnapshot} approved!`,
-      body: result.pointsSnapshot > 0 ? `+${result.pointsSnapshot} points` : "Great job!",
+      body,
       data: { type: "chore_log", id: result.id, action: "approved" },
     }, { entityType: "approval", id: result.id });
     return result;

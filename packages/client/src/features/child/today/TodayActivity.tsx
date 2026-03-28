@@ -5,6 +5,7 @@ const DOT_COLORS: Record<EntryType, string> = {
   chore: "bg-[var(--color-amber-500)]",
   reward: "bg-[var(--color-amber-500)]",
   manual: "bg-[var(--color-text-muted)]",
+  bonus: "bg-[var(--color-amber-500)]",
 };
 
 interface TodayActivityProps {
