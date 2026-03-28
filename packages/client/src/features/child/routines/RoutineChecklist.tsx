@@ -6,6 +6,7 @@ import { useChecklist } from "./hooks/useChecklist.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
 import { saveDraft, deleteDraft } from "../../../lib/draft.js";
 import ChecklistItem from "./ChecklistItem.js";
+import StatusPill from "../../../components/StatusPill.js";
 
 const NAVIGATION_DELAY_MS = 1500;
 
@@ -169,9 +170,9 @@ export default function RoutineChecklist() {
             <h1 className="font-display text-xl font-bold text-[var(--color-text)]">{routine.name}</h1>
           </div>
 
-          <span className="rounded-full bg-[var(--color-amber-100)] px-3 py-1 text-sm font-bold text-[var(--color-amber-700)]">
+          <StatusPill>
             {routine.points} {routine.points === 1 ? "pt" : "pts"}
-          </span>
+          </StatusPill>
         </div>
 
         <div className="mt-2 flex items-center justify-between">

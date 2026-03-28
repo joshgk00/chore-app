@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import type { Routine } from "@chore-app/shared";
+import StatusPill from "../../../components/StatusPill.js";
 
 const SLOT_LABELS: Record<string, string> = {
   morning: "Morning",
@@ -58,9 +59,9 @@ export default function RoutineCard({ routine, showSlotBadge }: Props) {
         </div>
       </div>
 
-      <span className="shrink-0 rounded-full border-[1.5px] border-[var(--color-amber-100)] bg-[var(--color-amber-50)] px-3 py-1 font-display text-sm font-bold text-[var(--color-amber-700)]">
+      <StatusPill hasBorder className="shrink-0">
         {routine.points} {routine.points === 1 ? "pt" : "pts"}
-      </span>
+      </StatusPill>
     </Link>
   );
 }
