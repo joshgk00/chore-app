@@ -12,6 +12,7 @@ export interface AppConfig {
   logDir?: string;
   logLevel?: string;
   logMaxSize?: string;
+  clientDistDir?: string;
 }
 
 function findNearestEnvFile(startDir: string): string | null {

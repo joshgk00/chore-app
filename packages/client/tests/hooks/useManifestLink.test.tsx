@@ -69,20 +69,6 @@ describe('useManifestLink', () => {
     }).not.toThrow();
   });
 
-  it('resets manifest href when navigating away from admin', () => {
-    const { rerender } = renderHook(() => useManifestLink(), {
-      wrapper: createWrapper('/admin'),
-    });
-
-    expect(manifestLink.getAttribute('href')).toBe(
-      '/manifest.json?start_url=/admin',
-    );
-
-    // Re-render with a non-admin wrapper to simulate navigation
-    rerender();
-    // Note: MemoryRouter initial entries are fixed, so we test the reverse direction
-  });
-
   it('keeps default manifest href on root path', () => {
     renderHook(() => useManifestLink(), {
       wrapper: createWrapper('/'),

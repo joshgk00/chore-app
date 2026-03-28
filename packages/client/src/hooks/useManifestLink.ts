@@ -11,7 +11,7 @@ export function useManifestLink() {
   const isAdminRoute = pathname.startsWith("/admin");
 
   useEffect(() => {
-    const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+    const link = document.querySelector<HTMLLinkElement>("link[rel='manifest']");
     if (!link) return;
 
     const href = isAdminRoute

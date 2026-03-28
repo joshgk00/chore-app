@@ -92,7 +92,7 @@ export function createApp(db: Database.Database, config: AppConfig) {
     next(new NotFoundError("API endpoint not found"));
   });
 
-  const clientDist = path.resolve(__dirname, "../../client/dist");
+  const clientDist = config.clientDistDir ?? path.resolve(__dirname, "../../client/dist");
 
   // iOS PWAs always launch from the manifest's start_url, so we serve a
   // dynamic manifest that lets admin pages set start_url=/admin via query param.
