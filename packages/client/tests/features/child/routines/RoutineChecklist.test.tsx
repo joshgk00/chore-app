@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { Routes, Route, MemoryRouter } from "react-router-dom";
@@ -59,6 +59,10 @@ describe("RoutineChecklist", () => {
     await deleteDraft(1);
     await deleteDraft(2);
     resetDbCache();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("renders checklist items from API data", async () => {
@@ -124,7 +128,8 @@ describe("RoutineChecklist", () => {
   });
 
   it("shows points earned message and navigates to homepage after successful submit", async () => {
-    const user = userEvent.setup();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderChecklist(1);
 
     await waitForChecklistReady();
@@ -136,9 +141,11 @@ describe("RoutineChecklist", () => {
       expect(screen.getByText("+5 pts earned!")).toBeInTheDocument();
     });
 
+    await act(() => vi.advanceTimersByTime(2000));
+
     await waitFor(() => {
       expect(screen.getByTestId("today-page")).toBeInTheDocument();
-    }, { timeout: 3000 });
+    });
   });
 
   it("shows pending approval message when routine requires approval", async () => {

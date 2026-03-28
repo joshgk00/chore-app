@@ -44,7 +44,7 @@ export default function RoutineChecklist() {
   }, []);
 
   const handleSubmit = useCallback(async () => {
-    if (!routine || !isAllChecked || !isOnline || submitRoutine.isPending) return;
+    if (!routine || !isAllChecked || !isOnline || submitRoutine.isPending || isShowingCelebration) return;
 
     const checklistSnapshot = JSON.stringify(
       draftItems.map((item) => ({
@@ -106,7 +106,7 @@ export default function RoutineChecklist() {
         },
       },
     );
-  }, [routine, draftItems, isAllChecked, isOnline, idempotencyKey, localDate, randomizedOrder, submitRoutine, navigate, showToast]);
+  }, [routine, draftItems, isAllChecked, isOnline, isShowingCelebration, idempotencyKey, localDate, randomizedOrder, submitRoutine, navigate, showToast]);
 
   if (routineError) {
     return (
@@ -238,7 +238,7 @@ export default function RoutineChecklist() {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={!isAllChecked || !isOnline || submitRoutine.isPending}
+            disabled={!isAllChecked || !isOnline || submitRoutine.isPending || isShowingCelebration}
             title={!isOnline ? "You're offline" : undefined}
             className="w-full rounded-full bg-[var(--color-emerald-500)] px-6 py-4 font-display text-lg font-bold text-white shadow-card transition-all duration-200 enabled:hover:bg-[var(--color-emerald-600)] enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
           >
