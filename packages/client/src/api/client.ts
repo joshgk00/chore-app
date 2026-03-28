@@ -16,6 +16,16 @@ function isAdminEndpoint(url: string): boolean {
   return url.startsWith("/api/admin/");
 }
 
+export function notifyAdminAuthError(url: string, status: number): void {
+  if (status === 401 && isAdminEndpoint(url) && onAuthError) {
+    try {
+      onAuthError(url);
+    } catch {
+      // Side-effect should not crash the caller's response flow
+    }
+  }
+}
+
 async function request<T>(url: string, options?: RequestInit): Promise<ApiResult<T>> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);

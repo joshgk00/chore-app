@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { api, setOnAuthError } from '../../src/api/client.js';
+import { api, setOnAuthError, notifyAdminAuthError } from '../../src/api/client.js';
 import { server } from '../msw/server.js';
 
 describe('api client', () => {
@@ -302,6 +302,43 @@ describe('api client', () => {
       const result = await api.get('/api/admin/chores');
 
       expect(result.ok).toBe(false);
+    });
+  });
+
+  describe('notifyAdminAuthError', () => {
+    afterEach(() => {
+      setOnAuthError(null);
+    });
+
+    it('calls onAuthError for 401 on admin endpoints', () => {
+      const handler = vi.fn();
+      setOnAuthError(handler);
+
+      notifyAdminAuthError('/api/admin/export', 401);
+
+      expect(handler).toHaveBeenCalledWith('/api/admin/export');
+    });
+
+    it('does not call onAuthError for non-401 status', () => {
+      const handler = vi.fn();
+      setOnAuthError(handler);
+
+      notifyAdminAuthError('/api/admin/export', 500);
+
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('does not call onAuthError for non-admin endpoints', () => {
+      const handler = vi.fn();
+      setOnAuthError(handler);
+
+      notifyAdminAuthError('/api/auth/verify', 401);
+
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('does not throw when no handler is set', () => {
+      expect(() => notifyAdminAuthError('/api/admin/export', 401)).not.toThrow();
     });
   });
 });

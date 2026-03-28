@@ -137,5 +137,27 @@ describe('PinEntry', () => {
         expect(mockNavigate).toHaveBeenCalledWith('/admin', { replace: true });
       });
     });
+
+    it('rejects returnTo paths that only share the /admin prefix', async () => {
+      server.use(
+        http.post('/api/auth/verify', () =>
+          HttpResponse.json({ data: { valid: true } }),
+        ),
+      );
+
+      renderPinEntry('/admin/pin?returnTo=%2Fadministration');
+      const user = userEvent.setup();
+      await user.type(screen.getByLabelText(/enter pin/i), '123456');
+      await user.click(screen.getByRole('button', { name: /unlock/i }));
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/admin', { replace: true });
+      });
+    });
+
+    it('does not show session expired message for invalid returnTo', () => {
+      renderPinEntry('/admin/pin?returnTo=%2Ftoday');
+      expect(screen.queryByText(/session expired/i)).not.toBeInTheDocument();
+    });
   });
 });

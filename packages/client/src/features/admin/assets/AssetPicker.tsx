@@ -1,6 +1,6 @@
 import { useState, useRef, useId } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "../../../api/client.js";
+import { api, notifyAdminAuthError } from "../../../api/client.js";
 import { queryKeys } from "../../../lib/query-keys.js";
 import type { Asset } from "@chore-app/shared";
 
@@ -35,6 +35,7 @@ async function parseErrorMessage(res: Response, fallback: string): Promise<strin
 }
 
 async function uploadAsset(file: File): Promise<Asset> {
+  const url = "/api/admin/assets/upload";
   const formData = new FormData();
   formData.append("file", file);
 
@@ -42,7 +43,7 @@ async function uploadAsset(file: File): Promise<Asset> {
   const timeoutId = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
 
   try {
-    const res = await fetch("/api/admin/assets/upload", {
+    const res = await fetch(url, {
       method: "POST",
       body: formData,
       credentials: "same-origin",
@@ -50,6 +51,7 @@ async function uploadAsset(file: File): Promise<Asset> {
     });
 
     if (!res.ok) {
+      notifyAdminAuthError(url, res.status);
       throw new Error(await parseErrorMessage(res, "Upload failed"));
     }
 
@@ -66,12 +68,12 @@ async function uploadAsset(file: File): Promise<Asset> {
 }
 
 async function generateAsset(prompt: string, model: string): Promise<Asset> {
-  // Raw fetch instead of api client — generation needs 75s timeout, api client caps at 10s
+  const url = "/api/admin/assets/generate";
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), GENERATE_TIMEOUT_MS);
 
   try {
-    const res = await fetch("/api/admin/assets/generate", {
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt, model }),
@@ -80,6 +82,7 @@ async function generateAsset(prompt: string, model: string): Promise<Asset> {
     });
 
     if (!res.ok) {
+      notifyAdminAuthError(url, res.status);
       throw new Error(await parseErrorMessage(res, "Generation failed"));
     }
 

@@ -4,7 +4,7 @@ import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
 
 function isValidReturnPath(path: string): boolean {
-  return path.startsWith("/admin");
+  return path === "/admin" || path.startsWith("/admin/");
 }
 
 export default function PinEntry() {
@@ -60,7 +60,7 @@ export default function PinEntry() {
         <h1 className="mt-5 font-display text-2xl font-bold text-[var(--color-text)]">Admin Access</h1>
         <p className="mt-1 text-sm text-[var(--color-text-muted)]">Enter your PIN to manage chores</p>
 
-        {returnTo && (
+        {returnTo && isValidReturnPath(returnTo) && (
           <p className="mt-4 text-sm font-medium text-[var(--color-amber-700)]" role="status">
             Your session expired. Sign in to pick up where you left off.
           </p>
