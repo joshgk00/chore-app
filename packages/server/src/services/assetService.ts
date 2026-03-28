@@ -4,10 +4,11 @@ import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import type Database from "better-sqlite3";
 import type { ActivityService } from "./activityService.js";
-import { DEFAULT_IMAGE_MODEL } from "@chore-app/shared";
+import { DEFAULT_IMAGE_MODEL, IMAGE_MODELS } from "@chore-app/shared";
 import { AppError, NotFoundError, ValidationError } from "../lib/errors.js";
 import { getLogger } from "../lib/logger.js";
 
+const VALID_MODEL_IDS: Set<string> = new Set(IMAGE_MODELS.map((m) => m.id));
 const ACCEPTED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 const MAX_LONG_EDGE_PX = 1200;
@@ -352,6 +353,9 @@ export function createAssetService(
     fs.mkdirSync(tempDir, { recursive: true });
 
     const resolvedModel = model ?? DEFAULT_IMAGE_MODEL;
+    if (!VALID_MODEL_IDS.has(resolvedModel)) {
+      throw new ValidationError(`Unknown image model: ${resolvedModel}`);
+    }
     const imageBytes = await fetchGeneratedImageBytes(prompt, resolvedModel, apiKey);
 
     const tempPath = path.join(tempDir, `${randomUUID()}.tmp`);

@@ -101,7 +101,7 @@ export default function AssetPicker({ value, imageUrl, onChange, label }: AssetP
   const [isUploading, setIsUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatePrompt, setGeneratePrompt] = useState("");
-  const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_IMAGE_MODEL);
+  const [selectedModel, setSelectedModel] = useState<ImageModelId>(DEFAULT_IMAGE_MODEL);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const promptId = useId();
@@ -319,7 +319,7 @@ export default function AssetPicker({ value, imageUrl, onChange, label }: AssetP
               <select
                 id={modelId}
                 value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
+                onChange={(e) => setSelectedModel(e.target.value as ImageModelId)}
                 disabled={isGenerating}
                 className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 font-body text-sm text-[var(--color-text)] focus:border-[var(--color-amber-500)] focus:outline-none focus:ring-2 focus:ring-[var(--color-amber-500)] disabled:opacity-50"
               >
