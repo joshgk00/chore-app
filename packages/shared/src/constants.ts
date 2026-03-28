@@ -52,6 +52,7 @@ export const ACTIVITY_EVENT_TYPES = [
   "asset_uploaded",
   "asset_generated",
   "asset_archived",
+  "asset_deleted",
   "backup_exported",
   "backup_restored",
 ] as const;

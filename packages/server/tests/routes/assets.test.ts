@@ -199,6 +199,144 @@ describe("assets routes", () => {
     });
   });
 
+  describe("GET /api/admin/assets/:id/usage", () => {
+    it("returns empty usage for an unused asset", async () => {
+      const uploadRes = await request(app)
+        .post("/api/admin/assets/upload")
+        .set("Cookie", cookies)
+        .attach("file", fixtures.validJpgPath, {
+          filename: "unused.jpg",
+          contentType: "image/jpeg",
+        });
+
+      const assetId = uploadRes.body.data.id;
+
+      const res = await request(app)
+        .get(`/api/admin/assets/${assetId}/usage`)
+        .set("Cookie", cookies);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.assetId).toBe(assetId);
+      expect(res.body.data.usedBy).toHaveLength(0);
+    });
+
+    it("returns usage when asset is linked to a routine", async () => {
+      const uploadRes = await request(app)
+        .post("/api/admin/assets/upload")
+        .set("Cookie", cookies)
+        .attach("file", fixtures.validJpgPath, {
+          filename: "routine-linked.jpg",
+          contentType: "image/jpeg",
+        });
+
+      const assetId = uploadRes.body.data.id;
+
+      db.prepare(
+        `INSERT INTO routines (name, time_slot, completion_rule, image_asset_id) VALUES (?, ?, ?, ?)`
+      ).run("Test Routine", "morning", "once_per_day", assetId);
+
+      const res = await request(app)
+        .get(`/api/admin/assets/${assetId}/usage`)
+        .set("Cookie", cookies);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.usedBy).toHaveLength(1);
+      expect(res.body.data.usedBy[0].entityType).toBe("routine");
+      expect(res.body.data.usedBy[0].entityName).toBe("Test Routine");
+    });
+
+    it("returns 401 without admin session", async () => {
+      const res = await request(app).get("/api/admin/assets/1/usage");
+      expect(res.status).toBe(401);
+    });
+
+    it("returns 404 for nonexistent asset", async () => {
+      const res = await request(app)
+        .get("/api/admin/assets/9999/usage")
+        .set("Cookie", cookies);
+
+      expect(res.status).toBe(404);
+    });
+
+    it("returns 422 for invalid asset ID", async () => {
+      const res = await request(app)
+        .get("/api/admin/assets/abc/usage")
+        .set("Cookie", cookies);
+
+      expect(res.status).toBe(422);
+    });
+  });
+
+  describe("DELETE /api/admin/assets/:id", () => {
+    it("deletes the asset and returns success", async () => {
+      const uploadRes = await request(app)
+        .post("/api/admin/assets/upload")
+        .set("Cookie", cookies)
+        .attach("file", fixtures.validJpgPath, {
+          filename: "to-delete.jpg",
+          contentType: "image/jpeg",
+        });
+
+      const assetId = uploadRes.body.data.id;
+
+      const deleteRes = await request(app)
+        .delete(`/api/admin/assets/${assetId}`)
+        .set("Cookie", cookies);
+
+      expect(deleteRes.status).toBe(200);
+      expect(deleteRes.body.data.success).toBe(true);
+
+      const listRes = await request(app)
+        .get("/api/admin/assets")
+        .set("Cookie", cookies);
+      expect(listRes.body.data.find((a: { id: number }) => a.id === assetId)).toBeUndefined();
+    });
+
+    it("clears image from linked entities on delete", async () => {
+      const uploadRes = await request(app)
+        .post("/api/admin/assets/upload")
+        .set("Cookie", cookies)
+        .attach("file", fixtures.validJpgPath, {
+          filename: "linked-delete.jpg",
+          contentType: "image/jpeg",
+        });
+
+      const assetId = uploadRes.body.data.id;
+
+      db.prepare(
+        `INSERT INTO routines (name, time_slot, completion_rule, image_asset_id) VALUES (?, ?, ?, ?)`
+      ).run("Linked Routine", "morning", "once_per_day", assetId);
+
+      await request(app)
+        .delete(`/api/admin/assets/${assetId}`)
+        .set("Cookie", cookies);
+
+      const routine = db.prepare(`SELECT image_asset_id FROM routines WHERE name = ?`).get("Linked Routine") as { image_asset_id: number | null };
+      expect(routine.image_asset_id).toBeNull();
+    });
+
+    it("returns 401 without admin session", async () => {
+      const res = await request(app).delete("/api/admin/assets/1");
+      expect(res.status).toBe(401);
+    });
+
+    it("returns 404 for nonexistent asset", async () => {
+      const res = await request(app)
+        .delete("/api/admin/assets/9999")
+        .set("Cookie", cookies);
+
+      expect(res.status).toBe(404);
+    });
+
+    it("returns 422 for invalid asset ID", async () => {
+      const res = await request(app)
+        .delete("/api/admin/assets/abc")
+        .set("Cookie", cookies);
+
+      expect(res.status).toBe(422);
+    });
+  });
+
   describe("POST /api/admin/assets/generate", () => {
     it("returns 503 when image generation is not configured", async () => {
       const res = await request(app)

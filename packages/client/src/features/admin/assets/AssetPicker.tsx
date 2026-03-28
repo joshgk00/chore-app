@@ -1,9 +1,9 @@
-import { useState, useRef, useId } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useRef, useId, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, notifyAdminAuthError } from "../../../api/client.js";
 import { queryKeys } from "../../../lib/query-keys.js";
 import { IMAGE_MODELS, DEFAULT_IMAGE_MODEL } from "@chore-app/shared";
-import type { Asset, ImageModelId } from "@chore-app/shared";
+import type { Asset, AssetUsage, ImageModelId } from "@chore-app/shared";
 
 export interface AssetPickerProps {
   value: number | null;
@@ -106,9 +106,12 @@ export default function AssetPicker({ value, imageUrl, onChange, label }: AssetP
   const [generatePrompt, setGeneratePrompt] = useState("");
   const [selectedModel, setSelectedModel] = useState<ImageModelId>(DEFAULT_IMAGE_MODEL);
   const [error, setError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Asset | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const deleteDialogRef = useRef<HTMLDivElement>(null);
   const promptId = useId();
   const modelId = useId();
+  const queryClient = useQueryClient();
 
   const { data: assets, isLoading: isLoadingAssets } = useQuery({
     queryKey: queryKeys.admin.assets({ status: "active" }),
@@ -119,6 +122,38 @@ export default function AssetPicker({ value, imageUrl, onChange, label }: AssetP
     },
     enabled: mode === "browse",
   });
+
+  const { data: deleteTargetUsage, isLoading: isLoadingUsage } = useQuery({
+    queryKey: ["admin", "assets", deleteTarget?.id, "usage"],
+    queryFn: async () => {
+      const result = await api.get<AssetUsage>(`/api/admin/assets/${deleteTarget!.id}/usage`);
+      if (!result.ok) throw result.error;
+      return result.data;
+    },
+    enabled: deleteTarget !== null,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (assetId: number) => {
+      const result = await api.delete<{ success: boolean }>(`/api/admin/assets/${assetId}`);
+      if (!result.ok) throw new Error(result.error.message);
+      return result.data;
+    },
+    onSuccess: (_data, deletedAssetId) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "assets"] });
+      if (value === deletedAssetId) {
+        onChange(null, null);
+      }
+      setDeleteTarget(null);
+    },
+  });
+
+  useEffect(() => {
+    if (deleteTarget && deleteDialogRef.current) {
+      const firstButton = deleteDialogRef.current.querySelector<HTMLButtonElement>("button");
+      firstButton?.focus();
+    }
+  }, [deleteTarget, isLoadingUsage]);
 
   function handleClear() {
     onChange(null, null);
@@ -268,30 +303,92 @@ export default function AssetPicker({ value, imageUrl, onChange, label }: AssetP
           ) : assets && assets.length > 0 ? (
             <div className="mt-3 grid grid-cols-4 gap-2 tablet:grid-cols-6" role="listbox" aria-label="Available assets">
               {assets.map((asset) => (
-                <button
-                  key={asset.id}
-                  type="button"
-                  role="option"
-                  aria-selected={asset.id === value}
-                  onClick={() => handleSelectAsset(asset)}
-                  className={`overflow-hidden rounded-xl border-2 transition-all hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-amber-500)] ${
-                    asset.id === value
-                      ? "border-[var(--color-amber-500)]"
-                      : "border-[var(--color-border)]"
-                  }`}
-                >
-                  <img
-                    src={asset.url}
-                    alt={asset.originalFilename ?? `Asset ${asset.id}`}
-                    className="aspect-square w-full object-cover"
-                  />
-                </button>
+                <div key={asset.id} className="relative">
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={asset.id === value}
+                    onClick={() => handleSelectAsset(asset)}
+                    className={`w-full overflow-hidden rounded-xl border-2 transition-all hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-amber-500)] ${
+                      asset.id === value
+                        ? "border-[var(--color-amber-500)]"
+                        : "border-[var(--color-border)]"
+                    }`}
+                  >
+                    <img
+                      src={asset.url}
+                      alt={asset.originalFilename ?? `Asset ${asset.id}`}
+                      className="aspect-square w-full object-cover"
+                    />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteTarget(asset);
+                      setError(null);
+                    }}
+                    aria-label={`Delete ${asset.originalFilename ?? `Asset ${asset.id}`}`}
+                    className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-red-600)] text-white shadow-card transition-colors hover:opacity-80"
+                  >
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               ))}
             </div>
           ) : (
             <p className="mt-3 text-center text-sm text-[var(--color-text-muted)]">
               No assets available.
             </p>
+          )}
+
+          {deleteTarget && (
+            <div ref={deleteDialogRef} className="mt-3 rounded-xl border border-[var(--color-red-600)] bg-[var(--color-surface)] p-3" role="alertdialog" aria-label="Confirm asset deletion">
+              {isLoadingUsage ? (
+                <p className="text-sm text-[var(--color-text-secondary)]">Checking usage...</p>
+              ) : (
+                <>
+                  <p className="text-sm font-medium text-[var(--color-text-secondary)]">
+                    Delete this image permanently?
+                  </p>
+                  {deleteTargetUsage && deleteTargetUsage.usedBy.length > 0 && (
+                    <p className="mt-1 text-sm text-[var(--color-red-600)]">
+                      This image is used by{" "}
+                      {deleteTargetUsage.usedBy.map((u) => u.entityName).join(" and ")}
+                      . Removing it will clear the image from{" "}
+                      {deleteTargetUsage.usedBy.length === 1 ? "that item" : "those items"}.
+                    </p>
+                  )}
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDeleteTarget(null);
+                        deleteMutation.reset();
+                      }}
+                      className="min-h-touch flex-1 rounded-xl px-4 py-2 text-sm font-display font-bold text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteMutation.mutate(deleteTarget.id)}
+                      disabled={deleteMutation.isPending}
+                      className="min-h-touch flex-1 rounded-xl bg-[var(--color-red-600)] px-4 py-2 text-sm font-display font-bold text-white hover:opacity-80 disabled:opacity-50"
+                    >
+                      {deleteMutation.isPending ? "Deleting..." : "Delete"}
+                    </button>
+                  </div>
+                  {deleteMutation.isError && (
+                    <p className="mt-2 text-sm text-[var(--color-red-600)]" role="alert" aria-live="assertive">
+                      {deleteMutation.error instanceof Error ? deleteMutation.error.message : "Delete failed"}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
           )}
         </div>
       )}

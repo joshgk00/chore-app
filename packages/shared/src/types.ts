@@ -230,6 +230,17 @@ export interface Asset {
   url: string;
 }
 
+export interface AssetUsageItem {
+  entityType: "routine" | "checklist_item" | "reward";
+  entityId: number;
+  entityName: string;
+}
+
+export interface AssetUsage {
+  assetId: number;
+  usedBy: AssetUsageItem[];
+}
+
 export interface TodayPointActivity {
   id: number;
   entryType: EntryType;
