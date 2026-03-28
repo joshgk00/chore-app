@@ -2,6 +2,7 @@ import express from "express";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import path from "node:path";
+import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import type Database from "better-sqlite3";
 import { NotFoundError } from "./lib/errors.js";
@@ -92,6 +93,36 @@ export function createApp(db: Database.Database, config: AppConfig) {
   });
 
   const clientDist = path.resolve(__dirname, "../../client/dist");
+
+  // iOS PWAs always launch from the manifest's start_url, so we serve a
+  // dynamic manifest that lets admin pages set start_url=/admin via query param.
+  const ALLOWED_START_URLS = new Set(["/", "/today", "/admin"]);
+  let cachedManifest: Record<string, unknown> | null = null;
+
+  app.get("/manifest.json", (req, res, next) => {
+    try {
+      if (!cachedManifest) {
+        const manifestPath = path.join(clientDist, "manifest.json");
+        if (!fs.existsSync(manifestPath)) {
+          return next();
+        }
+        cachedManifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+      }
+
+      const requestedStartUrl = typeof req.query.start_url === "string"
+        ? req.query.start_url
+        : null;
+
+      const startUrl = requestedStartUrl && ALLOWED_START_URLS.has(requestedStartUrl)
+        ? requestedStartUrl
+        : cachedManifest!.start_url ?? "/";
+
+      res.json({ ...cachedManifest, start_url: startUrl });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   app.use(express.static(clientDist));
 
   app.get("*", (_req, res) => {

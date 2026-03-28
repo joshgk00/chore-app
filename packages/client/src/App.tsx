@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useSyncOnReconnect } from "./lib/draft-sync.js";
+import { useManifestLink } from "./hooks/useManifestLink.js";
 import { ErrorBoundary } from "./components/ErrorBoundary.js";
 import BottomNav from "./components/BottomNav.js";
 import AdminGuard from "./components/AdminGuard.js";
@@ -94,45 +95,55 @@ function AdminPlaceholder({ title }: { title: string }) {
   );
 }
 
+function AppRoutes() {
+  useManifestLink();
+
+  return (
+    <>
+      <OfflineBanner />
+      <Routes>
+        <Route path="/" element={<Navigate to="/today" replace />} />
+
+        <Route element={<AppShell />}>
+          <Route path="/today" element={<TodayScreen />} />
+          <Route path="/routines" element={<RoutinesScreen />} />
+          <Route path="/routines/:id" element={<RoutineChecklist />} />
+          <Route path="/rewards" element={<RewardsScreen />} />
+          <Route path="/me" element={<MeScreen />} />
+        </Route>
+
+        <Route path="/admin/pin" element={<PinEntry />} />
+
+        <Route element={<AdminGuard />}>
+          <Route element={<AdminLayout />}>
+            <Route path="/admin" element={<AdminPlaceholder title="Admin Dashboard" />} />
+            <Route path="/admin/routines" element={<AdminRoutinesList />} />
+            <Route path="/admin/routines/new" element={<AdminRoutineForm />} />
+            <Route path="/admin/routines/:id/edit" element={<AdminRoutineForm />} />
+            <Route path="/admin/chores" element={<AdminChoresList />} />
+            <Route path="/admin/chores/new" element={<AdminChoreForm />} />
+            <Route path="/admin/chores/:id/edit" element={<AdminChoreForm />} />
+            <Route path="/admin/rewards" element={<AdminRewardsList />} />
+            <Route path="/admin/rewards/new" element={<AdminRewardForm />} />
+            <Route path="/admin/rewards/:id/edit" element={<AdminRewardForm />} />
+            <Route path="/admin/approvals" element={<ApprovalsScreen />} />
+            <Route path="/admin/ledger" element={<LedgerScreen />} />
+            <Route path="/admin/activity" element={<ActivityLogScreen />} />
+            <Route path="/admin/settings" element={<SettingsScreen />} />
+          </Route>
+        </Route>
+      </Routes>
+    </>
+  );
+}
+
 export default function App() {
   useSyncOnReconnect();
 
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <OfflineBanner />
-        <Routes>
-          <Route path="/" element={<Navigate to="/today" replace />} />
-
-          <Route element={<AppShell />}>
-            <Route path="/today" element={<TodayScreen />} />
-            <Route path="/routines" element={<RoutinesScreen />} />
-            <Route path="/routines/:id" element={<RoutineChecklist />} />
-            <Route path="/rewards" element={<RewardsScreen />} />
-            <Route path="/me" element={<MeScreen />} />
-          </Route>
-
-          <Route path="/admin/pin" element={<PinEntry />} />
-
-          <Route element={<AdminGuard />}>
-            <Route element={<AdminLayout />}>
-              <Route path="/admin" element={<AdminPlaceholder title="Admin Dashboard" />} />
-              <Route path="/admin/routines" element={<AdminRoutinesList />} />
-              <Route path="/admin/routines/new" element={<AdminRoutineForm />} />
-              <Route path="/admin/routines/:id/edit" element={<AdminRoutineForm />} />
-              <Route path="/admin/chores" element={<AdminChoresList />} />
-              <Route path="/admin/chores/new" element={<AdminChoreForm />} />
-              <Route path="/admin/chores/:id/edit" element={<AdminChoreForm />} />
-              <Route path="/admin/rewards" element={<AdminRewardsList />} />
-              <Route path="/admin/rewards/new" element={<AdminRewardForm />} />
-              <Route path="/admin/rewards/:id/edit" element={<AdminRewardForm />} />
-              <Route path="/admin/approvals" element={<ApprovalsScreen />} />
-              <Route path="/admin/ledger" element={<LedgerScreen />} />
-              <Route path="/admin/activity" element={<ActivityLogScreen />} />
-              <Route path="/admin/settings" element={<SettingsScreen />} />
-            </Route>
-          </Route>
-        </Routes>
+        <AppRoutes />
       </BrowserRouter>
     </QueryClientProvider>
   );
