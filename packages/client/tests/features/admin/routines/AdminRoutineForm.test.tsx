@@ -264,6 +264,25 @@ describe("AdminRoutineForm", () => {
     expect(inputs[1]).toHaveValue("First");
   });
 
+  it("shows secondary add-item button when 3+ items exist", async () => {
+    const user = userEvent.setup();
+    renderCreateForm();
+
+    const addButtons = () => screen.getAllByRole("button", { name: "+ Add Item" });
+
+    expect(addButtons()).toHaveLength(1);
+
+    await user.click(addButtons()[0]);
+    expect(addButtons()).toHaveLength(1);
+
+    await user.click(addButtons()[0]);
+    expect(addButtons()).toHaveLength(2);
+
+    await user.click(addButtons()[1]);
+    expect(screen.getByLabelText("Checklist item 4")).toBeInTheDocument();
+    expect(screen.getByLabelText("Checklist item 4")).toHaveFocus();
+  });
+
   it("shows error state when loading existing routine fails", async () => {
     server.use(
       http.get("/api/admin/routines/1", () =>
