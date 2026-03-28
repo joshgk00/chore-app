@@ -1,9 +1,9 @@
 import type Database from "better-sqlite3";
 import type { Reward, RewardRequest, Status } from "@chore-app/shared";
 import { ConflictError, NotFoundError, ValidationError } from "../lib/errors.js";
+import { createAssetValidator } from "../lib/validate-asset.js";
 import type { ActivityService } from "./activityService.js";
 import type { PushService } from "./pushService.js";
-import { getLogger } from "../lib/logger.js";
 
 export interface SubmitRewardRequestData {
   rewardId: number;
@@ -173,20 +173,7 @@ export function createRewardService(
      WHERE id = ? AND active = 0 AND archived_at IS NOT NULL`,
   );
 
-  const selectAssetExistsStmt = db.prepare(
-    `SELECT id, archived_at FROM assets WHERE id = ?`,
-  );
-
-  function validateAssetId(assetId: number | null | undefined): void {
-    if (assetId == null) return;
-    const asset = selectAssetExistsStmt.get(assetId) as { id: number; archived_at: string | null } | undefined;
-    if (!asset) {
-      throw new ValidationError("Referenced asset does not exist");
-    }
-    if (asset.archived_at !== null) {
-      throw new ValidationError("Referenced asset is archived");
-    }
-  }
+  const validateAssetId = createAssetValidator(db);
 
   function getActiveRewards(): Reward[] {
     const rows = selectActiveRewardsStmt.all() as RewardRow[];
@@ -251,15 +238,11 @@ export function createRewardService(
     const result = submitRequestTx(data);
 
     if (result.status === "pending") {
-      try {
-        pushService?.sendNotification("admin", {
-          title: "Reward requested",
-          body: `${result.rewardNameSnapshot} (${result.costSnapshot} pts) needs approval`,
-          data: { type: "reward_request", id: result.id },
-        });
-      } catch (err) {
-        getLogger().error({ err, id: result.id }, "failed to send admin notification for reward request");
-      }
+      pushService?.sendNotificationSafe("admin", {
+        title: "Reward requested",
+        body: `${result.rewardNameSnapshot} (${result.costSnapshot} pts) needs approval`,
+        data: { type: "reward_request", id: result.id },
+      }, { entityType: "reward_request", id: result.id });
     }
 
     return result;

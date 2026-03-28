@@ -9,10 +9,10 @@ import type {
 } from "@chore-app/shared";
 import { ConflictError, NotFoundError, ValidationError } from "../lib/errors.js";
 import { getCompletionWindowKey } from "../lib/timeSlots.js";
+import { createAssetValidator } from "../lib/validate-asset.js";
 import type { ActivityService } from "./activityService.js";
 import type { BadgeService } from "./badgeService.js";
 import type { PushService } from "./pushService.js";
-import { getLogger } from "../lib/logger.js";
 
 export interface SubmitCompletionData {
   routineId: number;
@@ -297,24 +297,11 @@ export function createRoutineService(
      WHERE id = ? AND active = 0 AND archived_at IS NOT NULL`,
   );
 
-  const selectAssetExistsStmt = db.prepare(
-    `SELECT id, archived_at FROM assets WHERE id = ?`,
-  );
-
   const selectItemImageAssetIdStmt = db.prepare(
     `SELECT image_asset_id FROM checklist_items WHERE id = ? AND routine_id = ?`,
   );
 
-  function validateAssetId(assetId: number | null | undefined): void {
-    if (assetId == null) return;
-    const asset = selectAssetExistsStmt.get(assetId) as { id: number; archived_at: string | null } | undefined;
-    if (!asset) {
-      throw new ValidationError("Referenced asset does not exist");
-    }
-    if (asset.archived_at !== null) {
-      throw new ValidationError("Referenced asset is archived");
-    }
-  }
+  const validateAssetId = createAssetValidator(db);
 
   function getActiveRoutines(): Routine[] {
     const rows = selectActiveRoutinesStmt.all() as RoutineRow[];
@@ -435,15 +422,11 @@ export function createRoutineService(
     const result = submitCompletionTx(data);
 
     if (result.status === "pending") {
-      try {
-        pushService?.sendNotification("admin", {
-          title: "Routine submitted for review",
-          body: `${result.routineNameSnapshot} needs approval`,
-          data: { type: "routine_completion", id: result.id },
-        });
-      } catch (err) {
-        getLogger().error({ err, id: result.id }, "failed to send admin notification for routine completion");
-      }
+      pushService?.sendNotificationSafe("admin", {
+        title: "Routine submitted for review",
+        body: `${result.routineNameSnapshot} needs approval`,
+        data: { type: "routine_completion", id: result.id },
+      }, { entityType: "routine_completion", id: result.id });
     }
 
     return result;
