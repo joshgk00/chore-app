@@ -16,10 +16,17 @@ interface VapidKeys {
   privateKey: string;
 }
 
+export interface PushNotificationPayload {
+  title: string;
+  body: string;
+  data?: Record<string, unknown>;
+}
+
 export interface PushService {
   getVapidPublicKey(): string;
   subscribe(role: PushRole, endpoint: string, keys: { p256dh: string; auth: string }, ipAddress?: string): void;
-  sendNotification(role: PushRole, payload: { title: string; body: string; data?: Record<string, unknown> }): void;
+  sendNotification(role: PushRole, payload: PushNotificationPayload): void;
+  sendNotificationSafe(role: PushRole, payload: PushNotificationPayload, context?: { entityType: string; id: number }): void;
   cleanupStaleSubscriptions(): { deleted: number; expired: number };
 }
 
@@ -187,7 +194,7 @@ export function createPushService(
 
   function sendNotification(
     role: PushRole,
-    payload: { title: string; body: string; data?: Record<string, unknown> },
+    payload: PushNotificationPayload,
   ): void {
     const subs = selectActiveByRoleStmt.all(role) as SubscriptionRow[];
     const jsonPayload = JSON.stringify(payload);
@@ -229,6 +236,18 @@ export function createPushService(
           }
         },
       );
+    }
+  }
+
+  function sendNotificationSafe(
+    role: PushRole,
+    payload: PushNotificationPayload,
+    context?: { entityType: string; id: number },
+  ): void {
+    try {
+      sendNotification(role, payload);
+    } catch (err) {
+      getLogger().error({ err, role, ...context }, "failed to send push notification");
     }
   }
 
@@ -278,6 +297,7 @@ export function createPushService(
     getVapidPublicKey,
     subscribe,
     sendNotification,
+    sendNotificationSafe,
     cleanupStaleSubscriptions,
   };
 }
