@@ -584,4 +584,47 @@ describe("pushService", () => {
       expect(kept?.status).toBe("active");
     });
   });
+
+  describe("sendNotificationSafe", () => {
+    it("does not throw when sendNotification throws synchronously", () => {
+      pushService.subscribe("child", "https://push.example.com/c1", { p256dh: "p1", auth: "a1" });
+
+      vi.mocked(webpush.sendNotification).mockImplementation(() => {
+        throw new Error("Synchronous failure");
+      });
+
+      expect(() => {
+        pushService.sendNotificationSafe("child", {
+          title: "Test",
+          body: "Hello",
+        }, { entityType: "approval", id: 1 });
+      }).not.toThrow();
+    });
+
+    it("sends notification successfully when no error occurs", () => {
+      pushService.subscribe("admin", "https://push.example.com/a1", { p256dh: "p1", auth: "a1" });
+
+      vi.mocked(webpush.sendNotification).mockResolvedValue({} as webpush.SendResult);
+
+      pushService.sendNotificationSafe("admin", {
+        title: "Review needed",
+        body: "Routine needs approval",
+        data: { type: "routine_completion", id: 42 },
+      }, { entityType: "routine_completion", id: 42 });
+
+      expect(webpush.sendNotification).toHaveBeenCalledTimes(1);
+    });
+
+    it("works without context parameter", () => {
+      pushService.subscribe("child", "https://push.example.com/c1", { p256dh: "p1", auth: "a1" });
+
+      vi.mocked(webpush.sendNotification).mockImplementation(() => {
+        throw new Error("DB error");
+      });
+
+      expect(() => {
+        pushService.sendNotificationSafe("child", { title: "Test", body: "Hello" });
+      }).not.toThrow();
+    });
+  });
 });
