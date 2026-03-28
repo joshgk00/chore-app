@@ -1,6 +1,7 @@
 import { useState, useRef, useId } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
+import { queryKeys } from "../../../lib/query-keys.js";
 import type { Asset } from "@chore-app/shared";
 
 export interface AssetPickerProps {
@@ -108,7 +109,7 @@ export default function AssetPicker({ value, imageUrl, onChange, label }: AssetP
   const modelId = useId();
 
   const { data: assets, isLoading: isLoadingAssets } = useQuery({
-    queryKey: ["admin", "assets", { status: "active" }],
+    queryKey: queryKeys.admin.assets({ status: "active" }),
     queryFn: async () => {
       const result = await api.get<Asset[]>("/api/admin/assets?status=active");
       if (!result.ok) throw result.error;

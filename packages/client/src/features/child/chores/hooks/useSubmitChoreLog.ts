@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api/client.js";
+import { invalidatePointsRelated } from "../../../../lib/query-keys.js";
 import type { ChoreLog } from "@chore-app/shared";
 
 interface SubmitChoreLogPayload {
@@ -19,9 +20,7 @@ export function useSubmitChoreLog() {
       return result.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bootstrap"] });
-      queryClient.invalidateQueries({ queryKey: ["points"] });
-      queryClient.invalidateQueries({ queryKey: ["ledger"] });
+      invalidatePointsRelated(queryClient);
     },
   });
 }

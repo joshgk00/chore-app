@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../../api/client.js";
+import { queryKeys } from "../../../../lib/query-keys.js";
 import type { ActivityEvent } from "@chore-app/shared";
 
 export function useRecentActivity(limit = 20) {
   return useQuery({
-    queryKey: ["activity", limit],
+    queryKey: queryKeys.activity(limit),
     queryFn: async () => {
       const result = await api.get<ActivityEvent[]>(
         `/api/activity/recent?limit=${limit}`,

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
+import { queryKeys } from "../../../lib/query-keys.js";
 import HelpTip from "../../../components/HelpTip.js";
 import AssetPicker from "../assets/AssetPicker.js";
 import type { Reward } from "@chore-app/shared";
@@ -31,7 +32,7 @@ const INITIAL_STATE: FormState = {
 
 function useExistingReward(id: string | undefined) {
   return useQuery({
-    queryKey: ["admin", "rewards", id],
+    queryKey: queryKeys.admin.reward(id),
     queryFn: async () => {
       const result = await api.get<Reward>(`/api/admin/rewards/${id}`);
       if (!result.ok) throw result.error;
@@ -95,7 +96,7 @@ export default function AdminRewardForm() {
       return result.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "rewards"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.rewards() });
       navigate("/admin/rewards");
     },
   });
@@ -112,7 +113,7 @@ export default function AdminRewardForm() {
       return result.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "rewards"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.rewards() });
       navigate("/admin/rewards");
     },
   });

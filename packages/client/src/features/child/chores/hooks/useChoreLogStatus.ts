@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../../api/client.js";
+import { queryKeys } from "../../../../lib/query-keys.js";
 import type { ChoreLog } from "@chore-app/shared";
 import { useOnline } from "../../../../contexts/OnlineContext.js";
 
@@ -10,7 +11,7 @@ export function useChoreLogStatus(logId: number | null) {
   const isEnabled = logId !== null && isOnline;
 
   return useQuery({
-    queryKey: ["chore-log", logId],
+    queryKey: queryKeys.choreLog(logId),
     queryFn: async () => {
       const result = await api.get<ChoreLog>(`/api/chore-logs/${logId}`);
       if (!result.ok) throw result.error;

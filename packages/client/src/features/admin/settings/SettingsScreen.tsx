@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { PIN_MIN_LENGTH } from "@chore-app/shared";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
+import { queryKeys } from "../../../lib/query-keys.js";
 import HelpTip from "../../../components/HelpTip.js";
 import BackupSettings from "./BackupSettings.js";
 import NotificationSettings from "./NotificationSettings.js";
@@ -46,7 +47,7 @@ export default function SettingsScreen() {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["admin", "settings"],
+    queryKey: queryKeys.admin.settings(),
     queryFn: async () => {
       const result = await api.get<SettingsResponse>("/api/admin/settings");
       if (!result.ok) throw result.error;
@@ -95,7 +96,7 @@ export default function SettingsScreen() {
       return result.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "settings"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.settings() });
     },
   };
 

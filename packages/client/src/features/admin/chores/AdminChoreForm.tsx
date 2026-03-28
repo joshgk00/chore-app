@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
+import { queryKeys } from "../../../lib/query-keys.js";
 import HelpTip from "../../../components/HelpTip.js";
 import type { Chore } from "@chore-app/shared";
 
@@ -35,7 +36,7 @@ const INITIAL_STATE: FormState = {
 
 function useExistingChore(id: string | undefined) {
   return useQuery({
-    queryKey: ["admin", "chores", id],
+    queryKey: queryKeys.admin.chore(id),
     queryFn: async () => {
       const result = await api.get<Chore>(`/api/admin/chores/${id}`);
       if (!result.ok) throw result.error;
@@ -106,7 +107,7 @@ export default function AdminChoreForm() {
       return result.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "chores"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.chores() });
       navigate("/admin/chores");
     },
   });
@@ -145,7 +146,7 @@ export default function AdminChoreForm() {
       return result.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "chores"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.chores() });
       navigate("/admin/chores");
     },
   });

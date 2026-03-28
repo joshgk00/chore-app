@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api/client.js";
+import { queryKeys } from "../../../../lib/query-keys.js";
 import type { ChoreLog } from "@chore-app/shared";
 
 export function useCancelChoreLog() {
@@ -12,8 +13,8 @@ export function useCancelChoreLog() {
       return result.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["chores"] });
-      queryClient.invalidateQueries({ queryKey: ["bootstrap"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.chores() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap() });
     },
   });
 }

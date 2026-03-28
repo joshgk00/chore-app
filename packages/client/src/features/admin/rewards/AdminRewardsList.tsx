@@ -2,11 +2,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
+import { queryKeys } from "../../../lib/query-keys.js";
 import type { Reward } from "@chore-app/shared";
 
 function useAdminRewards() {
   return useQuery({
-    queryKey: ["admin", "rewards"],
+    queryKey: queryKeys.admin.rewards(),
     queryFn: async () => {
       const result = await api.get<Reward[]>("/api/admin/rewards");
       if (!result.ok) throw result.error;
@@ -27,7 +28,7 @@ function useArchiveToggle() {
       if (!result.ok) throw result.error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "rewards"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.rewards() });
     },
   });
 }

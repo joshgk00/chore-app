@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api/client.js";
+import { queryKeys } from "../../../../lib/query-keys.js";
 import type { RoutineCompletion } from "@chore-app/shared";
 
 interface SubmitRoutinePayload {
@@ -23,8 +24,8 @@ export function useSubmitRoutine() {
       return result.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["routines"] });
-      queryClient.invalidateQueries({ queryKey: ["bootstrap"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.routines() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap() });
     },
   });
 }

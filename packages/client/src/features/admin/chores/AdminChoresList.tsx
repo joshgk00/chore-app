@@ -2,11 +2,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
+import { queryKeys } from "../../../lib/query-keys.js";
 import type { Chore } from "@chore-app/shared";
 
 function useAdminChores() {
   return useQuery({
-    queryKey: ["admin", "chores"],
+    queryKey: queryKeys.admin.chores(),
     queryFn: async () => {
       const result = await api.get<Chore[]>("/api/admin/chores");
       if (!result.ok) throw result.error;
@@ -27,7 +28,7 @@ function useArchiveToggle() {
       if (!result.ok) throw result.error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "chores"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.chores() });
     },
   });
 }
