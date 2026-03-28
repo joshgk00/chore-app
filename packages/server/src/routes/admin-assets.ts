@@ -69,6 +69,43 @@ export function createAdminAssetsRoutes(
     }
   });
 
+  router.get("/assets/:id/usage", (req, res, next) => {
+    try {
+      const idParam = req.params.id;
+      if (!/^\d+$/u.test(idParam)) {
+        throw new ValidationError("Invalid asset ID");
+      }
+
+      const usage = assetService.getAssetUsage(Number(idParam));
+      res.json({
+        data: {
+          assetId: Number(idParam),
+          usedBy: usage.map((u) => ({
+            entityType: u.entity_type,
+            entityId: u.entity_id,
+            entityName: u.entity_name,
+          })),
+        },
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.delete("/assets/:id", (req, res, next) => {
+    try {
+      const idParam = req.params.id;
+      if (!/^\d+$/u.test(idParam)) {
+        throw new ValidationError("Invalid asset ID");
+      }
+
+      assetService.deleteAsset(Number(idParam));
+      res.json({ data: { success: true } });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   router.post("/assets/generate", async (req, res, next) => {
     try {
       const { prompt, model } = req.body;

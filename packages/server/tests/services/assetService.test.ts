@@ -326,6 +326,187 @@ describe("assetService", () => {
     });
   });
 
+  describe("getAssetUsage", () => {
+    async function seedUploadForUsage(service: ReturnType<typeof buildService>, name: string) {
+      const tmpPath = copyToTemp(fixtures.validJpgPath, dataDir, `usage-${Date.now()}-${name}`);
+      const stat = fs.statSync(tmpPath);
+      return service.processUpload({
+        path: tmpPath,
+        originalname: name,
+        size: stat.size,
+      });
+    }
+
+    it("returns empty array when asset is not used by any entity", async () => {
+      const service = buildService();
+      const asset = await seedUploadForUsage(service, "unused.jpg");
+
+      const usage = service.getAssetUsage(asset.id);
+      expect(usage).toHaveLength(0);
+    });
+
+    it("returns routine usage when asset is assigned to a routine", async () => {
+      const service = buildService();
+      const asset = await seedUploadForUsage(service, "routine-img.jpg");
+
+      db.prepare(
+        `INSERT INTO routines (name, time_slot, completion_rule, image_asset_id) VALUES (?, ?, ?, ?)`
+      ).run("Morning Routine", "morning", "once_per_day", asset.id);
+
+      const usage = service.getAssetUsage(asset.id);
+      expect(usage).toHaveLength(1);
+      expect(usage[0].entity_type).toBe("routine");
+      expect(usage[0].entity_name).toBe("Morning Routine");
+    });
+
+    it("returns reward usage when asset is assigned to a reward", async () => {
+      const service = buildService();
+      const asset = await seedUploadForUsage(service, "reward-img.jpg");
+
+      db.prepare(
+        `INSERT INTO rewards (name, points_cost, image_asset_id) VALUES (?, ?, ?)`
+      ).run("Ice Cream", 50, asset.id);
+
+      const usage = service.getAssetUsage(asset.id);
+      expect(usage).toHaveLength(1);
+      expect(usage[0].entity_type).toBe("reward");
+      expect(usage[0].entity_name).toBe("Ice Cream");
+    });
+
+    it("returns checklist item usage when asset is assigned to a checklist item", async () => {
+      const service = buildService();
+      const asset = await seedUploadForUsage(service, "checklist-img.jpg");
+
+      const routineResult = db.prepare(
+        `INSERT INTO routines (name, time_slot, completion_rule) VALUES (?, ?, ?)`
+      ).run("Test Routine", "morning", "once_per_day");
+
+      db.prepare(
+        `INSERT INTO checklist_items (routine_id, label, image_asset_id) VALUES (?, ?, ?)`
+      ).run(routineResult.lastInsertRowid, "Brush Teeth", asset.id);
+
+      const usage = service.getAssetUsage(asset.id);
+      expect(usage).toHaveLength(1);
+      expect(usage[0].entity_type).toBe("checklist_item");
+      expect(usage[0].entity_name).toBe("Brush Teeth");
+    });
+
+    it("returns multiple usage entries across entity types", async () => {
+      const service = buildService();
+      const asset = await seedUploadForUsage(service, "shared-img.jpg");
+
+      db.prepare(
+        `INSERT INTO routines (name, time_slot, completion_rule, image_asset_id) VALUES (?, ?, ?, ?)`
+      ).run("Morning Routine", "morning", "once_per_day", asset.id);
+      db.prepare(
+        `INSERT INTO rewards (name, points_cost, image_asset_id) VALUES (?, ?, ?)`
+      ).run("Pizza Night", 100, asset.id);
+
+      const usage = service.getAssetUsage(asset.id);
+      expect(usage).toHaveLength(2);
+    });
+
+    it("throws NotFoundError for nonexistent asset", () => {
+      const service = buildService();
+      expect(() => service.getAssetUsage(9999)).toThrow(NotFoundError);
+    });
+  });
+
+  describe("deleteAsset", () => {
+    async function seedUploadForDelete(service: ReturnType<typeof buildService>, name: string) {
+      const tmpPath = copyToTemp(fixtures.validJpgPath, dataDir, `del-${Date.now()}-${name}`);
+      const stat = fs.statSync(tmpPath);
+      return service.processUpload({
+        path: tmpPath,
+        originalname: name,
+        size: stat.size,
+      });
+    }
+
+    it("deletes asset record from database", async () => {
+      const service = buildService();
+      const asset = await seedUploadForDelete(service, "to-delete.jpg");
+
+      service.deleteAsset(asset.id);
+
+      const assets = service.getAssets();
+      expect(assets.find((a) => a.id === asset.id)).toBeUndefined();
+    });
+
+    it("removes the file from disk", async () => {
+      const service = buildService();
+      const asset = await seedUploadForDelete(service, "disk-delete.jpg");
+
+      const filePath = path.join(dataDir, "assets", asset.storedFilename!);
+      expect(fs.existsSync(filePath)).toBe(true);
+
+      service.deleteAsset(asset.id);
+      expect(fs.existsSync(filePath)).toBe(false);
+    });
+
+    it("clears image_asset_id from linked routines", async () => {
+      const service = buildService();
+      const asset = await seedUploadForDelete(service, "routine-clear.jpg");
+
+      db.prepare(
+        `INSERT INTO routines (name, time_slot, completion_rule, image_asset_id) VALUES (?, ?, ?, ?)`
+      ).run("Morning Routine", "morning", "once_per_day", asset.id);
+
+      service.deleteAsset(asset.id);
+
+      const routine = db.prepare(`SELECT image_asset_id FROM routines WHERE name = ?`).get("Morning Routine") as { image_asset_id: number | null };
+      expect(routine.image_asset_id).toBeNull();
+    });
+
+    it("clears image_asset_id from linked rewards", async () => {
+      const service = buildService();
+      const asset = await seedUploadForDelete(service, "reward-clear.jpg");
+
+      db.prepare(
+        `INSERT INTO rewards (name, points_cost, image_asset_id) VALUES (?, ?, ?)`
+      ).run("Ice Cream", 50, asset.id);
+
+      service.deleteAsset(asset.id);
+
+      const reward = db.prepare(`SELECT image_asset_id FROM rewards WHERE name = ?`).get("Ice Cream") as { image_asset_id: number | null };
+      expect(reward.image_asset_id).toBeNull();
+    });
+
+    it("clears image_asset_id from linked checklist items", async () => {
+      const service = buildService();
+      const asset = await seedUploadForDelete(service, "checklist-clear.jpg");
+
+      const routineResult = db.prepare(
+        `INSERT INTO routines (name, time_slot, completion_rule) VALUES (?, ?, ?)`
+      ).run("Test Routine", "morning", "once_per_day");
+
+      db.prepare(
+        `INSERT INTO checklist_items (routine_id, label, image_asset_id) VALUES (?, ?, ?)`
+      ).run(routineResult.lastInsertRowid, "Brush Teeth", asset.id);
+
+      service.deleteAsset(asset.id);
+
+      const item = db.prepare(`SELECT image_asset_id FROM checklist_items WHERE label = ?`).get("Brush Teeth") as { image_asset_id: number | null };
+      expect(item.image_asset_id).toBeNull();
+    });
+
+    it("throws NotFoundError for nonexistent asset", () => {
+      const service = buildService();
+      expect(() => service.deleteAsset(9999)).toThrow(NotFoundError);
+    });
+
+    it("records activity event on deletion", async () => {
+      const service = buildService();
+      const asset = await seedUploadForDelete(service, "activity-test.jpg");
+
+      service.deleteAsset(asset.id);
+
+      const event = db.prepare(`SELECT * FROM activity_events WHERE event_type = 'asset_deleted' AND entity_id = ?`).get(asset.id) as { summary: string } | undefined;
+      expect(event).toBeDefined();
+      expect(event!.summary).toContain("Deleted asset");
+    });
+  });
+
   describe("generateImage", () => {
     let validPngBuffer: Buffer;
 

@@ -31,6 +31,8 @@ export type {
   PendingApprovals,
   BackupManifest,
   Asset,
+  AssetUsage,
+  AssetUsageItem,
   PushSubscribePayload,
 } from "./types.js";
 

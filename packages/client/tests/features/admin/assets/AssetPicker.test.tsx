@@ -306,6 +306,228 @@ describe("AssetPicker", () => {
     expect(getGenerateSubmitButton()).toBeDisabled();
   });
 
+  it("shows delete button on each asset in browse mode", async () => {
+    server.use(
+      http.get("/api/admin/assets", () =>
+        HttpResponse.json({ data: mockAssets }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderAssetPicker();
+
+    await user.click(screen.getByRole("button", { name: "Browse" }));
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("option")).toHaveLength(2);
+    });
+
+    expect(screen.getByRole("button", { name: "Delete photo.jpg" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete Asset 2" })).toBeInTheDocument();
+  });
+
+  it("shows confirmation dialog when delete button is clicked", async () => {
+    server.use(
+      http.get("/api/admin/assets", () =>
+        HttpResponse.json({ data: mockAssets }),
+      ),
+      http.get("/api/admin/assets/1/usage", () =>
+        HttpResponse.json({ data: { assetId: 1, usedBy: [] } }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderAssetPicker();
+
+    await user.click(screen.getByRole("button", { name: "Browse" }));
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("option")).toHaveLength(2);
+    });
+
+    await user.click(screen.getByRole("button", { name: "Delete photo.jpg" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Delete this image permanently?")).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
+  });
+
+  it("shows usage warning when asset is linked to entities", async () => {
+    server.use(
+      http.get("/api/admin/assets", () =>
+        HttpResponse.json({ data: mockAssets }),
+      ),
+      http.get("/api/admin/assets/1/usage", () =>
+        HttpResponse.json({
+          data: {
+            assetId: 1,
+            usedBy: [
+              { entityType: "routine", entityId: 1, entityName: "Morning Routine" },
+              { entityType: "reward", entityId: 2, entityName: "Ice Cream" },
+            ],
+          },
+        }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderAssetPicker();
+
+    await user.click(screen.getByRole("button", { name: "Browse" }));
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("option")).toHaveLength(2);
+    });
+
+    await user.click(screen.getByRole("button", { name: "Delete photo.jpg" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Morning Routine and Ice Cream/u)).toBeInTheDocument();
+      expect(screen.getByText(/clear the image from those items/u)).toBeInTheDocument();
+    });
+  });
+
+  it("deletes asset and refreshes gallery on confirm", async () => {
+    server.use(
+      http.get("/api/admin/assets", () =>
+        HttpResponse.json({ data: mockAssets }),
+      ),
+      http.get("/api/admin/assets/1/usage", () =>
+        HttpResponse.json({ data: { assetId: 1, usedBy: [] } }),
+      ),
+      http.delete("/api/admin/assets/1", () =>
+        HttpResponse.json({ data: { success: true } }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderAssetPicker();
+
+    await user.click(screen.getByRole("button", { name: "Browse" }));
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("option")).toHaveLength(2);
+    });
+
+    await user.click(screen.getByRole("button", { name: "Delete photo.jpg" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Delete this image permanently?")).not.toBeInTheDocument();
+    });
+  });
+
+  it("cancels deletion when cancel is clicked", async () => {
+    server.use(
+      http.get("/api/admin/assets", () =>
+        HttpResponse.json({ data: mockAssets }),
+      ),
+      http.get("/api/admin/assets/1/usage", () =>
+        HttpResponse.json({ data: { assetId: 1, usedBy: [] } }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderAssetPicker();
+
+    await user.click(screen.getByRole("button", { name: "Browse" }));
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("option")).toHaveLength(2);
+    });
+
+    await user.click(screen.getByRole("button", { name: "Delete photo.jpg" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Delete this image permanently?")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.queryByText("Delete this image permanently?")).not.toBeInTheDocument();
+  });
+
+  it("calls onChange with null when the currently-selected asset is deleted", async () => {
+    server.use(
+      http.get("/api/admin/assets", () =>
+        HttpResponse.json({ data: mockAssets }),
+      ),
+      http.get("/api/admin/assets/1/usage", () =>
+        HttpResponse.json({ data: { assetId: 1, usedBy: [] } }),
+      ),
+      http.delete("/api/admin/assets/1", () =>
+        HttpResponse.json({ data: { success: true } }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    const { onChange } = renderAssetPicker({ value: 1 });
+
+    await user.click(screen.getByRole("button", { name: "Browse" }));
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("option")).toHaveLength(2);
+    });
+
+    await user.click(screen.getByRole("button", { name: "Delete photo.jpg" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith(null, null);
+    });
+  });
+
+  it("shows error when delete request fails", async () => {
+    server.use(
+      http.get("/api/admin/assets", () =>
+        HttpResponse.json({ data: mockAssets }),
+      ),
+      http.get("/api/admin/assets/1/usage", () =>
+        HttpResponse.json({ data: { assetId: 1, usedBy: [] } }),
+      ),
+      http.delete("/api/admin/assets/1", () =>
+        HttpResponse.json(
+          { error: { code: "SERVER_ERROR", message: "Delete failed" } },
+          { status: 500 },
+        ),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderAssetPicker();
+
+    await user.click(screen.getByRole("button", { name: "Browse" }));
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("option")).toHaveLength(2);
+    });
+
+    await user.click(screen.getByRole("button", { name: "Delete photo.jpg" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent("Delete failed");
+    });
+  });
+
   it("shows loading state in asset library", async () => {
     server.use(
       http.get("/api/admin/assets", async () => {
