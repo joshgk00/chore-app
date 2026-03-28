@@ -4,6 +4,7 @@ import { Router } from "express";
 import multer from "multer";
 import type { AssetService } from "../services/assetService.js";
 import { AppError, ValidationError } from "../lib/errors.js";
+import { parseIdParam } from "../lib/parse-id-param.js";
 
 export function createAdminAssetsRoutes(
   assetService: AssetService,
@@ -60,12 +61,8 @@ export function createAdminAssetsRoutes(
 
   router.post("/assets/:id/archive", (req, res, next) => {
     try {
-      const idParam = req.params.id;
-      if (!/^\d+$/u.test(idParam)) {
-        throw new ValidationError("Invalid asset ID");
-      }
-
-      assetService.archiveAsset(Number(idParam));
+      const id = parseIdParam(req.params.id, "asset ID");
+      assetService.archiveAsset(id);
       res.json({ data: { success: true } });
     } catch (err) {
       next(err);

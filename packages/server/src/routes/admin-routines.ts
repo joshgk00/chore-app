@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { RoutineService, UpdateRoutineData } from "../services/routineService.js";
 import { ValidationError } from "../lib/errors.js";
+import { parseIdParam } from "../lib/parse-id-param.js";
 
 const VALID_TIME_SLOTS = ["morning", "afternoon", "bedtime", "anytime"];
 const VALID_COMPLETION_RULES = ["once_per_day", "once_per_slot", "unlimited"];
@@ -19,11 +20,8 @@ export function createAdminRoutinesRoutes(routineService: RoutineService) {
 
   router.get("/routines/:id", (req, res, next) => {
     try {
-      const idParam = req.params.id;
-      if (!/^\d+$/.test(idParam)) {
-        throw new ValidationError("Invalid routine ID");
-      }
-      const routine = routineService.getRoutineAdmin(Number(idParam));
+      const id = parseIdParam(req.params.id, "routine ID");
+      const routine = routineService.getRoutineAdmin(id);
       res.json({ data: routine });
     } catch (err) {
       next(err);
@@ -108,10 +106,7 @@ export function createAdminRoutinesRoutes(routineService: RoutineService) {
 
   router.put("/routines/:id", (req, res, next) => {
     try {
-      const idParam = req.params.id;
-      if (!/^\d+$/.test(idParam)) {
-        throw new ValidationError("Invalid routine ID");
-      }
+      const id = parseIdParam(req.params.id, "routine ID");
 
       const { name, timeSlot, completionRule, points, requiresApproval, randomizeItems, sortOrder, items, imageAssetId } = req.body;
 
@@ -192,7 +187,7 @@ export function createAdminRoutinesRoutes(routineService: RoutineService) {
         }));
       }
 
-      const routine = routineService.updateRoutine(Number(idParam), updateData);
+      const routine = routineService.updateRoutine(id, updateData);
       res.json({ data: routine });
     } catch (err) {
       next(err);
@@ -201,11 +196,8 @@ export function createAdminRoutinesRoutes(routineService: RoutineService) {
 
   router.post("/routines/:id/archive", (req, res, next) => {
     try {
-      const idParam = req.params.id;
-      if (!/^\d+$/.test(idParam)) {
-        throw new ValidationError("Invalid routine ID");
-      }
-      routineService.archiveRoutine(Number(idParam));
+      const id = parseIdParam(req.params.id, "routine ID");
+      routineService.archiveRoutine(id);
       res.json({ data: { success: true } });
     } catch (err) {
       next(err);
@@ -214,11 +206,8 @@ export function createAdminRoutinesRoutes(routineService: RoutineService) {
 
   router.post("/routines/:id/unarchive", (req, res, next) => {
     try {
-      const idParam = req.params.id;
-      if (!/^\d+$/.test(idParam)) {
-        throw new ValidationError("Invalid routine ID");
-      }
-      routineService.unarchiveRoutine(Number(idParam));
+      const id = parseIdParam(req.params.id, "routine ID");
+      routineService.unarchiveRoutine(id);
       res.json({ data: { success: true } });
     } catch (err) {
       next(err);
