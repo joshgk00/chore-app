@@ -101,6 +101,7 @@ export default function AdminRoutineForm() {
   const [saveIntent, setSaveIntent] = useState<"save" | "close" | null>(null);
   const successTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const lastItemRef = useRef<HTMLDivElement>(null);
+  const lastItemInputRef = useRef<HTMLInputElement>(null);
   const shouldScrollToNewItem = useRef(false);
 
   useEffect(() => {
@@ -262,8 +263,7 @@ export default function AdminRoutineForm() {
     if (shouldScrollToNewItem.current && lastItemRef.current) {
       shouldScrollToNewItem.current = false;
       lastItemRef.current.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
-      const input = lastItemRef.current.querySelector<HTMLInputElement>("input[type='text']");
-      input?.focus({ preventScroll: true });
+      lastItemInputRef.current?.focus({ preventScroll: true });
     }
   }, [form.items.length]);
 
@@ -556,6 +556,7 @@ export default function AdminRoutineForm() {
                     Checklist item {index + 1}
                   </label>
                   <input
+                    ref={index === form.items.length - 1 ? lastItemInputRef : undefined}
                     id={`item-${item.key}`}
                     type="text"
                     value={item.label}

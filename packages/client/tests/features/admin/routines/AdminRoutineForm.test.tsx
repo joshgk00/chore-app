@@ -281,6 +281,10 @@ describe("AdminRoutineForm", () => {
     await user.click(addButtons()[1]);
     expect(screen.getByLabelText("Checklist item 4")).toBeInTheDocument();
     expect(screen.getByLabelText("Checklist item 4")).toHaveFocus();
+
+    await user.click(screen.getByRole("button", { name: "Remove item 4" }));
+    await user.click(screen.getByRole("button", { name: "Remove item 3" }));
+    expect(addButtons()).toHaveLength(1);
   });
 
   it("shows error state when loading existing routine fails", async () => {
