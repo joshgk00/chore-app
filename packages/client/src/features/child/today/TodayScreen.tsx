@@ -7,6 +7,7 @@ import PointsBadge from "./PointsBadge.js";
 import Mascot from "../../../components/mascot/Mascot.js";
 import { determineMascotState, isRecentApproval } from "../../../components/mascot/mascotStates.js";
 import { hasAnyActiveDraft } from "../../../lib/draft.js";
+import StatusPill from "../../../components/StatusPill.js";
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -116,9 +117,9 @@ export default function TodayScreen() {
           <div className="mt-5 flex items-center gap-2">
             <h2 className="font-display text-lg font-semibold text-[var(--color-text-secondary)]">Your Routines</h2>
             {pendingCount > 0 && (
-              <span className="rounded-full bg-[var(--color-amber-100)] px-2.5 py-0.5 text-[11px] font-bold text-[var(--color-amber-700)]">
+              <StatusPill size="sm">
                 {pendingCount} pending
-              </span>
+              </StatusPill>
             )}
           </div>
 
@@ -134,9 +135,9 @@ export default function TodayScreen() {
         <div className="flex items-center gap-2">
           <h2 className="font-display text-lg font-semibold text-[var(--color-text-secondary)]">Chores</h2>
           {pendingChoreCount > 0 && (
-            <span className="rounded-full bg-[var(--color-amber-100)] px-2.5 py-0.5 text-[11px] font-bold text-[var(--color-amber-700)]">
+            <StatusPill size="sm">
               {pendingChoreCount} pending
-            </span>
+            </StatusPill>
           )}
         </div>
         <div className="mt-3">

@@ -4,6 +4,7 @@ import { formatLocalDate } from "../../../lib/draft-sync.js";
 import { useSubmitRewardRequest } from "./hooks/useSubmitRewardRequest.js";
 import { useCancelRewardRequest } from "./hooks/useCancelRewardRequest.js";
 import type { Reward, RewardRequest } from "@chore-app/shared";
+import StatusPill from "../../../components/StatusPill.js";
 
 interface RewardCardProps {
   reward: Reward;
@@ -61,9 +62,9 @@ export default function RewardCard({ reward, availablePoints, pendingRequest }: 
         )}
         <div className="flex items-center justify-between">
           <h3 className="font-display font-bold text-[var(--color-text)]">{reward.name}</h3>
-          <span className="rounded-full bg-[var(--color-amber-100)] px-2.5 py-0.5 text-xs font-bold text-[var(--color-amber-700)]">
+          <StatusPill size="sm">
             Pending
-          </span>
+          </StatusPill>
         </div>
         <p className="mt-1 text-sm text-[var(--color-text-muted)]">{reward.pointsCost} pts</p>
         <button
