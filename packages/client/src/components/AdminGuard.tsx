@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { api } from "../api/client.js";
 
 export default function AdminGuard() {
   const [status, setStatus] = useState<"loading" | "authenticated" | "unauthenticated">("loading");
+  const location = useLocation();
 
   useEffect(() => {
     api.get<{ valid: boolean }>("/api/auth/session").then((result) => {
@@ -20,7 +21,8 @@ export default function AdminGuard() {
   }
 
   if (status === "unauthenticated") {
-    return <Navigate to="/admin/pin" replace />;
+    const returnTo = location.pathname + location.search;
+    return <Navigate to={`/admin/pin?returnTo=${encodeURIComponent(returnTo)}`} replace />;
   }
 
   return <Outlet />;

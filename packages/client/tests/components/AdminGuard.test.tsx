@@ -1,9 +1,20 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, useSearchParams } from 'react-router-dom';
 import { http, HttpResponse, delay } from 'msw';
 import { server } from '../msw/server.js';
 import AdminGuard from '../../src/components/AdminGuard.js';
+
+function PinPage() {
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get('returnTo');
+  return (
+    <div data-testid="pin-page">
+      PIN Entry
+      {returnTo && <span data-testid="return-to">{returnTo}</span>}
+    </div>
+  );
+}
 
 function renderWithRouter(initialRoute = '/admin') {
   return render(
@@ -11,8 +22,9 @@ function renderWithRouter(initialRoute = '/admin') {
       <Routes>
         <Route element={<AdminGuard />}>
           <Route path="/admin" element={<div data-testid="admin-content">Admin Page</div>} />
+          <Route path="/admin/chores" element={<div data-testid="admin-content">Chores Page</div>} />
         </Route>
-        <Route path="/admin/pin" element={<div data-testid="pin-page">PIN Entry</div>} />
+        <Route path="/admin/pin" element={<PinPage />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -77,5 +89,23 @@ describe('AdminGuard', () => {
     await waitFor(() => {
       expect(screen.getByTestId('pin-page')).toBeInTheDocument();
     });
+  });
+
+  it('includes returnTo param when redirecting to PIN entry', async () => {
+    server.use(
+      http.get('/api/auth/session', () =>
+        HttpResponse.json(
+          { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
+          { status: 401 },
+        ),
+      ),
+    );
+
+    renderWithRouter('/admin/chores');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pin-page')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('return-to')).toHaveTextContent('/admin/chores');
   });
 });
