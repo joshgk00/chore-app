@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { ApprovalService } from "../services/approvalService.js";
 import { ValidationError } from "../lib/errors.js";
+import { parseIdParam } from "../lib/parse-id-param.js";
 
 const ALLOWED_TYPES = ["routine-completion", "chore-log", "reward-request"] as const;
 
@@ -8,10 +9,7 @@ function parseApprovalParams(params: { type: string; id: string }) {
   if (!ALLOWED_TYPES.includes(params.type as (typeof ALLOWED_TYPES)[number])) {
     throw new ValidationError("Invalid approval type");
   }
-  if (!/^\d+$/.test(params.id)) {
-    throw new ValidationError("Invalid ID");
-  }
-  return { type: params.type as (typeof ALLOWED_TYPES)[number], id: Number(params.id) };
+  return { type: params.type as (typeof ALLOWED_TYPES)[number], id: parseIdParam(params.id) };
 }
 
 function parseReviewNote(body: Record<string, unknown>): string | undefined {

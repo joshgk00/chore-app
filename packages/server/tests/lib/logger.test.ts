@@ -19,8 +19,10 @@ function removeTempDir(dir: string): void {
 describe("initLogger", () => {
   const tempDirs: string[] = [];
 
-  afterEach(() => {
+  afterEach(async () => {
     shutdownLogger();
+    // Allow the file stream to fully close before removing temp dirs
+    await new Promise((resolve) => setTimeout(resolve, 50));
     for (const dir of tempDirs) {
       removeTempDir(dir);
     }

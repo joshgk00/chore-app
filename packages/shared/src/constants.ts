@@ -52,6 +52,7 @@ export const ACTIVITY_EVENT_TYPES = [
   "asset_uploaded",
   "asset_generated",
   "asset_archived",
+  "asset_deleted",
   "backup_exported",
   "backup_restored",
 ] as const;
@@ -65,3 +66,16 @@ export const RECENT_APPROVAL_WINDOW_MS = 10 * 60 * 1000;
 
 // Push subscription caps
 export const MAX_PUSH_SUBSCRIPTIONS_PER_IP = 10;
+
+// Image generation models
+export const IMAGE_MODELS = [
+  { id: "flux-2-flex", label: "Flux 2 Flex" },
+  { id: "flux-2-pro", label: "Flux 2 Pro" },
+  { id: "nano-banana-pro", label: "Nano Banana Pro" },
+  { id: "gpt-image-1", label: "GPT Image 1 (4o)" },
+  { id: "gpt-image-1.5", label: "GPT Image 1.5" },
+] as const;
+
+export type ImageModelId = (typeof IMAGE_MODELS)[number]["id"];
+
+export const DEFAULT_IMAGE_MODEL: ImageModelId = "nano-banana-pro";

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { RewardService, UpdateRewardData } from "../services/rewardService.js";
 import { ValidationError } from "../lib/errors.js";
+import { parseIdParam } from "../lib/parse-id-param.js";
 
 export function createAdminRewardsRoutes(rewardService: RewardService) {
   const router = Router();
@@ -16,11 +17,8 @@ export function createAdminRewardsRoutes(rewardService: RewardService) {
 
   router.get("/rewards/:id", (req, res, next) => {
     try {
-      const idParam = req.params.id;
-      if (!/^\d+$/.test(idParam)) {
-        throw new ValidationError("Invalid reward ID");
-      }
-      const reward = rewardService.getRewardAdmin(Number(idParam));
+      const id = parseIdParam(req.params.id, "reward ID");
+      const reward = rewardService.getRewardAdmin(id);
       res.json({ data: reward });
     } catch (err) {
       next(err);
@@ -63,10 +61,7 @@ export function createAdminRewardsRoutes(rewardService: RewardService) {
 
   router.put("/rewards/:id", (req, res, next) => {
     try {
-      const idParam = req.params.id;
-      if (!/^\d+$/.test(idParam)) {
-        throw new ValidationError("Invalid reward ID");
-      }
+      const id = parseIdParam(req.params.id, "reward ID");
 
       const { name, pointsCost, sortOrder, imageAssetId } = req.body;
 
@@ -93,7 +88,7 @@ export function createAdminRewardsRoutes(rewardService: RewardService) {
       if (sortOrder !== undefined) updateData.sortOrder = sortOrder;
       if (imageAssetId !== undefined) updateData.imageAssetId = imageAssetId;
 
-      const reward = rewardService.updateReward(Number(idParam), updateData);
+      const reward = rewardService.updateReward(id, updateData);
       res.json({ data: reward });
     } catch (err) {
       next(err);
@@ -102,11 +97,8 @@ export function createAdminRewardsRoutes(rewardService: RewardService) {
 
   router.post("/rewards/:id/archive", (req, res, next) => {
     try {
-      const idParam = req.params.id;
-      if (!/^\d+$/.test(idParam)) {
-        throw new ValidationError("Invalid reward ID");
-      }
-      rewardService.archiveReward(Number(idParam));
+      const id = parseIdParam(req.params.id, "reward ID");
+      rewardService.archiveReward(id);
       res.json({ data: { success: true } });
     } catch (err) {
       next(err);
@@ -115,11 +107,8 @@ export function createAdminRewardsRoutes(rewardService: RewardService) {
 
   router.post("/rewards/:id/unarchive", (req, res, next) => {
     try {
-      const idParam = req.params.id;
-      if (!/^\d+$/.test(idParam)) {
-        throw new ValidationError("Invalid reward ID");
-      }
-      rewardService.unarchiveReward(Number(idParam));
+      const id = parseIdParam(req.params.id, "reward ID");
+      rewardService.unarchiveReward(id);
       res.json({ data: { success: true } });
     } catch (err) {
       next(err);

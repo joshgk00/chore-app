@@ -4,6 +4,7 @@ import { Router } from "express";
 import multer from "multer";
 import type { AssetService } from "../services/assetService.js";
 import { AppError, ValidationError } from "../lib/errors.js";
+import { parseIdParam } from "../lib/parse-id-param.js";
 
 export function createAdminAssetsRoutes(
   assetService: AssetService,
@@ -60,12 +61,45 @@ export function createAdminAssetsRoutes(
 
   router.post("/assets/:id/archive", (req, res, next) => {
     try {
+      const id = parseIdParam(req.params.id, "asset ID");
+      assetService.archiveAsset(id);
+      res.json({ data: { success: true } });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.get("/assets/:id/usage", (req, res, next) => {
+    try {
       const idParam = req.params.id;
       if (!/^\d+$/u.test(idParam)) {
         throw new ValidationError("Invalid asset ID");
       }
 
-      assetService.archiveAsset(Number(idParam));
+      const usage = assetService.getAssetUsage(Number(idParam));
+      res.json({
+        data: {
+          assetId: Number(idParam),
+          usedBy: usage.map((u) => ({
+            entityType: u.entity_type,
+            entityId: u.entity_id,
+            entityName: u.entity_name,
+          })),
+        },
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.delete("/assets/:id", (req, res, next) => {
+    try {
+      const idParam = req.params.id;
+      if (!/^\d+$/u.test(idParam)) {
+        throw new ValidationError("Invalid asset ID");
+      }
+
+      assetService.deleteAsset(Number(idParam));
       res.json({ data: { success: true } });
     } catch (err) {
       next(err);

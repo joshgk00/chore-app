@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
+import { queryKeys } from "../../../lib/query-keys.js";
 
 interface SettingsResponse {
   [key: string]: string;
@@ -12,7 +13,7 @@ interface SettingsResponse {
  */
 export function useAdminTimezone(): string {
   const query = useQuery({
-    queryKey: ["admin", "settings"],
+    queryKey: queryKeys.admin.settings(),
     queryFn: async () => {
       const result = await api.get<SettingsResponse>("/api/admin/settings");
       if (!result.ok) throw result.error;

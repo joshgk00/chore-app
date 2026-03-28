@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useOnline } from "../../../contexts/OnlineContext.js";
+import { notifyAdminAuthError } from "../../../api/client.js";
 
 export default function BackupSettings() {
   const isOnline = useOnline();
@@ -23,13 +24,15 @@ export default function BackupSettings() {
     setExportError(null);
     setExportSuccess(false);
 
+    const exportUrl = "/api/admin/export";
     try {
-      const response = await fetch("/api/admin/export", {
+      const response = await fetch(exportUrl, {
         method: "POST",
         credentials: "same-origin",
       });
 
       if (!response.ok) {
+        notifyAdminAuthError(exportUrl, response.status);
         throw new Error("Export failed");
       }
 
@@ -75,17 +78,19 @@ export default function BackupSettings() {
     setIsRestoring(true);
     setRestoreError(null);
 
+    const url = "/api/admin/restore";
     try {
       const formData = new FormData();
       formData.append("backup", selectedFile);
 
-      const response = await fetch("/api/admin/restore", {
+      const response = await fetch(url, {
         method: "POST",
         credentials: "same-origin",
         body: formData,
       });
 
       if (!response.ok) {
+        notifyAdminAuthError(url, response.status);
         const body = await response.json().catch(() => null);
         throw new Error(body?.error?.message ?? "Restore failed");
       }

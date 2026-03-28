@@ -6,7 +6,9 @@ import { useChecklist } from "./hooks/useChecklist.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
 import { saveDraft, deleteDraft } from "../../../lib/draft.js";
 import ChecklistItem from "./ChecklistItem.js";
+import StatusPill from "../../../components/StatusPill.js";
 
+const CELEBRATION_DELAY_MS = 2000;
 const NAVIGATION_DELAY_MS = 1500;
 
 export default function RoutineChecklist() {
@@ -42,7 +44,7 @@ export default function RoutineChecklist() {
   }, []);
 
   const handleSubmit = useCallback(async () => {
-    if (!routine || !isAllChecked || !isOnline || submitRoutine.isPending) return;
+    if (!routine || !isAllChecked || !isOnline || submitRoutine.isPending || isShowingCelebration) return;
 
     const checklistSnapshot = JSON.stringify(
       draftItems.map((item) => ({
@@ -67,7 +69,7 @@ export default function RoutineChecklist() {
         onSuccess: async () => {
           try { await deleteDraft(routine.id); } catch { /* IndexedDB unavailable */ }
           setIsShowingCelebration(true);
-          navigationTimeoutRef.current = setTimeout(() => navigate("/today"), 800);
+          navigationTimeoutRef.current = setTimeout(() => navigate("/today"), CELEBRATION_DELAY_MS);
         },
         onError: async (error: unknown) => {
           const apiError = error && typeof error === "object" && "code" in error
@@ -104,7 +106,7 @@ export default function RoutineChecklist() {
         },
       },
     );
-  }, [routine, draftItems, isAllChecked, isOnline, idempotencyKey, localDate, randomizedOrder, submitRoutine, navigate, showToast]);
+  }, [routine, draftItems, isAllChecked, isOnline, isShowingCelebration, idempotencyKey, localDate, randomizedOrder, submitRoutine, navigate, showToast]);
 
   if (routineError) {
     return (
@@ -144,6 +146,11 @@ export default function RoutineChecklist() {
 
   const routineItemsById = new Map(routine.items.map((item) => [item.id, item]));
 
+  const completion = submitRoutine.data;
+  const completionMessage = completion
+    ? `+${completion.pointsSnapshot} ${completion.pointsSnapshot === 1 ? "pt" : "pts"} ${completion.requiresApprovalSnapshot ? "pending approval" : "earned!"}`
+    : null;
+
   return (
     <div className="flex h-[calc(100dvh-4rem-env(safe-area-inset-bottom,0px))] flex-col bg-[var(--color-bg)]">
       <div aria-live="assertive" role="status" className="fixed left-4 right-4 top-4 z-50 pointer-events-none">
@@ -169,9 +176,9 @@ export default function RoutineChecklist() {
             <h1 className="font-display text-xl font-bold text-[var(--color-text)]">{routine.name}</h1>
           </div>
 
-          <span className="rounded-full bg-[var(--color-amber-100)] px-3 py-1 text-sm font-bold text-[var(--color-amber-700)]">
+          <StatusPill>
             {routine.points} {routine.points === 1 ? "pt" : "pts"}
-          </span>
+          </StatusPill>
         </div>
 
         <div className="mt-2 flex items-center justify-between">
@@ -231,7 +238,7 @@ export default function RoutineChecklist() {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={!isAllChecked || !isOnline || submitRoutine.isPending}
+            disabled={!isAllChecked || !isOnline || submitRoutine.isPending || isShowingCelebration}
             title={!isOnline ? "You're offline" : undefined}
             className="w-full rounded-full bg-[var(--color-emerald-500)] px-6 py-4 font-display text-lg font-bold text-white shadow-card transition-all duration-200 enabled:hover:bg-[var(--color-emerald-600)] enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
           >
@@ -250,12 +257,17 @@ export default function RoutineChecklist() {
 
       {isShowingCelebration && (
         <div
-          className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
+          className="pointer-events-none fixed inset-0 z-50 flex flex-col items-center justify-center gap-3"
           aria-live="polite"
         >
           <p className="animate-tab-enter font-display text-4xl font-bold text-[var(--color-emerald-500)]" data-emoji>
             &#127881;
           </p>
+          {completionMessage && (
+            <p className="animate-tab-enter font-display text-xl font-bold text-[var(--color-text)]">
+              {completionMessage}
+            </p>
+          )}
         </div>
       )}
     </div>

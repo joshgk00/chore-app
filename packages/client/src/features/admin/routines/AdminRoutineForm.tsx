@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
+import { queryKeys } from "../../../lib/query-keys.js";
 import HelpTip from "../../../components/HelpTip.js";
 import AssetPicker from "../assets/AssetPicker.js";
 import type { Routine, TimeSlot, CompletionRule } from "@chore-app/shared";
@@ -62,7 +63,7 @@ const COMPLETION_RULE_OPTIONS: { value: CompletionRule; label: string }[] = [
 
 function useExistingRoutine(id: string | undefined) {
   return useQuery({
-    queryKey: ["admin", "routines", id],
+    queryKey: queryKeys.admin.routine(id),
     queryFn: async () => {
       const result = await api.get<Routine>(`/api/admin/routines/${id}`);
       if (!result.ok) throw result.error;
@@ -99,6 +100,9 @@ export default function AdminRoutineForm() {
   const [isSaveSuccess, setSaveSuccess] = useState(false);
   const [saveIntent, setSaveIntent] = useState<"save" | "close" | null>(null);
   const successTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const lastItemRef = useRef<HTMLDivElement>(null);
+  const lastItemInputRef = useRef<HTMLInputElement>(null);
+  const shouldScrollToNewItem = useRef(false);
 
   useEffect(() => {
     return () => clearTimeout(successTimerRef.current);
@@ -154,7 +158,7 @@ export default function AdminRoutineForm() {
       return result.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "routines"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.routines() });
     },
   });
 
@@ -193,7 +197,7 @@ export default function AdminRoutineForm() {
       return result.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "routines"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.routines() });
     },
   });
 
@@ -242,6 +246,7 @@ export default function AdminRoutineForm() {
   }
 
   function addItem() {
+    shouldScrollToNewItem.current = true;
     setForm((prev) => ({
       ...prev,
       items: [
@@ -253,6 +258,14 @@ export default function AdminRoutineForm() {
       setErrors((prev) => ({ ...prev, items: undefined }));
     }
   }
+
+  useEffect(() => {
+    if (shouldScrollToNewItem.current && lastItemRef.current) {
+      shouldScrollToNewItem.current = false;
+      lastItemRef.current.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+      lastItemInputRef.current?.focus({ preventScroll: true });
+    }
+  }, [form.items.length]);
 
   function removeItem(key: string) {
     setForm((prev) => ({
@@ -508,7 +521,11 @@ export default function AdminRoutineForm() {
 
           <div className="mt-4 space-y-4" aria-describedby={errors.items ? "items-error" : undefined}>
             {form.items.map((item, index) => (
-              <div key={item.key} className="space-y-2 rounded-xl border border-[var(--color-border)] p-3">
+              <div
+                key={item.key}
+                ref={index === form.items.length - 1 ? lastItemRef : undefined}
+                className="space-y-2 rounded-xl border border-[var(--color-border)] p-3"
+              >
                 <div className="flex items-center gap-2">
                   <div className="flex flex-col">
                     <button
@@ -539,6 +556,7 @@ export default function AdminRoutineForm() {
                     Checklist item {index + 1}
                   </label>
                   <input
+                    ref={index === form.items.length - 1 ? lastItemInputRef : undefined}
                     id={`item-${item.key}`}
                     type="text"
                     value={item.label}
@@ -575,6 +593,16 @@ export default function AdminRoutineForm() {
               </div>
             ))}
           </div>
+
+          {form.items.length >= 3 && (
+            <button
+              type="button"
+              onClick={addItem}
+              className="mt-4 w-full min-h-touch rounded-lg border border-dashed border-[var(--color-border)] px-3 py-2 text-sm font-medium text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-text-secondary)] hover:text-[var(--color-text-secondary)]"
+            >
+              + Add Item
+            </button>
+          )}
         </div>
 
         {mutation.error && (

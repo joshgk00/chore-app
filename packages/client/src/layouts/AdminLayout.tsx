@@ -2,6 +2,7 @@ import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-do
 import { useQueryClient } from "@tanstack/react-query";
 import { ErrorBoundary } from "../components/ErrorBoundary.js";
 import { api } from "../api/client.js";
+import { useAuthErrorRedirect } from "../hooks/useAuthErrorRedirect.js";
 
 const adminLinks = [
   { to: "/admin", label: "Dashboard", end: true },
@@ -39,6 +40,7 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const location = useLocation();
+  useAuthErrorRedirect();
 
   async function handleLogout() {
     try {

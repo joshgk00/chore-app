@@ -31,8 +31,12 @@ export type {
   PendingApprovals,
   BackupManifest,
   Asset,
+  AssetUsage,
+  AssetUsageItem,
   PushSubscribePayload,
 } from "./types.js";
+
+export type { ImageModelId } from "./constants.js";
 
 export {
   DEFAULT_TIME_SLOTS,
@@ -49,4 +53,6 @@ export {
   SUBMISSION_RATE_LIMIT_WINDOW_SECONDS,
   RECENT_APPROVAL_WINDOW_MS,
   MAX_PUSH_SUBSCRIPTIONS_PER_IP,
+  IMAGE_MODELS,
+  DEFAULT_IMAGE_MODEL,
 } from "./constants.js";

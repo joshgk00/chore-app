@@ -4,13 +4,14 @@ import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import type Database from "better-sqlite3";
 import type { ActivityService } from "./activityService.js";
+import { DEFAULT_IMAGE_MODEL, IMAGE_MODELS } from "@chore-app/shared";
 import { AppError, NotFoundError, ValidationError } from "../lib/errors.js";
 import { getLogger } from "../lib/logger.js";
 
+const VALID_MODEL_IDS: Set<string> = new Set(IMAGE_MODELS.map((m) => m.id));
 const ACCEPTED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 const MAX_LONG_EDGE_PX = 1200;
-const DEFAULT_GENERATION_MODEL = "nano-banana-pro";
 const PPQ_API_BASE_URL = "https://api.ppq.ai/v1";
 const GENERATION_TIMEOUT_MS = 60_000;
 const DOWNLOAD_TIMEOUT_MS = 30_000;
@@ -61,11 +62,19 @@ export interface UploadFile {
   size: number;
 }
 
+export interface AssetUsageRow {
+  entity_type: string;
+  entity_id: number;
+  entity_name: string;
+}
+
 export interface AssetService {
   processUpload(file: UploadFile): Promise<Asset>;
   generateImage(prompt: string, model: string | undefined, apiKey: string): Promise<Asset>;
   getAssets(filters?: AssetFilters): Asset[];
   archiveAsset(id: number): void;
+  getAssetUsage(id: number): AssetUsageRow[];
+  deleteAsset(id: number): void;
 }
 
 function detectMimeType(buffer: Buffer): string | null {
@@ -282,6 +291,19 @@ export function createAssetService(
 
   const selectByIdStmt = db.prepare(`SELECT * FROM assets WHERE id = ?`);
 
+  const selectUsageStmt = db.prepare(`
+    SELECT 'routine' AS entity_type, id AS entity_id, name AS entity_name FROM routines WHERE image_asset_id = ?
+    UNION ALL
+    SELECT 'checklist_item' AS entity_type, ci.id AS entity_id, ci.label AS entity_name FROM checklist_items ci WHERE ci.image_asset_id = ?
+    UNION ALL
+    SELECT 'reward' AS entity_type, id AS entity_id, name AS entity_name FROM rewards WHERE image_asset_id = ?
+  `);
+
+  const clearRoutineAssetStmt = db.prepare(`UPDATE routines SET image_asset_id = NULL WHERE image_asset_id = ?`);
+  const clearChecklistItemAssetStmt = db.prepare(`UPDATE checklist_items SET image_asset_id = NULL WHERE image_asset_id = ?`);
+  const clearRewardAssetStmt = db.prepare(`UPDATE rewards SET image_asset_id = NULL WHERE image_asset_id = ?`);
+  const deleteAssetStmt = db.prepare(`DELETE FROM assets WHERE id = ?`);
+
   async function processUpload(file: UploadFile): Promise<Asset> {
     const assetsDir = path.join(dataDir, "assets");
     fs.mkdirSync(assetsDir, { recursive: true });
@@ -351,7 +373,10 @@ export function createAssetService(
     fs.mkdirSync(assetsDir, { recursive: true });
     fs.mkdirSync(tempDir, { recursive: true });
 
-    const resolvedModel = model ?? DEFAULT_GENERATION_MODEL;
+    const resolvedModel = model ?? DEFAULT_IMAGE_MODEL;
+    if (!VALID_MODEL_IDS.has(resolvedModel)) {
+      throw new ValidationError(`Unknown image model: ${resolvedModel}`);
+    }
     const imageBytes = await fetchGeneratedImageBytes(prompt, resolvedModel, apiKey);
 
     const tempPath = path.join(tempDir, `${randomUUID()}.tmp`);
@@ -433,5 +458,47 @@ export function createAssetService(
     });
   }
 
-  return { processUpload, generateImage, getAssets, archiveAsset };
+  function getAssetUsage(id: number): AssetUsageRow[] {
+    const asset = selectByIdStmt.get(id) as AssetRow | undefined;
+    if (!asset) {
+      throw new NotFoundError("Asset not found");
+    }
+    return selectUsageStmt.all(id, id, id) as AssetUsageRow[];
+  }
+
+  const deleteAssetTransaction = db.transaction((id: number) => {
+    const asset = selectByIdStmt.get(id) as AssetRow | undefined;
+    if (!asset) {
+      throw new NotFoundError("Asset not found");
+    }
+
+    clearRoutineAssetStmt.run(id);
+    clearChecklistItemAssetStmt.run(id);
+    clearRewardAssetStmt.run(id);
+    deleteAssetStmt.run(id);
+
+    if (asset.stored_filename) {
+      const filePath = path.join(dataDir, "assets", asset.stored_filename);
+      try {
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      } catch {
+        // File cleanup is best-effort; the DB record is already gone
+      }
+    }
+
+    activityService.recordActivity({
+      eventType: "asset_deleted",
+      entityType: "asset",
+      entityId: id,
+      summary: `Deleted asset: ${asset.stored_filename}`,
+    });
+  });
+
+  function deleteAsset(id: number): void {
+    deleteAssetTransaction(id);
+  }
+
+  return { processUpload, generateImage, getAssets, archiveAsset, getAssetUsage, deleteAsset };
 }

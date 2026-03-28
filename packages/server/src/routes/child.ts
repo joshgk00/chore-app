@@ -6,7 +6,7 @@ import type { PointsService } from "../services/pointsService.js";
 import type { BadgeService } from "../services/badgeService.js";
 import type { ActivityService } from "../services/activityService.js";
 import type { SettingsService } from "../services/settingsService.js";
-import { ValidationError } from "../lib/errors.js";
+import { parseIdParam } from "../lib/parse-id-param.js";
 import { isRoutineVisible, resolveSlotContext } from "../lib/timeSlots.js";
 
 export function createChildRoutes(
@@ -31,11 +31,7 @@ export function createChildRoutes(
 
   router.get("/routines/:id", (req, res, next) => {
     try {
-      const idParam = req.params.id;
-      if (!/^\d+$/.test(idParam)) {
-        throw new ValidationError("Invalid routine ID");
-      }
-      const id = Number(idParam);
+      const id = parseIdParam(req.params.id, "routine ID");
       const routine = routineService.getRoutineById(id);
       res.json({ data: routine });
     } catch (err) {

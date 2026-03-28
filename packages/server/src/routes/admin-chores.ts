@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { ChoreService, UpdateChoreData } from "../services/choreService.js";
 import { ValidationError } from "../lib/errors.js";
+import { parseIdParam } from "../lib/parse-id-param.js";
 
 export function createAdminChoresRoutes(choreService: ChoreService) {
   const router = Router();
@@ -16,11 +17,8 @@ export function createAdminChoresRoutes(choreService: ChoreService) {
 
   router.get("/chores/:id", (req, res, next) => {
     try {
-      const idParam = req.params.id;
-      if (!/^\d+$/.test(idParam)) {
-        throw new ValidationError("Invalid chore ID");
-      }
-      const chore = choreService.getChoreAdmin(Number(idParam));
+      const id = parseIdParam(req.params.id, "chore ID");
+      const chore = choreService.getChoreAdmin(id);
       res.json({ data: chore });
     } catch (err) {
       next(err);
@@ -83,10 +81,7 @@ export function createAdminChoresRoutes(choreService: ChoreService) {
 
   router.put("/chores/:id", (req, res, next) => {
     try {
-      const idParam = req.params.id;
-      if (!/^\d+$/.test(idParam)) {
-        throw new ValidationError("Invalid chore ID");
-      }
+      const id = parseIdParam(req.params.id, "chore ID");
 
       const { name, requiresApproval, sortOrder, tiers } = req.body;
 
@@ -145,7 +140,7 @@ export function createAdminChoresRoutes(choreService: ChoreService) {
         }));
       }
 
-      const chore = choreService.updateChore(Number(idParam), updateData);
+      const chore = choreService.updateChore(id, updateData);
       res.json({ data: chore });
     } catch (err) {
       next(err);
@@ -154,11 +149,8 @@ export function createAdminChoresRoutes(choreService: ChoreService) {
 
   router.post("/chores/:id/archive", (req, res, next) => {
     try {
-      const idParam = req.params.id;
-      if (!/^\d+$/.test(idParam)) {
-        throw new ValidationError("Invalid chore ID");
-      }
-      choreService.archiveChore(Number(idParam));
+      const id = parseIdParam(req.params.id, "chore ID");
+      choreService.archiveChore(id);
       res.json({ data: { success: true } });
     } catch (err) {
       next(err);
@@ -167,11 +159,8 @@ export function createAdminChoresRoutes(choreService: ChoreService) {
 
   router.post("/chores/:id/unarchive", (req, res, next) => {
     try {
-      const idParam = req.params.id;
-      if (!/^\d+$/.test(idParam)) {
-        throw new ValidationError("Invalid chore ID");
-      }
-      choreService.unarchiveChore(Number(idParam));
+      const id = parseIdParam(req.params.id, "chore ID");
+      choreService.unarchiveChore(id);
       res.json({ data: { success: true } });
     } catch (err) {
       next(err);

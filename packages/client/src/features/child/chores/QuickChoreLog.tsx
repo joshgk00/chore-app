@@ -6,7 +6,9 @@ import { useCancelChoreLog } from "./hooks/useCancelChoreLog.js";
 import { useChoreLogStatus } from "./hooks/useChoreLogStatus.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
 import { formatLocalDate } from "../../../lib/draft-sync.js";
+import { invalidatePointsRelated } from "../../../lib/query-keys.js";
 import type { Chore, ChoreTier, ChoreLog } from "@chore-app/shared";
+import StatusPill from "../../../components/StatusPill.js";
 
 export default function QuickChoreLog() {
   const [isOpen, setIsOpen] = useState(false);
@@ -25,9 +27,7 @@ export default function QuickChoreLog() {
   useEffect(() => {
     if (polledLog && polledLog.status !== "pending") {
       setRecentLog(polledLog);
-      queryClient.invalidateQueries({ queryKey: ["bootstrap"] });
-      queryClient.invalidateQueries({ queryKey: ["points"] });
-      queryClient.invalidateQueries({ queryKey: ["ledger"] });
+      invalidatePointsRelated(queryClient);
     }
   }, [polledLog, queryClient]);
 
@@ -221,9 +221,9 @@ export default function QuickChoreLog() {
               className="flex w-full items-center justify-between rounded-xl bg-[var(--color-surface-muted)] px-4 py-3 text-left transition-all duration-200 hover:bg-[var(--color-emerald-50)] hover:ring-1 hover:ring-[var(--color-emerald-400)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <span className="font-medium text-[var(--color-text-secondary)]">{tier.name}</span>
-              <span className="rounded-full bg-[var(--color-amber-100)] px-2.5 py-0.5 text-sm font-bold text-[var(--color-amber-700)]">
+              <StatusPill>
                 +{tier.points} pts
-              </span>
+              </StatusPill>
             </button>
           ))}
 

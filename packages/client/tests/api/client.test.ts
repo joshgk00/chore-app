@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { api } from '../../src/api/client.js';
+import { api, setOnAuthError, notifyAdminAuthError } from '../../src/api/client.js';
 import { server } from '../msw/server.js';
 
 describe('api client', () => {
@@ -207,6 +207,138 @@ describe('api client', () => {
       });
 
       vi.useRealTimers();
+    });
+  });
+
+  describe('auth error handler', () => {
+    afterEach(() => {
+      setOnAuthError(null);
+    });
+
+    it('calls onAuthError for 401 on admin endpoints', async () => {
+      const handler = vi.fn();
+      setOnAuthError(handler);
+
+      server.use(
+        http.get('/api/admin/chores', () =>
+          HttpResponse.json(
+            { error: { code: 'UNAUTHORIZED', message: 'Session expired' } },
+            { status: 401 },
+          ),
+        ),
+      );
+
+      await api.get('/api/admin/chores');
+
+      expect(handler).toHaveBeenCalledWith('/api/admin/chores');
+    });
+
+    it('does not call onAuthError for 401 on non-admin endpoints', async () => {
+      const handler = vi.fn();
+      setOnAuthError(handler);
+
+      server.use(
+        http.post('/api/auth/verify', () =>
+          HttpResponse.json(
+            { error: { code: 'UNAUTHORIZED', message: 'Invalid credentials' } },
+            { status: 401 },
+          ),
+        ),
+      );
+
+      await api.post('/api/auth/verify', { pin: 'wrong' });
+
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('does not call onAuthError for non-401 errors on admin endpoints', async () => {
+      const handler = vi.fn();
+      setOnAuthError(handler);
+
+      server.use(
+        http.get('/api/admin/chores', () =>
+          HttpResponse.json(
+            { error: { code: 'INTERNAL_ERROR', message: 'Server error' } },
+            { status: 500 },
+          ),
+        ),
+      );
+
+      await api.get('/api/admin/chores');
+
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('still returns the error result when onAuthError is called', async () => {
+      setOnAuthError(vi.fn());
+
+      server.use(
+        http.get('/api/admin/settings', () =>
+          HttpResponse.json(
+            { error: { code: 'UNAUTHORIZED', message: 'Session expired' } },
+            { status: 401 },
+          ),
+        ),
+      );
+
+      const result = await api.get('/api/admin/settings');
+
+      expect(result).toEqual({
+        ok: false,
+        error: { code: 'UNAUTHORIZED', message: 'Session expired' },
+      });
+    });
+
+    it('does not throw when no onAuthError handler is set', async () => {
+      server.use(
+        http.get('/api/admin/chores', () =>
+          HttpResponse.json(
+            { error: { code: 'UNAUTHORIZED', message: 'Session expired' } },
+            { status: 401 },
+          ),
+        ),
+      );
+
+      const result = await api.get('/api/admin/chores');
+
+      expect(result.ok).toBe(false);
+    });
+  });
+
+  describe('notifyAdminAuthError', () => {
+    afterEach(() => {
+      setOnAuthError(null);
+    });
+
+    it('calls onAuthError for 401 on admin endpoints', () => {
+      const handler = vi.fn();
+      setOnAuthError(handler);
+
+      notifyAdminAuthError('/api/admin/export', 401);
+
+      expect(handler).toHaveBeenCalledWith('/api/admin/export');
+    });
+
+    it('does not call onAuthError for non-401 status', () => {
+      const handler = vi.fn();
+      setOnAuthError(handler);
+
+      notifyAdminAuthError('/api/admin/export', 500);
+
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('does not call onAuthError for non-admin endpoints', () => {
+      const handler = vi.fn();
+      setOnAuthError(handler);
+
+      notifyAdminAuthError('/api/auth/verify', 401);
+
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('does not throw when no handler is set', () => {
+      expect(() => notifyAdminAuthError('/api/admin/export', 401)).not.toThrow();
     });
   });
 });
