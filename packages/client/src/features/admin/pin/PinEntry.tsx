@@ -1,7 +1,11 @@
 import { useState, useRef, useEffect, type FormEvent } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
+
+function isValidReturnPath(path: string): boolean {
+  return path === "/admin" || path.startsWith("/admin/");
+}
 
 export default function PinEntry() {
   const [pin, setPin] = useState("");
@@ -9,7 +13,9 @@ export default function PinEntry() {
   const [loading, setLoading] = useState(false);
   const isOnline = useOnline();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const pinRef = useRef<HTMLInputElement>(null);
+  const returnTo = searchParams.get("returnTo");
 
   useEffect(() => {
     pinRef.current?.focus();
@@ -25,7 +31,8 @@ export default function PinEntry() {
     setLoading(false);
 
     if (result.ok) {
-      navigate("/admin", { replace: true });
+      const destination = returnTo && isValidReturnPath(returnTo) ? returnTo : "/admin";
+      navigate(destination, { replace: true });
     } else {
       if (result.error.code === "TOO_MANY_REQUESTS") {
         setError("Too many attempts. Please wait before trying again.");
@@ -52,6 +59,12 @@ export default function PinEntry() {
 
         <h1 className="mt-5 font-display text-2xl font-bold text-[var(--color-text)]">Admin Access</h1>
         <p className="mt-1 text-sm text-[var(--color-text-muted)]">Enter your PIN to manage chores</p>
+
+        {returnTo && isValidReturnPath(returnTo) && (
+          <p className="mt-4 text-sm font-medium text-[var(--color-amber-700)]" role="status">
+            Your session expired. Sign in to pick up where you left off.
+          </p>
+        )}
 
         {!isOnline && (
           <p className="mt-4 text-sm font-medium text-[var(--color-amber-700)]" role="status">

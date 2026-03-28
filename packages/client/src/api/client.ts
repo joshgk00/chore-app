@@ -2,7 +2,29 @@ import type { ApiSuccess, ApiError } from "@chore-app/shared";
 
 type ApiResult<T> = { ok: true; data: T } | { ok: false; error: ApiError["error"] };
 
+export type AuthErrorHandler = (url: string) => void;
+
 export const REQUEST_TIMEOUT_MS = 10_000;
+
+let onAuthError: AuthErrorHandler | null = null;
+
+export function setOnAuthError(handler: AuthErrorHandler | null): void {
+  onAuthError = handler;
+}
+
+function isAdminEndpoint(url: string): boolean {
+  return url.startsWith("/api/admin/");
+}
+
+export function notifyAdminAuthError(url: string, status: number): void {
+  if (status === 401 && isAdminEndpoint(url) && onAuthError) {
+    try {
+      onAuthError(url);
+    } catch {
+      // Side-effect should not crash the caller's response flow
+    }
+  }
+}
 
 async function request<T>(url: string, options?: RequestInit): Promise<ApiResult<T>> {
   const controller = new AbortController();
@@ -37,10 +59,17 @@ async function request<T>(url: string, options?: RequestInit): Promise<ApiResult
 
   if (!res.ok) {
     const errorBody = body as ApiError;
-    return {
-      ok: false,
-      error: errorBody.error || { code: "UNKNOWN", message: "An unexpected error occurred" },
-    };
+    const error = errorBody.error || { code: "UNKNOWN", message: "An unexpected error occurred" };
+
+    if (res.status === 401 && isAdminEndpoint(url) && onAuthError) {
+      try {
+        onAuthError(url);
+      } catch {
+        // Side-effect should not crash the API response flow
+      }
+    }
+
+    return { ok: false, error };
   }
 
   const successBody = body as ApiSuccess<T>;
