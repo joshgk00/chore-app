@@ -8,6 +8,7 @@ import { saveDraft, deleteDraft } from "../../../lib/draft.js";
 import ChecklistItem from "./ChecklistItem.js";
 import StatusPill from "../../../components/StatusPill.js";
 
+const CELEBRATION_DELAY_MS = 2000;
 const NAVIGATION_DELAY_MS = 1500;
 
 export default function RoutineChecklist() {
@@ -68,7 +69,7 @@ export default function RoutineChecklist() {
         onSuccess: async () => {
           try { await deleteDraft(routine.id); } catch { /* IndexedDB unavailable */ }
           setIsShowingCelebration(true);
-          navigationTimeoutRef.current = setTimeout(() => navigate("/today"), 800);
+          navigationTimeoutRef.current = setTimeout(() => navigate("/today"), CELEBRATION_DELAY_MS);
         },
         onError: async (error: unknown) => {
           const apiError = error && typeof error === "object" && "code" in error
@@ -144,6 +145,11 @@ export default function RoutineChecklist() {
   }
 
   const routineItemsById = new Map(routine.items.map((item) => [item.id, item]));
+
+  const completion = submitRoutine.data;
+  const completionMessage = completion
+    ? `+${completion.pointsSnapshot} ${completion.pointsSnapshot === 1 ? "pt" : "pts"} ${completion.requiresApprovalSnapshot ? "pending approval" : "earned!"}`
+    : null;
 
   return (
     <div className="flex h-[calc(100dvh-4rem-env(safe-area-inset-bottom,0px))] flex-col bg-[var(--color-bg)]">
@@ -251,12 +257,17 @@ export default function RoutineChecklist() {
 
       {isShowingCelebration && (
         <div
-          className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
+          className="pointer-events-none fixed inset-0 z-50 flex flex-col items-center justify-center gap-3"
           aria-live="polite"
         >
           <p className="animate-tab-enter font-display text-4xl font-bold text-[var(--color-emerald-500)]" data-emoji>
             &#127881;
           </p>
+          {completionMessage && (
+            <p className="animate-tab-enter font-display text-xl font-bold text-[var(--color-text)]">
+              {completionMessage}
+            </p>
+          )}
         </div>
       )}
     </div>

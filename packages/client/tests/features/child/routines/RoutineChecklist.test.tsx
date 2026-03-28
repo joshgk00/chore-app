@@ -123,7 +123,7 @@ describe("RoutineChecklist", () => {
     expect(submitButton).toBeEnabled();
   });
 
-  it("navigates to homepage after successful submit", async () => {
+  it("shows points earned message and navigates to homepage after successful submit", async () => {
     const user = userEvent.setup();
     renderChecklist(1);
 
@@ -133,7 +133,46 @@ describe("RoutineChecklist", () => {
     await user.click(screen.getByRole("button", { name: /complete routine/i }));
 
     await waitFor(() => {
+      expect(screen.getByText("+5 pts earned!")).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
       expect(screen.getByTestId("today-page")).toBeInTheDocument();
+    }, { timeout: 3000 });
+  });
+
+  it("shows pending approval message when routine requires approval", async () => {
+    server.use(
+      http.post("/api/routine-completions", () =>
+        HttpResponse.json(
+          {
+            data: {
+              id: 2,
+              routineId: 1,
+              routineNameSnapshot: "Morning Routine",
+              pointsSnapshot: 5,
+              requiresApprovalSnapshot: true,
+              status: "pending",
+              completedAt: new Date().toISOString(),
+              localDate: new Date().toISOString().slice(0, 10),
+              idempotencyKey: "test-key",
+            },
+          },
+          { status: 201 },
+        ),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderChecklist(1);
+
+    await waitForChecklistReady();
+    await checkAllItems(user);
+
+    await user.click(screen.getByRole("button", { name: /complete routine/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("+5 pts pending approval")).toBeInTheDocument();
     });
   });
 
@@ -148,7 +187,7 @@ describe("RoutineChecklist", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("today-page")).toBeInTheDocument();
-    });
+    }, { timeout: 3000 });
 
     const draft = await getDraft(1);
     expect(draft).toBeUndefined();
