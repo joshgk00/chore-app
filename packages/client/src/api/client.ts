@@ -51,7 +51,8 @@ async function request<T>(
       },
     });
   } catch (err) {
-    const isTimeout = err instanceof DOMException && err.name === "AbortError";
+    const isTimeout =
+      (err instanceof DOMException || err instanceof Error) && err.name === "AbortError";
     return {
       ok: false,
       error: isTimeout
