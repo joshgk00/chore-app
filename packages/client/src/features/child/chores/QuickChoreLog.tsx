@@ -35,18 +35,27 @@ export default function QuickChoreLog() {
     }
   }, [polledLog, queryClient]);
 
-  const recentLogId = recentLog?.id;
-  const recentLogStatus = recentLog?.status;
-  const isCancelPending = cancelMutation.isPending;
-  useEffect(() => {
+  function scheduleAutoDismiss() {
     clearTimeout(autoDismissRef.current);
-    if (!recentLogId || recentLogStatus === "pending" || isCancelPending) return;
-
     autoDismissRef.current = setTimeout(() => {
       if (!isPausedRef.current) {
         setRecentLog(null);
       }
     }, AUTO_DISMISS_DELAY_MS);
+  }
+
+  const recentLogId = recentLog?.id;
+  const recentLogStatus = recentLog?.status;
+  const isCancelPending = cancelMutation.isPending;
+  useEffect(() => {
+    clearTimeout(autoDismissRef.current);
+    if (!recentLogId) {
+      isPausedRef.current = false;
+      return;
+    }
+    if (recentLogStatus === "pending" || isCancelPending) return;
+
+    scheduleAutoDismiss();
 
     return () => clearTimeout(autoDismissRef.current);
   }, [recentLogId, recentLogStatus, isCancelPending]);
@@ -59,11 +68,7 @@ export default function QuickChoreLog() {
   function handleConfirmationBlur() {
     isPausedRef.current = false;
     if (recentLog && recentLog.status !== "pending" && !cancelMutation.isPending) {
-      autoDismissRef.current = setTimeout(() => {
-        if (!isPausedRef.current) {
-          setRecentLog(null);
-        }
-      }, AUTO_DISMISS_DELAY_MS);
+      scheduleAutoDismiss();
     }
   }
 
