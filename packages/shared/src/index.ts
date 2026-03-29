@@ -34,6 +34,9 @@ export type {
   AssetUsage,
   AssetUsageItem,
   PushSubscribePayload,
+  RoutineCompletionRate,
+  TimeSlotBreakdown,
+  RoutineHealthAnalytics,
 } from "./types.js";
 
 export type { ImageModelId } from "./constants.js";
