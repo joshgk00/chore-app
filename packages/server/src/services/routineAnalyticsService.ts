@@ -11,10 +11,13 @@ interface ActiveRoutineRow {
   time_slot: string;
 }
 
-interface CompletionRow {
+interface CompletionCountRow {
   routine_id: number;
-  time_slot_snapshot: string;
   days_completed: number;
+}
+
+interface SlotCountRow {
+  time_slot_snapshot: string;
   completed_count: number;
 }
 
@@ -43,14 +46,20 @@ export function createRoutineAnalyticsService(
      ORDER BY sort_order ASC`,
   );
 
-  const selectCompletionsStmt = db.prepare(
-    `SELECT routine_id, time_slot_snapshot,
-            COUNT(DISTINCT local_date) AS days_completed,
-            COUNT(*) AS completed_count
+  const selectCompletionCountsStmt = db.prepare(
+    `SELECT routine_id, COUNT(DISTINCT local_date) AS days_completed
      FROM routine_completions
      WHERE status = 'approved'
-       AND local_date >= ?
-     GROUP BY routine_id, time_slot_snapshot`,
+       AND local_date >= ? AND local_date <= ?
+     GROUP BY routine_id`,
+  );
+
+  const selectSlotBreakdownStmt = db.prepare(
+    `SELECT time_slot_snapshot, COUNT(*) AS completed_count
+     FROM routine_completions
+     WHERE status = 'approved'
+       AND local_date >= ? AND local_date <= ?
+     GROUP BY time_slot_snapshot`,
   );
 
   const selectConsecutiveDaysStmt = db.prepare(
@@ -84,29 +93,29 @@ export function createRoutineAnalyticsService(
 
     const activeRoutines = selectActiveRoutinesStmt.all() as ActiveRoutineRow[];
 
-    const completionRows = selectCompletionsStmt.all(sinceDate) as CompletionRow[];
-
-    const completionDaysMap = new Map<number, number>();
-    const slotCompletionMap = new Map<string, number>();
-    for (const row of completionRows) {
-      completionDaysMap.set(
-        row.routine_id,
-        (completionDaysMap.get(row.routine_id) ?? 0) + row.days_completed,
-      );
-      slotCompletionMap.set(
-        row.time_slot_snapshot,
-        (slotCompletionMap.get(row.time_slot_snapshot) ?? 0) +
-          row.completed_count,
-      );
-    }
+    const completionRows = selectCompletionCountsStmt.all(
+      sinceDate,
+      localToday,
+    ) as CompletionCountRow[];
+    const completionMap = new Map(
+      completionRows.map((r) => [r.routine_id, r.days_completed]),
+    );
 
     const completionRates = activeRoutines.map((r) => ({
       routineId: r.id,
       routineName: r.name,
       timeSlot: r.time_slot as TimeSlot,
-      daysCompleted: completionDaysMap.get(r.id) ?? 0,
+      daysCompleted: completionMap.get(r.id) ?? 0,
       totalDays: WINDOW_DAYS,
     }));
+
+    const slotRows = selectSlotBreakdownStmt.all(
+      sinceDate,
+      localToday,
+    ) as SlotCountRow[];
+    const slotCompletionMap = new Map(
+      slotRows.map((r) => [r.time_slot_snapshot, r.completed_count]),
+    );
 
     const routineCountBySlot = new Map<string, number>();
     for (const r of activeRoutines) {

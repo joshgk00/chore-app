@@ -91,13 +91,14 @@ describe("admin routine-analytics routes", () => {
       const app = createApp(db, testConfig);
       const cookies = await loginAdmin(app);
 
-      db.close();
+      db.prepare("DROP TABLE routine_completions").run();
 
       const res = await request(app)
         .get("/api/admin/routine-analytics")
         .set("Cookie", cookies);
 
       expect(res.status).toBe(500);
+      db.close();
     });
   });
 });
