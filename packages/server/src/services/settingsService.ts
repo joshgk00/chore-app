@@ -10,6 +10,7 @@ const SENSITIVE_KEYS = new Set(["admin_pin_hash"]);
 const UPDATABLE_KEYS = new Set([
   "timezone",
   "activity_retention_days",
+  "bonus_approval_points",
   "morning_start",
   "morning_end",
   "afternoon_start",
@@ -96,6 +97,7 @@ export function createSettingsService(db: Database.Database): SettingsService {
       insertStmt.run("afternoon_end", DEFAULT_TIME_SLOTS.afternoon_end);
       insertStmt.run("bedtime_start", DEFAULT_TIME_SLOTS.bedtime_start);
       insertStmt.run("bedtime_end", DEFAULT_TIME_SLOTS.bedtime_end);
+      insertStmt.run("bonus_approval_points", "0");
     });
 
     bootstrap();
@@ -128,6 +130,11 @@ export function createSettingsService(db: Database.Database): SettingsService {
         const parsed = Number(value);
         if (!Number.isInteger(parsed) || parsed < 1) {
           fieldErrors[key] = "Must be a positive integer";
+        }
+      } else if (key === "bonus_approval_points") {
+        const parsed = Number(value);
+        if (!Number.isInteger(parsed) || parsed < 0) {
+          fieldErrors[key] = "Must be a non-negative integer";
         }
       }
     }

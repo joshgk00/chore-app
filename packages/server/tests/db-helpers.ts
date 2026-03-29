@@ -21,6 +21,7 @@ export async function seedTestData(db: Database.Database): Promise<void> {
   insert.run('afternoon_end', '18:29');
   insert.run('bedtime_start', '18:30');
   insert.run('bedtime_end', '21:30');
+  insert.run('bonus_approval_points', '0');
 }
 
 export function createTestConfig(overrides: Partial<AppConfig> = {}): AppConfig {

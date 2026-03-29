@@ -33,7 +33,7 @@ export const RATE_LIMIT_WINDOW_MINUTES = 15;
 export const COOLDOWN_ESCALATION_MINUTES = [15, 30, 60] as const;
 
 // EntryType in types.ts is derived from this array — add new types here
-export const ENTRY_TYPES = ["routine", "chore", "reward", "manual"] as const;
+export const ENTRY_TYPES = ["routine", "chore", "reward", "manual", "bonus"] as const;
 
 // Activity event types used for logging and filtering
 export const ACTIVITY_EVENT_TYPES = [
