@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { renderWithProviders, screen, waitFor } from '../../../test-utils.js';
+import { renderWithProviders, screen, waitFor, act } from '../../../test-utils.js';
 import { server } from '../../../msw/server.js';
 import QuickChoreLog from '../../../../src/features/child/chores/QuickChoreLog.js';
 
@@ -208,6 +208,188 @@ describe('QuickChoreLog', () => {
 
     expect(screen.getByText('Clean Kitchen')).toBeInTheDocument();
     expect(screen.getByText('Yard Work')).toBeInTheDocument();
+  });
+
+  it('shows "Log Another Chore" button on confirmation card', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<QuickChoreLog />);
+
+    await user.click(screen.getByRole('button', { name: /log a chore/i }));
+    await waitFor(() => {
+      expect(screen.getByText('Clean Kitchen')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Clean Kitchen'));
+    await user.click(screen.getByText('Quick Clean'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/clean kitchen approved/i)).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: /log another chore/i })).toBeInTheDocument();
+  });
+
+  it('returns to chore picker when "Log Another Chore" is clicked', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<QuickChoreLog />);
+
+    await user.click(screen.getByRole('button', { name: /log a chore/i }));
+    await waitFor(() => {
+      expect(screen.getByText('Clean Kitchen')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Clean Kitchen'));
+    await user.click(screen.getByText('Quick Clean'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/clean kitchen approved/i)).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /log another chore/i }));
+
+    expect(screen.queryByText(/clean kitchen approved/i)).not.toBeInTheDocument();
+    expect(screen.getByText('Pick a Chore')).toBeInTheDocument();
+    expect(screen.getByText('Clean Kitchen')).toBeInTheDocument();
+    expect(screen.getByText('Yard Work')).toBeInTheDocument();
+  });
+
+  it('shows "Log Another Chore" alongside Cancel for pending logs', async () => {
+    server.use(
+      http.post('/api/chore-logs', () =>
+        HttpResponse.json(
+          { data: { ...pendingChoreLog, status: "pending" } },
+          { status: 201 },
+        ),
+      ),
+      http.get('/api/chore-logs/:id', () =>
+        HttpResponse.json({
+          data: { ...pendingChoreLog, status: "pending" },
+        }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<QuickChoreLog />);
+
+    await user.click(screen.getByRole('button', { name: /log a chore/i }));
+    await waitFor(() => {
+      expect(screen.getByText('Yard Work')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Yard Work'));
+    await user.click(screen.getByText('Basic'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/logged yard work/i)).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: /log another chore/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+  });
+
+  describe('auto-dismiss', () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('auto-dismisses approved confirmation after 5 seconds', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      renderWithProviders(<QuickChoreLog />);
+
+      await user.click(screen.getByRole('button', { name: /log a chore/i }));
+      await waitFor(() => {
+        expect(screen.getByText('Clean Kitchen')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('Clean Kitchen'));
+      await user.click(screen.getByText('Quick Clean'));
+
+      await waitFor(() => {
+        expect(screen.getByText(/clean kitchen approved/i)).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        vi.advanceTimersByTime(5000);
+      });
+
+      expect(screen.queryByText(/clean kitchen approved/i)).not.toBeInTheDocument();
+      expect(screen.getByText('Pick a Chore')).toBeInTheDocument();
+    });
+
+    it('does not auto-dismiss while log is pending', async () => {
+      server.use(
+        http.post('/api/chore-logs', () =>
+          HttpResponse.json(
+            { data: { ...pendingChoreLog, status: "pending" } },
+            { status: 201 },
+          ),
+        ),
+        http.get('/api/chore-logs/:id', () =>
+          HttpResponse.json({
+            data: { ...pendingChoreLog, status: "pending" },
+          }),
+        ),
+      );
+
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      renderWithProviders(<QuickChoreLog />);
+
+      await user.click(screen.getByRole('button', { name: /log a chore/i }));
+      await waitFor(() => {
+        expect(screen.getByText('Yard Work')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('Yard Work'));
+      await user.click(screen.getByText('Basic'));
+
+      await waitFor(() => {
+        expect(screen.getByText(/logged yard work/i)).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        vi.advanceTimersByTime(10000);
+      });
+
+      expect(screen.getByText(/logged yard work/i)).toBeInTheDocument();
+      expect(screen.getByText(/waiting for approval/i)).toBeInTheDocument();
+    });
+
+    it('pauses auto-dismiss while confirmation card has focus', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      renderWithProviders(<QuickChoreLog />);
+
+      await user.click(screen.getByRole('button', { name: /log a chore/i }));
+      await waitFor(() => {
+        expect(screen.getByText('Clean Kitchen')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('Clean Kitchen'));
+      await user.click(screen.getByText('Quick Clean'));
+
+      await waitFor(() => {
+        expect(screen.getByText(/clean kitchen approved/i)).toBeInTheDocument();
+      });
+
+      const logAnotherButton = screen.getByRole('button', { name: /log another chore/i });
+      await act(async () => { logAnotherButton.focus(); });
+
+      await act(async () => {
+        vi.advanceTimersByTime(5000);
+      });
+
+      expect(screen.getByText(/clean kitchen approved/i)).toBeInTheDocument();
+
+      await act(async () => { logAnotherButton.blur(); });
+
+      await act(async () => {
+        vi.advanceTimersByTime(5000);
+      });
+
+      expect(screen.queryByText(/clean kitchen approved/i)).not.toBeInTheDocument();
+      expect(screen.getByText('Pick a Chore')).toBeInTheDocument();
+    });
   });
 
   it('updates banner when pending log is approved via polling', async () => {
