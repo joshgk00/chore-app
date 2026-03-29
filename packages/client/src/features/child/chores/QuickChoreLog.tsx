@@ -10,6 +10,8 @@ import { invalidatePointsRelated } from "../../../lib/query-keys.js";
 import type { Chore, ChoreTier, ChoreLog } from "@chore-app/shared";
 import StatusPill from "../../../components/StatusPill.js";
 
+const AUTO_DISMISS_DELAY_MS = 5000;
+
 export default function QuickChoreLog() {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedChore, setSelectedChore] = useState<Chore | null>(null);
@@ -19,6 +21,8 @@ export default function QuickChoreLog() {
   const submitMutation = useSubmitChoreLog();
   const cancelMutation = useCancelChoreLog();
   const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
+  const autoDismissRef = useRef<ReturnType<typeof setTimeout>>();
+  const isPausedRef = useRef(false);
   const queryClient = useQueryClient();
 
   const pendingLogId = recentLog?.status === "pending" ? recentLog.id : null;
@@ -30,6 +34,43 @@ export default function QuickChoreLog() {
       invalidatePointsRelated(queryClient);
     }
   }, [polledLog, queryClient]);
+
+  function scheduleAutoDismiss() {
+    clearTimeout(autoDismissRef.current);
+    autoDismissRef.current = setTimeout(() => {
+      if (!isPausedRef.current) {
+        setRecentLog(null);
+      }
+    }, AUTO_DISMISS_DELAY_MS);
+  }
+
+  const recentLogId = recentLog?.id;
+  const recentLogStatus = recentLog?.status;
+  const isCancelPending = cancelMutation.isPending;
+  useEffect(() => {
+    clearTimeout(autoDismissRef.current);
+    if (!recentLogId) {
+      isPausedRef.current = false;
+      return;
+    }
+    if (recentLogStatus === "pending" || isCancelPending) return;
+
+    scheduleAutoDismiss();
+
+    return () => clearTimeout(autoDismissRef.current);
+  }, [recentLogId, recentLogStatus, isCancelPending]);
+
+  function handleConfirmationFocus() {
+    isPausedRef.current = true;
+    clearTimeout(autoDismissRef.current);
+  }
+
+  function handleConfirmationBlur() {
+    isPausedRef.current = false;
+    if (recentLog && recentLog.status !== "pending" && !cancelMutation.isPending) {
+      scheduleAutoDismiss();
+    }
+  }
 
   function handleChoreSelect(chore: Chore) {
     idempotencyKeyRef.current = crypto.randomUUID();
@@ -143,6 +184,8 @@ export default function QuickChoreLog() {
               : "bg-[var(--color-emerald-50)]"
           }`}
           aria-live="polite"
+          onFocus={handleConfirmationFocus}
+          onBlur={handleConfirmationBlur}
         >
           <p
             className={`font-medium ${
@@ -159,20 +202,29 @@ export default function QuickChoreLog() {
               `${recentLog.choreNameSnapshot} was not approved`}
           </p>
           {recentLog.status === "pending" && (
-            <>
-              <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                Waiting for approval…
-              </p>
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+              Waiting for approval…
+            </p>
+          )}
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setRecentLog(null)}
+              className="min-h-touch rounded-xl bg-[var(--color-amber-50)] px-4 py-2 text-sm font-semibold text-[var(--color-amber-700)] transition-colors hover:bg-[var(--color-amber-100)]"
+            >
+              Log Another Chore
+            </button>
+            {recentLog.status === "pending" && (
               <button
                 type="button"
                 onClick={handleCancelLog}
                 disabled={cancelMutation.isPending}
-                className="mt-2 min-h-touch text-sm font-medium text-[var(--color-red-600)] disabled:opacity-50"
+                className="min-h-touch text-sm font-medium text-[var(--color-red-600)] disabled:opacity-50"
               >
                 {cancelMutation.isPending ? "Canceling..." : "Cancel"}
               </button>
-            </>
-          )}
+            )}
+          </div>
         </div>
       )}
 
