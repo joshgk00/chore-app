@@ -58,7 +58,7 @@ function useDashboardApprovals(isOnline: boolean) {
 
 function useDashboardActivity(isOnline: boolean) {
   return useQuery({
-    queryKey: queryKeys.admin.activityLog("all", "", "", 0),
+    queryKey: queryKeys.admin.recentActivity(RECENT_ACTIVITY_LIMIT),
     queryFn: async () => {
       const params = new URLSearchParams({
         limit: String(RECENT_ACTIVITY_LIMIT),
@@ -106,7 +106,7 @@ function useDashboardApprove() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.approvals() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.admin.activityLog("all", "", "", 0) });
+      queryClient.invalidateQueries({ queryKey: ["admin", "activity-log"] });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.ledger() });
       invalidatePointsRelated(queryClient);
     },
