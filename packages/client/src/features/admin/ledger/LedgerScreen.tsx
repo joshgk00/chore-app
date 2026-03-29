@@ -292,6 +292,7 @@ function TypeBadge({ type }: { type: EntryType }) {
     chore: "bg-[var(--color-amber-50)] text-[var(--color-amber-700)]",
     reward: "bg-[var(--color-amber-50)] text-[var(--color-amber-700)]",
     manual: "bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]",
+    bonus: "bg-[var(--color-amber-50)] text-[var(--color-amber-700)]",
   };
 
   return (

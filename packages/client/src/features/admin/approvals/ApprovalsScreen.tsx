@@ -4,6 +4,7 @@ import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
 import { queryKeys } from "../../../lib/query-keys.js";
 import { useAdminTimezone } from "../hooks/useAdminTimezone.js";
+import { useAdminSettings } from "../hooks/useAdminSettings.js";
 import { formatTimestamp } from "../../../lib/format-timestamp.js";
 import type {
   PendingApprovals,
@@ -34,14 +35,19 @@ function useApproveItem() {
       type,
       id,
       reviewNote,
+      bonusPoints,
     }: {
       type: ApprovalType;
       id: number;
       reviewNote?: string;
+      bonusPoints?: number;
     }) => {
+      const body: Record<string, unknown> = {};
+      if (reviewNote) body.reviewNote = reviewNote;
+      if (bonusPoints && bonusPoints > 0) body.bonusPoints = bonusPoints;
       const result = await api.post<void>(
         `/api/admin/approvals/${type}/${id}/approve`,
-        reviewNote ? { reviewNote } : undefined,
+        Object.keys(body).length > 0 ? body : undefined,
       );
       if (!result.ok) throw result.error;
     },
@@ -106,6 +112,7 @@ interface ApprovalCardProps {
   submittedAt: string;
   type: ApprovalType;
   id: number;
+  bonusAmount: number;
   approveMutation: ReturnType<typeof useApproveItem>;
   rejectMutation: ReturnType<typeof useRejectItem>;
   isOnline: boolean;
@@ -119,6 +126,7 @@ function ApprovalCard({
   submittedAt,
   type,
   id,
+  bonusAmount,
   approveMutation,
   rejectMutation,
   isOnline,
@@ -139,9 +147,18 @@ function ApprovalCard({
 
   const isActionPending = isThisApprovePending || isThisRejectPending;
 
+  const isBonusEligible = type !== "reward-request" && bonusAmount > 0;
+
   function handleApprove() {
     approveMutation.mutate(
       { type, id, reviewNote: note.trim() || undefined },
+      { onSuccess: () => setIsSlidingOut(true) },
+    );
+  }
+
+  function handleApproveWithBonus() {
+    approveMutation.mutate(
+      { type, id, reviewNote: note.trim() || undefined, bonusPoints: bonusAmount },
       { onSuccess: () => setIsSlidingOut(true) },
     );
   }
@@ -182,16 +199,29 @@ function ApprovalCard({
         />
       </label>
 
-      <div className="mt-3 flex items-center justify-between gap-3">
+      <div className="mt-3 flex items-center justify-end gap-2">
         <button
           type="button"
           onClick={handleReject}
           disabled={!isOnline || isActionPending}
           title={!isOnline ? "You're offline" : undefined}
-          className="min-h-touch rounded-xl px-5 py-2 font-display font-bold text-[var(--color-text-muted)] bg-[var(--color-surface-muted)] transition-colors hover:bg-[var(--color-red-600)] hover:text-white disabled:opacity-50"
+          className="mr-auto min-h-touch rounded-xl px-5 py-2 font-display font-bold text-[var(--color-text-muted)] bg-[var(--color-surface-muted)] transition-colors hover:bg-[var(--color-red-600)] hover:text-white disabled:opacity-50"
         >
           {isThisRejectPending ? "Rejecting..." : "Reject"}
         </button>
+        {isBonusEligible && (
+          <button
+            type="button"
+            onClick={handleApproveWithBonus}
+            disabled={!isOnline || isActionPending}
+            title={!isOnline ? "You're offline" : undefined}
+            className="min-h-touch rounded-xl border-2 border-[var(--color-amber-500)] bg-[var(--color-surface)] px-4 py-2 font-display text-sm font-bold text-[var(--color-amber-700)] transition-colors hover:bg-[var(--color-amber-50)] disabled:opacity-50"
+          >
+            {isThisApprovePending && approveMutation.variables?.bonusPoints
+              ? "Approving..."
+              : `+Bonus (+${bonusAmount})`}
+          </button>
+        )}
         <button
           type="button"
           onClick={handleApprove}
@@ -199,7 +229,9 @@ function ApprovalCard({
           title={!isOnline ? "You're offline" : undefined}
           className="min-h-touch rounded-xl bg-[var(--color-emerald-500)] px-5 py-2 font-display font-bold text-white transition-colors hover:bg-[var(--color-emerald-600)] disabled:opacity-50"
         >
-          {isThisApprovePending ? "Approving..." : "Approve"}
+          {isThisApprovePending && !approveMutation.variables?.bonusPoints
+            ? "Approving..."
+            : "Approve"}
         </button>
       </div>
     </div>
@@ -229,8 +261,11 @@ export default function ApprovalsScreen() {
   const isOnline = useOnline();
   const timezone = useAdminTimezone();
   const { data, isLoading, error, refetch } = usePendingApprovals(isOnline);
+  const settingsQuery = useAdminSettings();
   const approveMutation = useApproveItem();
   const rejectMutation = useRejectItem();
+
+  const bonusAmount = Number(settingsQuery.data?.bonus_approval_points) || 0;
 
   const hasRoutines = data && data.routineCompletions.length > 0;
   const hasChores = data && data.choreLogs.length > 0;
@@ -311,6 +346,7 @@ export default function ApprovalsScreen() {
                 submittedAt={item.completedAt}
                 type="routine-completion"
                 id={item.id}
+                bonusAmount={bonusAmount}
                 approveMutation={approveMutation}
                 rejectMutation={rejectMutation}
                 isOnline={isOnline}
@@ -334,6 +370,7 @@ export default function ApprovalsScreen() {
                 submittedAt={item.loggedAt}
                 type="chore-log"
                 id={item.id}
+                bonusAmount={bonusAmount}
                 approveMutation={approveMutation}
                 rejectMutation={rejectMutation}
                 isOnline={isOnline}
@@ -357,6 +394,7 @@ export default function ApprovalsScreen() {
                 submittedAt={item.requestedAt}
                 type="reward-request"
                 id={item.id}
+                bonusAmount={0}
                 approveMutation={approveMutation}
                 rejectMutation={rejectMutation}
                 isOnline={isOnline}
