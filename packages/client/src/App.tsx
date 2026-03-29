@@ -23,6 +23,7 @@ import ApprovalsScreen from "./features/admin/approvals/ApprovalsScreen.js";
 import LedgerScreen from "./features/admin/ledger/LedgerScreen.js";
 import ActivityLogScreen from "./features/admin/activity/ActivityLogScreen.js";
 import SettingsScreen from "./features/admin/settings/SettingsScreen.js";
+import AdminDashboard from "./features/admin/dashboard/AdminDashboard.js";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -86,15 +87,6 @@ function AppShell() {
   );
 }
 
-function AdminPlaceholder({ title }: { title: string }) {
-  return (
-    <div className="rounded-2xl bg-[var(--color-surface)] p-6 shadow-card">
-      <h2 className="font-display text-xl font-semibold text-[var(--color-text)]">{title}</h2>
-      <p className="mt-2 text-[var(--color-text-muted)]">Coming soon.</p>
-    </div>
-  );
-}
-
 function AppRoutes() {
   useManifestLink();
 
@@ -116,7 +108,7 @@ function AppRoutes() {
 
         <Route element={<AdminGuard />}>
           <Route element={<AdminLayout />}>
-            <Route path="/admin" element={<AdminPlaceholder title="Admin Dashboard" />} />
+            <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/routines" element={<AdminRoutinesList />} />
             <Route path="/admin/routines/new" element={<AdminRoutineForm />} />
             <Route path="/admin/routines/:id/edit" element={<AdminRoutineForm />} />
