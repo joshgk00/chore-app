@@ -33,6 +33,8 @@ import { createBadgeService } from "./services/badgeService.js";
 import { createAssetService } from "./services/assetService.js";
 import { createBackupService } from "./services/backupService.js";
 import { createPushService } from "./services/pushService.js";
+import { createAdminRoutineAnalyticsRoutes } from "./routes/admin-routine-analytics.js";
+import { createRoutineAnalyticsService } from "./services/routineAnalyticsService.js";
 import { createPushRoutes } from "./routes/push.js";
 import type { AppConfig } from "./config.js";
 
@@ -63,6 +65,7 @@ export function createApp(db: Database.Database, config: AppConfig) {
   const pointsService = createPointsService(db, activityService);
   const approvalService = createApprovalService(db, activityService, badgeService, pushService);
   const assetService = createAssetService(db, config.dataDir, activityService);
+  const routineAnalyticsService = createRoutineAnalyticsService(db);
   const backupService = createBackupService(db, config.dataDir, config, activityService);
 
   app.get("/api/health", (_req, res) => {
@@ -86,6 +89,7 @@ export function createApp(db: Database.Database, config: AppConfig) {
   app.use("/api/admin", createAdminApprovalsRoutes(approvalService));
   app.use("/api/admin", createAdminLedgerRoutes(pointsService));
   app.use("/api/admin", createAdminAssetsRoutes(assetService, config.dataDir, config.imageGenApiKey));
+  app.use("/api/admin", createAdminRoutineAnalyticsRoutes(routineAnalyticsService, settingsService));
   app.use("/api/admin", createAdminBackupRoutes(backupService, config.dataDir));
 
   app.all("/api/*", (_req, _res, next) => {

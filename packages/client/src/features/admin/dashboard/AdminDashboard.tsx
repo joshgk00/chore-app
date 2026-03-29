@@ -4,6 +4,7 @@ import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
 import { queryKeys, invalidatePointsRelated } from "../../../lib/query-keys.js";
 import { useAdminTimezone } from "../hooks/useAdminTimezone.js";
+import { useRoutineHealth } from "../hooks/useRoutineHealth.js";
 import { formatTimestamp } from "../../../lib/format-timestamp.js";
 import type {
   PendingApprovals,
@@ -15,6 +16,7 @@ import type {
   ActivityLogEntry,
   PointsBalance,
   LedgerEntry,
+  RoutineHealthAnalytics,
 } from "@chore-app/shared";
 
 interface ActivityLogResponse {
@@ -510,6 +512,126 @@ function PointsBalanceCard({
   );
 }
 
+const MAX_DISPLAYED_ROUTINES = 4;
+
+function RoutineHealthCard({
+  data,
+  isLoading,
+  error,
+}: {
+  data: RoutineHealthAnalytics | undefined;
+  isLoading: boolean;
+  error: Error | null;
+}) {
+  const sorted = data
+    ? [...data.completionRates].sort(
+        (a, b) => a.daysCompleted - b.daysCompleted,
+      )
+    : [];
+  const displayed = sorted.slice(0, MAX_DISPLAYED_ROUTINES);
+  const neglectedCount = data
+    ? data.completionRates.filter((r) => r.daysCompleted === 0).length
+    : 0;
+
+  return (
+    <section
+      aria-label="Routine health"
+      className="rounded-2xl bg-[var(--color-surface)] p-5 shadow-card"
+    >
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-lg font-semibold text-[var(--color-text)]">
+          Routine Health
+        </h2>
+        {data && data.streakDays > 0 && (
+          <span className="rounded-full bg-[var(--color-sky-50)] px-2.5 py-0.5 font-display text-sm font-bold text-[var(--color-sky-700)]">
+            {data.streakDays}-day streak
+          </span>
+        )}
+      </div>
+
+      {isLoading && (
+        <div className="mt-4 animate-pulse space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="h-4 rounded bg-[var(--color-surface-muted)]"
+            />
+          ))}
+          <div aria-live="polite" className="sr-only">
+            Loading routine health...
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <p className="mt-3 text-sm text-[var(--color-text-muted)]">
+          Could not load routine health.
+        </p>
+      )}
+
+      {data && data.completionRates.length === 0 && (
+        <p className="mt-3 text-sm text-[var(--color-text-muted)]">
+          No active routines
+        </p>
+      )}
+
+      {data && data.completionRates.length > 0 && (
+        <div className="mt-3 space-y-2">
+          {neglectedCount > 0 && (
+            <div className="rounded-lg bg-[var(--color-amber-50)] px-3 py-2">
+              <p className="text-xs font-semibold text-[var(--color-amber-700)]">
+                {neglectedCount} routine{neglectedCount > 1 ? "s" : ""} with no
+                completions this week
+              </p>
+            </div>
+          )}
+
+          {displayed.map((rate) => (
+            <div
+              key={rate.routineId}
+              className="flex items-center justify-between gap-3"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-[var(--color-text)]">
+                  {rate.routineName}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-16 overflow-hidden rounded-full bg-[var(--color-surface-muted)]">
+                  <div
+                    className="h-full rounded-full bg-[var(--color-sky-500)] transition-all"
+                    style={{
+                      width: `${rate.totalDays > 0 ? (rate.daysCompleted / rate.totalDays) * 100 : 0}%`,
+                    }}
+                  />
+                </div>
+                <span
+                  className={`text-xs font-semibold tabular-nums ${
+                    rate.daysCompleted === 0
+                      ? "text-[var(--color-amber-700)]"
+                      : "text-[var(--color-text-secondary)]"
+                  }`}
+                >
+                  {rate.daysCompleted}/{rate.totalDays}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {data && data.completionRates.length > 0 && (
+        <Link
+          to="/admin/routine-health"
+          className="mt-4 block text-center text-sm font-semibold text-[var(--color-amber-700)] hover:underline"
+        >
+          View details
+        </Link>
+      )}
+    </section>
+  );
+}
+
 export default function AdminDashboard() {
   const isOnline = useOnline();
   const timezone = useAdminTimezone();
@@ -517,6 +639,7 @@ export default function AdminDashboard() {
   const approvals = useDashboardApprovals(isOnline);
   const activity = useDashboardActivity(isOnline);
   const points = useDashboardPoints(isOnline);
+  const routineHealth = useRoutineHealth(isOnline);
   const approveMutation = useDashboardApprove();
 
   return (
@@ -549,6 +672,14 @@ export default function AdminDashboard() {
           error={activity.error}
           timezone={timezone}
         />
+
+        <div className="tablet:col-span-2">
+          <RoutineHealthCard
+            data={routineHealth.data}
+            isLoading={routineHealth.isLoading}
+            error={routineHealth.error}
+          />
+        </div>
 
         <div className="tablet:col-span-2">
           <PendingApprovalsCard

@@ -81,6 +81,38 @@ const mockActivityLog = {
 
 const mockBalance = { total: 150, reserved: 20, available: 130 };
 
+const mockRoutineHealth = {
+  completionRates: [
+    {
+      routineId: 1,
+      routineName: "Morning Routine",
+      timeSlot: "morning",
+      daysCompleted: 5,
+      totalDays: 7,
+    },
+    {
+      routineId: 2,
+      routineName: "Afternoon Check",
+      timeSlot: "afternoon",
+      daysCompleted: 0,
+      totalDays: 7,
+    },
+    {
+      routineId: 3,
+      routineName: "Bedtime Routine",
+      timeSlot: "bedtime",
+      daysCompleted: 3,
+      totalDays: 7,
+    },
+  ],
+  timeSlotBreakdown: [
+    { timeSlot: "morning", completedCount: 5, routineCount: 1 },
+    { timeSlot: "afternoon", completedCount: 0, routineCount: 1 },
+    { timeSlot: "bedtime", completedCount: 3, routineCount: 1 },
+  ],
+  streakDays: 4,
+};
+
 function setupHandlers() {
   server.use(
     http.get("/api/admin/approvals", () =>
@@ -98,6 +130,9 @@ function setupHandlers() {
       HttpResponse.json({
         data: { timezone: "America/Chicago" },
       }),
+    ),
+    http.get("/api/admin/routine-analytics", () =>
+      HttpResponse.json({ data: mockRoutineHealth }),
     ),
   );
 }
@@ -169,12 +204,14 @@ describe("AdminDashboard", () => {
   it("renders pending approvals grouped by type", async () => {
     renderDashboard();
 
+    const approvalsSection = screen.getByRole("region", { name: "Pending approvals" });
+
     await waitFor(() => {
-      expect(screen.getByText("Morning Routine")).toBeInTheDocument();
+      expect(within(approvalsSection).getByText("Morning Routine")).toBeInTheDocument();
     });
 
-    expect(screen.getByText("Clean Kitchen")).toBeInTheDocument();
-    expect(screen.getByText("Extra Screen Time")).toBeInTheDocument();
+    expect(within(approvalsSection).getByText("Clean Kitchen")).toBeInTheDocument();
+    expect(within(approvalsSection).getByText("Extra Screen Time")).toBeInTheDocument();
   });
 
   it("shows pending count badge", async () => {
@@ -198,11 +235,13 @@ describe("AdminDashboard", () => {
     const user = userEvent.setup();
     renderDashboard();
 
+    const approvalsSection = screen.getByRole("region", { name: "Pending approvals" });
+
     await waitFor(() => {
-      expect(screen.getByText("Morning Routine")).toBeInTheDocument();
+      expect(within(approvalsSection).getByText("Morning Routine")).toBeInTheDocument();
     });
 
-    const approveButtons = screen.getAllByRole("button", { name: "Approve" });
+    const approveButtons = within(approvalsSection).getAllByRole("button", { name: "Approve" });
     await user.click(approveButtons[0]);
 
     await waitFor(() => {
@@ -253,6 +292,12 @@ describe("AdminDashboard", () => {
           { status: 500 },
         ),
       ),
+      http.get("/api/admin/routine-analytics", () =>
+        HttpResponse.json(
+          { error: { code: "SERVER_ERROR", message: "fail" } },
+          { status: 500 },
+        ),
+      ),
     );
 
     renderDashboard();
@@ -263,6 +308,7 @@ describe("AdminDashboard", () => {
 
     expect(screen.getByText("Could not load activity.")).toBeInTheDocument();
     expect(screen.getByText("Could not load points.")).toBeInTheDocument();
+    expect(screen.getByText("Could not load routine health.")).toBeInTheDocument();
   });
 
   it("renders navigation links to detail screens", async () => {
@@ -287,6 +333,47 @@ describe("AdminDashboard", () => {
       "href",
       "/admin/ledger",
     );
+  });
+
+  it("renders routine health card with streak and completion rates", async () => {
+    renderDashboard();
+
+    const healthSection = screen.getByRole("region", { name: "Routine health" });
+
+    await waitFor(() => {
+      expect(within(healthSection).getByText(/4-day streak/)).toBeInTheDocument();
+    });
+
+    expect(within(healthSection).getByText("5/7")).toBeInTheDocument();
+    expect(within(healthSection).getByText("0/7")).toBeInTheDocument();
+    expect(within(healthSection).getByText("3/7")).toBeInTheDocument();
+  });
+
+  it("shows neglected routines warning", async () => {
+    renderDashboard();
+
+    const healthSection = screen.getByRole("region", { name: "Routine health" });
+
+    await waitFor(() => {
+      expect(
+        within(healthSection).getByText(
+          "1 routine with no completions this week",
+        ),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("renders View details link to routine health page", async () => {
+    renderDashboard();
+
+    const healthSection = screen.getByRole("region", { name: "Routine health" });
+
+    await waitFor(() => {
+      expect(within(healthSection).getByText("View details")).toBeInTheDocument();
+    });
+
+    const link = within(healthSection).getByText("View details");
+    expect(link.closest("a")).toHaveAttribute("href", "/admin/routine-health");
   });
 
   it("shows overflow link when more than 5 items in a type", async () => {
