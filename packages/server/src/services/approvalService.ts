@@ -225,15 +225,20 @@ export function createApprovalService(
     bonusPoints: number | undefined,
     entityName: string,
   ): number {
-    const bonus = bonusPoints && bonusPoints > 0 ? bonusPoints : 0;
-    if (bonus > 0) {
-      insertBonusLedgerStmt.run(referenceTable, referenceId, bonus, `Bonus: ${entityName}`);
-    }
-    return bonus;
+    if (bonusPoints === undefined || bonusPoints <= 0) return 0;
+    if (!Number.isInteger(bonusPoints)) return 0;
+    insertBonusLedgerStmt.run(referenceTable, referenceId, bonusPoints, `Bonus: ${entityName}`);
+    return bonusPoints;
   }
 
   function formatBonusText(bonus: number): string {
     return bonus > 0 ? ` (+${bonus} bonus)` : "";
+  }
+
+  function formatApprovalNotificationBody(basePoints: number, bonus: number): string {
+    if (basePoints > 0) return `+${basePoints} points${formatBonusText(bonus)}`;
+    if (bonus > 0) return `+${bonus} bonus points`;
+    return "Great job!";
   }
 
   function loadPendingRecord<T extends { status: string }>(
@@ -289,7 +294,7 @@ export function createApprovalService(
   function approveRoutineCompletion(id: number, reviewNote?: string, bonusPoints?: number): RoutineCompletion {
     const result = approveRoutineCompletionTx(id, reviewNote, bonusPoints);
     const bonus = bonusPoints && bonusPoints > 0 ? bonusPoints : 0;
-    const body = result.pointsSnapshot > 0 ? `+${result.pointsSnapshot} points${formatBonusText(bonus)}` : "Great job!";
+    const body = formatApprovalNotificationBody(result.pointsSnapshot, bonus);
     pushService?.sendNotificationSafe("child", {
       title: `${result.routineNameSnapshot} approved!`,
       body,
@@ -355,7 +360,7 @@ export function createApprovalService(
   function approveChoreLog(id: number, reviewNote?: string, bonusPoints?: number): ChoreLog {
     const result = approveChoreLogTx(id, reviewNote, bonusPoints);
     const bonus = bonusPoints && bonusPoints > 0 ? bonusPoints : 0;
-    const body = result.pointsSnapshot > 0 ? `+${result.pointsSnapshot} points${formatBonusText(bonus)}` : "Great job!";
+    const body = formatApprovalNotificationBody(result.pointsSnapshot, bonus);
     pushService?.sendNotificationSafe("child", {
       title: `${result.choreNameSnapshot} approved!`,
       body,

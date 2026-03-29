@@ -17,6 +17,8 @@ DROP TABLE points_ledger;
 
 ALTER TABLE points_ledger_new RENAME TO points_ledger;
 
+CREATE INDEX IF NOT EXISTS idx_points_ledger_created_at ON points_ledger(created_at);
+
 -- Add bonus_approval_points setting for existing installs that already have settings
 INSERT INTO settings (key, value)
   SELECT 'bonus_approval_points', '0'

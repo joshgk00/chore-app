@@ -4,6 +4,7 @@ import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
 import { queryKeys } from "../../../lib/query-keys.js";
 import { useAdminTimezone } from "../hooks/useAdminTimezone.js";
+import { useAdminSettings } from "../hooks/useAdminSettings.js";
 import { formatTimestamp } from "../../../lib/format-timestamp.js";
 import type {
   PendingApprovals,
@@ -256,24 +257,11 @@ function ApprovalSection({ title, borderClass, children }: ApprovalSectionProps)
   );
 }
 
-function useAdminSettings(isOnline: boolean) {
-  return useQuery({
-    queryKey: queryKeys.admin.settings(),
-    queryFn: async () => {
-      const result = await api.get<Record<string, string>>("/api/admin/settings");
-      if (!result.ok) throw result.error;
-      return result.data;
-    },
-    enabled: isOnline,
-    staleTime: 5 * 60_000,
-  });
-}
-
 export default function ApprovalsScreen() {
   const isOnline = useOnline();
   const timezone = useAdminTimezone();
   const { data, isLoading, error, refetch } = usePendingApprovals(isOnline);
-  const settingsQuery = useAdminSettings(isOnline);
+  const settingsQuery = useAdminSettings();
   const approveMutation = useApproveItem();
   const rejectMutation = useRejectItem();
 
