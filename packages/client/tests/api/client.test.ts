@@ -187,7 +187,7 @@ describe('api client', () => {
   });
 
   describe('timeout', () => {
-    it('returns NETWORK_ERROR when request exceeds timeout', async () => {
+    it('returns TIMEOUT when request exceeds timeout', async () => {
       vi.useFakeTimers();
 
       server.use(
@@ -203,8 +203,84 @@ describe('api client', () => {
 
       expect(result).toEqual({
         ok: false,
-        error: { code: 'NETWORK_ERROR', message: 'Unable to reach the server' },
+        error: { code: 'TIMEOUT', message: 'Request timed out' },
       });
+
+      vi.useRealTimers();
+    });
+
+    it('respects custom timeoutMs on GET', async () => {
+      vi.useFakeTimers();
+
+      server.use(
+        http.get('/api/slow', async () => {
+          await new Promise((resolve) => setTimeout(resolve, 60_000));
+          return HttpResponse.json({ data: null });
+        }),
+      );
+
+      const resultPromise = api.get('/api/slow', { timeoutMs: 30_000 });
+
+      await vi.advanceTimersByTimeAsync(11_000);
+      expect(await Promise.race([resultPromise, Promise.resolve('pending')])).toBe('pending');
+
+      await vi.advanceTimersByTimeAsync(20_000);
+      const result = await resultPromise;
+
+      expect(result).toEqual({
+        ok: false,
+        error: { code: 'TIMEOUT', message: 'Request timed out' },
+      });
+
+      vi.useRealTimers();
+    });
+
+    it('respects custom timeoutMs on POST', async () => {
+      vi.useFakeTimers();
+
+      server.use(
+        http.post('/api/admin/assets/generate', async () => {
+          await new Promise((resolve) => setTimeout(resolve, 100_000));
+          return HttpResponse.json({ data: { id: 1 } });
+        }),
+      );
+
+      const resultPromise = api.post('/api/admin/assets/generate', { prompt: 'test' }, { timeoutMs: 75_000 });
+
+      await vi.advanceTimersByTimeAsync(11_000);
+      expect(await Promise.race([resultPromise, Promise.resolve('pending')])).toBe('pending');
+
+      await vi.advanceTimersByTimeAsync(65_000);
+      const result = await resultPromise;
+
+      expect(result).toEqual({
+        ok: false,
+        error: { code: 'TIMEOUT', message: 'Request timed out' },
+      });
+
+      vi.useRealTimers();
+    });
+
+    it('succeeds within custom timeout window', async () => {
+      vi.useFakeTimers();
+
+      server.use(
+        http.post('/api/admin/assets/generate', async () => {
+          await new Promise((resolve) => setTimeout(resolve, 15_000));
+          return HttpResponse.json({ data: { id: 1, url: '/img.png' } });
+        }),
+      );
+
+      const resultPromise = api.post(
+        '/api/admin/assets/generate',
+        { prompt: 'test' },
+        { timeoutMs: 75_000 },
+      );
+
+      await vi.advanceTimersByTimeAsync(16_000);
+      const result = await resultPromise;
+
+      expect(result).toEqual({ ok: true, data: { id: 1, url: '/img.png' } });
 
       vi.useRealTimers();
     });

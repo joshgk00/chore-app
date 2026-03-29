@@ -2,6 +2,10 @@ import type { ApiSuccess, ApiError } from "@chore-app/shared";
 
 type ApiResult<T> = { ok: true; data: T } | { ok: false; error: ApiError["error"] };
 
+export interface RequestOptions {
+  timeoutMs?: number;
+}
+
 export type AuthErrorHandler = (url: string) => void;
 
 export const REQUEST_TIMEOUT_MS = 10_000;
@@ -26,23 +30,34 @@ export function notifyAdminAuthError(url: string, status: number): void {
   }
 }
 
-async function request<T>(url: string, options?: RequestInit): Promise<ApiResult<T>> {
+async function request<T>(
+  url: string,
+  fetchOptions?: RequestInit,
+  requestOptions?: RequestOptions,
+): Promise<ApiResult<T>> {
+  const timeoutMs = requestOptions?.timeoutMs ?? REQUEST_TIMEOUT_MS;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   let res: Response;
   try {
     res = await fetch(url, {
-      ...options,
+      ...fetchOptions,
       credentials: "same-origin",
       signal: controller.signal,
       headers: {
         "Content-Type": "application/json",
-        ...options?.headers,
+        ...fetchOptions?.headers,
       },
     });
-  } catch {
-    return { ok: false, error: { code: "NETWORK_ERROR", message: "Unable to reach the server" } };
+  } catch (err) {
+    const isTimeout = err instanceof DOMException && err.name === "AbortError";
+    return {
+      ok: false,
+      error: isTimeout
+        ? { code: "TIMEOUT", message: "Request timed out" }
+        : { code: "NETWORK_ERROR", message: "Unable to reach the server" },
+    };
   } finally {
     clearTimeout(timeoutId);
   }
@@ -77,19 +92,28 @@ async function request<T>(url: string, options?: RequestInit): Promise<ApiResult
 }
 
 export const api = {
-  get: <T>(url: string) => request<T>(url),
+  get: <T>(url: string, options?: RequestOptions) => request<T>(url, undefined, options),
 
-  post: <T>(url: string, body?: unknown) =>
-    request<T>(url, {
-      method: "POST",
-      body: body ? JSON.stringify(body) : undefined,
-    }),
+  post: <T>(url: string, body?: unknown, options?: RequestOptions) =>
+    request<T>(
+      url,
+      {
+        method: "POST",
+        body: body ? JSON.stringify(body) : undefined,
+      },
+      options,
+    ),
 
-  put: <T>(url: string, body?: unknown) =>
-    request<T>(url, {
-      method: "PUT",
-      body: body ? JSON.stringify(body) : undefined,
-    }),
+  put: <T>(url: string, body?: unknown, options?: RequestOptions) =>
+    request<T>(
+      url,
+      {
+        method: "PUT",
+        body: body ? JSON.stringify(body) : undefined,
+      },
+      options,
+    ),
 
-  delete: <T>(url: string) => request<T>(url, { method: "DELETE" }),
+  delete: <T>(url: string, options?: RequestOptions) =>
+    request<T>(url, { method: "DELETE" }, options),
 };

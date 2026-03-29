@@ -67,34 +67,21 @@ async function uploadAsset(file: File): Promise<Asset> {
 }
 
 async function generateAsset(prompt: string, model: string): Promise<Asset> {
-  const url = "/api/admin/assets/generate";
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), GENERATE_TIMEOUT_MS);
+  const result = await api.post<Asset>(
+    "/api/admin/assets/generate",
+    { prompt, model },
+    { timeoutMs: GENERATE_TIMEOUT_MS },
+  );
 
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt, model }),
-      credentials: "same-origin",
-      signal: controller.signal,
-    });
-
-    if (!res.ok) {
-      notifyAdminAuthError(url, res.status);
-      throw new Error(await parseErrorMessage(res, "Generation failed"));
-    }
-
-    const body = await res.json();
-    return body.data;
-  } catch (err) {
-    if (err instanceof Error && err.name === "AbortError") {
-      throw new Error("Image generation timed out. Please try again.");
-    }
-    throw err;
-  } finally {
-    clearTimeout(timeoutId);
+  if (!result.ok) {
+    const message =
+      result.error.code === "TIMEOUT"
+        ? "Image generation timed out. Please try again."
+        : result.error.message;
+    throw new Error(message);
   }
+
+  return result.data;
 }
 
 type PickerMode = "idle" | "browse" | "generate";
