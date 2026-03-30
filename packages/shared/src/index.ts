@@ -37,6 +37,9 @@ export type {
   RoutineCompletionRate,
   TimeSlotBreakdown,
   RoutineHealthAnalytics,
+  ChoreEngagementRate,
+  SubmissionTrend,
+  ChoreEngagementAnalytics,
 } from "./types.js";
 
 export type { ImageModelId } from "./constants.js";
