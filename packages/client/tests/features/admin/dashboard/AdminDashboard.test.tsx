@@ -81,6 +81,45 @@ const mockActivityLog = {
 
 const mockBalance = { total: 150, reserved: 20, available: 130 };
 
+const mockChoreEngagement = {
+  engagementRates: [
+    {
+      choreId: 1,
+      choreName: "Clean Kitchen",
+      submissionCount: 5,
+      approvedCount: 4,
+      totalPoints: 16,
+    },
+  ],
+  inactiveChores: [],
+  submissionTrends: [{ date: "2026-03-29", submissions: 5 }],
+  windowDays: 14,
+};
+
+const mockRewardDemand = {
+  pendingCount: 2,
+  pendingTotalCost: 70,
+  rankings: [
+    {
+      rewardId: 1,
+      rewardName: "Extra Screen Time",
+      requestCount: 5,
+      approvedCount: 3,
+      totalCost: 60,
+    },
+    {
+      rewardId: 2,
+      rewardName: "Movie Night Pick",
+      requestCount: 2,
+      approvedCount: 1,
+      totalCost: 50,
+    },
+  ],
+  neverRequested: [{ rewardId: 3, rewardName: "Ice Cream Trip" }],
+  pointsEarned: 500,
+  pointsRedeemed: 200,
+};
+
 const mockRoutineHealth = {
   completionRates: [
     {
@@ -119,13 +158,6 @@ const mockPointsEconomy = {
   redeemedAllTime: 40,
 };
 
-const mockChoreEngagement = {
-  engagementRates: [],
-  inactiveChores: [],
-  submissionTrends: [],
-  windowDays: 7,
-};
-
 function setupHandlers() {
   server.use(
     http.get("/api/admin/approvals", () =>
@@ -152,6 +184,9 @@ function setupHandlers() {
     ),
     http.get("/api/admin/points/economy", () =>
       HttpResponse.json({ data: mockPointsEconomy }),
+    ),
+    http.get("/api/admin/reward-analytics", () =>
+      HttpResponse.json({ data: mockRewardDemand }),
     ),
   );
 }
@@ -434,5 +469,62 @@ describe("AdminDashboard", () => {
     expect(screen.getByText("Routine 5")).toBeInTheDocument();
     expect(screen.queryByText("Routine 6")).not.toBeInTheDocument();
     expect(screen.getByText(/2 more/)).toBeInTheDocument();
+  });
+
+  it("renders reward demand card with pending count and rankings", async () => {
+    renderDashboard();
+
+    const demandSection = screen.getByRole("region", { name: "Reward demand" });
+
+    await waitFor(() => {
+      expect(within(demandSection).getByText(/2 pending/)).toBeInTheDocument();
+    });
+
+    expect(within(demandSection).getByText("Extra Screen Time")).toBeInTheDocument();
+    expect(within(demandSection).getByText("Movie Night Pick")).toBeInTheDocument();
+  });
+
+  it("shows never-requested warning in reward demand card", async () => {
+    renderDashboard();
+
+    const demandSection = screen.getByRole("region", { name: "Reward demand" });
+
+    await waitFor(() => {
+      expect(
+        within(demandSection).getByText("1 reward never requested"),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("renders View details link to reward demand page", async () => {
+    renderDashboard();
+
+    const demandSection = screen.getByRole("region", { name: "Reward demand" });
+
+    await waitFor(() => {
+      expect(within(demandSection).getByText("View details")).toBeInTheDocument();
+    });
+
+    const link = within(demandSection).getByText("View details");
+    expect(link.closest("a")).toHaveAttribute("href", "/admin/reward-demand");
+  });
+
+  it("shows reward demand error state", async () => {
+    server.use(
+      http.get("/api/admin/reward-analytics", () =>
+        HttpResponse.json(
+          { error: { code: "SERVER_ERROR", message: "fail" } },
+          { status: 500 },
+        ),
+      ),
+    );
+
+    renderDashboard();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Could not load reward demand."),
+      ).toBeInTheDocument();
+    });
   });
 });

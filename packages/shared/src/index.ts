@@ -44,6 +44,8 @@ export type {
   SystemHealthStats,
   BatchApproveResult,
   PointsEconomy,
+  RewardRequestRanking,
+  RewardDemandAnalytics,
 } from "./types.js";
 
 export type { ImageModelId } from "./constants.js";

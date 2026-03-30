@@ -39,6 +39,8 @@ import { createAdminChoreAnalyticsRoutes } from "./routes/admin-chore-analytics.
 import { createChoreAnalyticsService } from "./services/choreAnalyticsService.js";
 import { createAdminSystemHealthRoutes } from "./routes/admin-system-health.js";
 import { createSystemHealthService } from "./services/systemHealthService.js";
+import { createAdminRewardAnalyticsRoutes } from "./routes/admin-reward-analytics.js";
+import { createRewardAnalyticsService } from "./services/rewardAnalyticsService.js";
 import { createPushRoutes } from "./routes/push.js";
 import type { AppConfig } from "./config.js";
 
@@ -72,6 +74,7 @@ export function createApp(db: Database.Database, config: AppConfig) {
   const routineAnalyticsService = createRoutineAnalyticsService(db);
   const choreAnalyticsService = createChoreAnalyticsService(db);
   const systemHealthService = createSystemHealthService(db);
+  const rewardAnalyticsService = createRewardAnalyticsService(db);
   const backupService = createBackupService(db, config.dataDir, config, activityService);
 
   app.get("/api/health", (_req, res) => {
@@ -98,6 +101,7 @@ export function createApp(db: Database.Database, config: AppConfig) {
   app.use("/api/admin", createAdminRoutineAnalyticsRoutes(routineAnalyticsService, settingsService));
   app.use("/api/admin", createAdminChoreAnalyticsRoutes(choreAnalyticsService, settingsService));
   app.use("/api/admin", createAdminSystemHealthRoutes(systemHealthService));
+  app.use("/api/admin", createAdminRewardAnalyticsRoutes(rewardAnalyticsService));
   app.use("/api/admin", createAdminBackupRoutes(backupService, config.dataDir));
 
   app.all("/api/*", (_req, _res, next) => {
