@@ -363,5 +363,43 @@ describe("assets routes", () => {
 
       expect(res.status).toBe(401);
     });
+
+    it("returns 422 for an unknown model", async () => {
+      const testDb = createTestDb();
+      await seedTestData(testDb);
+      const appWithKey = createApp(
+        testDb,
+        createTestConfig({ dataDir: tmpDataDir, imageGenApiKey: "sk-test" }),
+      );
+      const adminCookies = await loginAdmin(appWithKey);
+
+      const res = await request(appWithKey)
+        .post("/api/admin/assets/generate")
+        .set("Cookie", adminCookies)
+        .send({ prompt: "a cute cat", model: "expensive-model-9000" });
+
+      expect(res.status).toBe(422);
+      expect(res.body.error.message).toContain("Unknown model");
+      testDb.close();
+    });
+
+    it("accepts a valid model without model validation error", async () => {
+      const testDb = createTestDb();
+      await seedTestData(testDb);
+      const appWithKey = createApp(
+        testDb,
+        createTestConfig({ dataDir: tmpDataDir, imageGenApiKey: "sk-test" }),
+      );
+      const adminCookies = await loginAdmin(appWithKey);
+
+      const res = await request(appWithKey)
+        .post("/api/admin/assets/generate")
+        .set("Cookie", adminCookies)
+        .send({ prompt: "a cute cat", model: "flux-2-flex" });
+
+      // Passes model validation — fails downstream at the PPQ API call (no real key)
+      expect(res.status).not.toBe(422);
+      testDb.close();
+    });
   });
 });
