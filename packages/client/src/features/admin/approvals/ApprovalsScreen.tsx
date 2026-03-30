@@ -1,30 +1,19 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
 import { queryKeys } from "../../../lib/query-keys.js";
 import { useAdminTimezone } from "../hooks/useAdminTimezone.js";
+import { useApprovals } from "../hooks/useApprovals.js";
 import { formatTimestamp } from "../../../lib/format-timestamp.js";
+import Card from "../../../components/Card.js";
+import { DATE_OPTIONS } from "../utils/date-format-options.js";
 import type {
-  PendingApprovals,
   RoutineCompletion,
   ChoreLog,
   RewardRequest,
   ApprovalType,
 } from "@chore-app/shared";
-
-function usePendingApprovals(isOnline: boolean) {
-  return useQuery({
-    queryKey: queryKeys.admin.approvals(),
-    queryFn: async () => {
-      const result = await api.get<PendingApprovals>("/api/admin/approvals");
-      if (!result.ok) throw result.error;
-      return result.data;
-    },
-    refetchInterval: isOnline ? 30_000 : false,
-    enabled: isOnline,
-  });
-}
 
 function useApproveItem() {
   const queryClient = useQueryClient();
@@ -76,10 +65,6 @@ function useRejectItem() {
   });
 }
 
-const DATE_OPTIONS: Intl.DateTimeFormatOptions = {
-  month: "short",
-  day: "numeric",
-};
 
 function LoadingSkeleton() {
   return (
@@ -154,7 +139,7 @@ function ApprovalCard({
   }
 
   return (
-    <div className={`rounded-2xl bg-[var(--color-surface)] p-4 shadow-card ${isSlidingOut ? "animate-slide-out" : ""}`}>
+    <Card padding="p-4" className={isSlidingOut ? "animate-slide-out" : ""}>
       <div className="flex items-start justify-between gap-3">
         <h3 className="font-display text-base font-bold text-[var(--color-text)]">
           {name}
@@ -202,7 +187,7 @@ function ApprovalCard({
           {isThisApprovePending ? "Approving..." : "Approve"}
         </button>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -228,7 +213,7 @@ function ApprovalSection({ title, borderClass, children }: ApprovalSectionProps)
 export default function ApprovalsScreen() {
   const isOnline = useOnline();
   const timezone = useAdminTimezone();
-  const { data, isLoading, error, refetch } = usePendingApprovals(isOnline);
+  const { data, isLoading, error, refetch } = useApprovals({ isOnline, autoRefreshMs: 30_000 });
   const approveMutation = useApproveItem();
   const rejectMutation = useRejectItem();
 
@@ -249,10 +234,7 @@ export default function ApprovalsScreen() {
         {isLoading && <LoadingSkeleton />}
 
         {error && (
-          <div
-            className="rounded-2xl bg-[var(--color-surface)] p-6 text-center shadow-card"
-            aria-live="assertive"
-          >
+          <Card padding="p-6" className="text-center" aria-live="assertive">
             <p className="font-display text-lg font-bold text-[var(--color-text-secondary)]">
               Could not load approvals.
             </p>
@@ -266,14 +248,11 @@ export default function ApprovalsScreen() {
             >
               Try Again
             </button>
-          </div>
+          </Card>
         )}
 
         {isEmpty && (
-          <div
-            className="rounded-2xl bg-[var(--color-surface)] p-8 text-center shadow-card"
-            aria-live="polite"
-          >
+          <Card padding="p-8" className="text-center" aria-live="polite">
             <p className="text-4xl" data-emoji>
               &#9989;
             </p>
@@ -283,7 +262,7 @@ export default function ApprovalsScreen() {
             <p className="mt-1 text-sm text-[var(--color-text-muted)]">
               All caught up! New submissions will appear here.
             </p>
-          </div>
+          </Card>
         )}
 
         {mutationError && (

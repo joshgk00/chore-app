@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useOnline } from "../../../contexts/OnlineContext.js";
 import { useChoreEngagement } from "../hooks/useChoreEngagement.js";
+import Card from "../../../components/Card.js";
 
 function TrendBar({ value, max }: { value: number; max: number }) {
   const pct = max > 0 ? (value / max) * 100 : 0;
@@ -58,17 +59,14 @@ export default function ChoreEngagementScreen() {
       </div>
 
       {!isOnline && !engagement && !isLoading && (
-        <div
-          className="rounded-2xl bg-[var(--color-surface)] p-6 text-center shadow-card"
-          aria-live="polite"
-        >
+        <Card padding="p-6" className="text-center" aria-live="polite">
           <p className="font-display text-lg font-bold text-[var(--color-text-secondary)]">
             You're offline
           </p>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             Chore engagement data requires an internet connection.
           </p>
-        </div>
+        </Card>
       )}
 
       {isLoading && (
@@ -85,7 +83,7 @@ export default function ChoreEngagementScreen() {
       )}
 
       {error && (
-        <div className="rounded-2xl bg-[var(--color-surface)] p-6 text-center shadow-card">
+        <Card padding="p-6" className="text-center">
           <p className="text-sm text-[var(--color-text-muted)]">
             Could not load chore engagement data.
           </p>
@@ -96,15 +94,12 @@ export default function ChoreEngagementScreen() {
           >
             Try Again
           </button>
-        </div>
+        </Card>
       )}
 
       {engagement && (
         <div className="space-y-5">
-          <section
-            aria-label="Summary"
-            className="rounded-2xl bg-[var(--color-surface)] p-5 shadow-card"
-          >
+          <Card as="section" aria-label="Summary">
             <div className="flex items-center gap-3">
               <span className="font-display text-3xl font-bold text-[var(--color-amber-700)]">
                 {totalSubmissions}
@@ -118,7 +113,7 @@ export default function ChoreEngagementScreen() {
                 </p>
               </div>
             </div>
-          </section>
+          </Card>
 
           {engagement.inactiveChores.length > 0 && (
             <section
@@ -143,10 +138,7 @@ export default function ChoreEngagementScreen() {
             </section>
           )}
 
-          <section
-            aria-label="Chore rankings"
-            className="rounded-2xl bg-[var(--color-surface)] p-5 shadow-card"
-          >
+          <Card as="section" aria-label="Chore rankings">
             <h2 className="font-display text-lg font-semibold text-[var(--color-text)]">
               Chore Rankings
             </h2>
@@ -189,13 +181,10 @@ export default function ChoreEngagementScreen() {
                 ))}
               </div>
             )}
-          </section>
+          </Card>
 
           {engagement.submissionTrends.length > 0 && (
-            <section
-              aria-label="Submission trends"
-              className="rounded-2xl bg-[var(--color-surface)] p-5 shadow-card"
-            >
+            <Card as="section" aria-label="Submission trends">
               <h2 className="font-display text-lg font-semibold text-[var(--color-text)]">
                 Daily Submissions
               </h2>
@@ -215,7 +204,7 @@ export default function ChoreEngagementScreen() {
                   </div>
                 ))}
               </div>
-            </section>
+            </Card>
           )}
         </div>
       )}

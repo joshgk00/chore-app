@@ -6,7 +6,12 @@ import { queryKeys, invalidatePointsRelated } from "../../../lib/query-keys.js";
 import { useAdminTimezone } from "../hooks/useAdminTimezone.js";
 import { useRoutineHealth } from "../hooks/useRoutineHealth.js";
 import { useChoreEngagement } from "../hooks/useChoreEngagement.js";
+import { useApprovals } from "../hooks/useApprovals.js";
 import { formatTimestamp } from "../../../lib/format-timestamp.js";
+import Card from "../../../components/Card.js";
+import { DATETIME_OPTIONS, DATE_OPTIONS } from "../utils/date-format-options.js";
+import { eventTypeDotColor } from "../utils/event-type-colors.js";
+import type { ActivityLogResponse, LedgerResponse } from "../types.js";
 import type {
   PendingApprovals,
   RoutineCompletion,
@@ -14,51 +19,13 @@ import type {
   RewardRequest,
   ApprovalType,
   ActivityEventType,
-  ActivityLogEntry,
   PointsBalance,
-  LedgerEntry,
   RoutineHealthAnalytics,
   ChoreEngagementAnalytics,
 } from "@chore-app/shared";
 
-interface ActivityLogResponse {
-  events: ActivityLogEntry[];
-  total: number;
-  page: number;
-  limit: number;
-}
-
-interface LedgerResponse {
-  entries: LedgerEntry[];
-  balance: PointsBalance;
-}
-
 const RECENT_ACTIVITY_LIMIT = 5;
 const APPROVALS_PER_TYPE = 5;
-
-const DATETIME_OPTIONS: Intl.DateTimeFormatOptions = {
-  month: "short",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-};
-
-const DATE_OPTIONS: Intl.DateTimeFormatOptions = {
-  month: "short",
-  day: "numeric",
-};
-
-function useDashboardApprovals(isOnline: boolean) {
-  return useQuery({
-    queryKey: queryKeys.admin.approvals(),
-    queryFn: async () => {
-      const result = await api.get<PendingApprovals>("/api/admin/approvals");
-      if (!result.ok) throw result.error;
-      return result.data;
-    },
-    enabled: isOnline,
-  });
-}
 
 function useDashboardActivity(isOnline: boolean) {
   return useQuery({
@@ -278,10 +245,7 @@ function PendingApprovalsCard({
     routineItems.length + choreItems.length + rewardItems.length;
 
   return (
-    <section
-      aria-label="Pending approvals"
-      className="rounded-2xl bg-[var(--color-surface)] p-5 shadow-card"
-    >
+    <Card as="section" aria-label="Pending approvals">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-lg font-semibold text-[var(--color-text)]">
           Pending Approvals
@@ -359,15 +323,8 @@ function PendingApprovalsCard({
           View full queue
         </Link>
       )}
-    </section>
+    </Card>
   );
-}
-
-function eventTypeDotColor(eventType: ActivityEventType): string {
-  if (eventType.startsWith("routine_")) return "bg-[var(--color-sky-500)]";
-  if (eventType.startsWith("chore_")) return "bg-[var(--color-amber-500)]";
-  if (eventType.startsWith("reward_")) return "bg-[var(--color-amber-700)]";
-  return "bg-[var(--color-text-muted)]";
 }
 
 function RecentActivityCard({
@@ -384,10 +341,7 @@ function RecentActivityCard({
   const events = data?.events ?? [];
 
   return (
-    <section
-      aria-label="Recent activity"
-      className="rounded-2xl bg-[var(--color-surface)] p-5 shadow-card"
-    >
+    <Card as="section" aria-label="Recent activity">
       <h2 className="font-display text-lg font-semibold text-[var(--color-text)]">
         Recent Activity
       </h2>
@@ -441,7 +395,7 @@ function RecentActivityCard({
           View all activity
         </Link>
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -455,10 +409,7 @@ function PointsBalanceCard({
   error: Error | null;
 }) {
   return (
-    <section
-      aria-label="Points balance"
-      className="rounded-2xl bg-[var(--color-surface)] p-5 shadow-card"
-    >
+    <Card as="section" aria-label="Points balance">
       <h2 className="font-display text-lg font-semibold text-[var(--color-text)]">
         Points Balance
       </h2>
@@ -510,7 +461,7 @@ function PointsBalanceCard({
           View ledger
         </Link>
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -531,10 +482,7 @@ function ChoreEngagementCard({
   const inactiveCount = data ? data.inactiveChores.length : 0;
 
   return (
-    <section
-      aria-label="Chore engagement"
-      className="rounded-2xl bg-[var(--color-surface)] p-5 shadow-card"
-    >
+    <Card as="section" aria-label="Chore engagement">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-lg font-semibold text-[var(--color-text)]">
           Chore Engagement
@@ -612,7 +560,7 @@ function ChoreEngagementCard({
           View details
         </Link>
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -638,10 +586,7 @@ function RoutineHealthCard({
     : 0;
 
   return (
-    <section
-      aria-label="Routine health"
-      className="rounded-2xl bg-[var(--color-surface)] p-5 shadow-card"
-    >
+    <Card as="section" aria-label="Routine health">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-lg font-semibold text-[var(--color-text)]">
           Routine Health
@@ -732,7 +677,7 @@ function RoutineHealthCard({
           View details
         </Link>
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -740,7 +685,7 @@ export default function AdminDashboard() {
   const isOnline = useOnline();
   const timezone = useAdminTimezone();
 
-  const approvals = useDashboardApprovals(isOnline);
+  const approvals = useApprovals({ isOnline });
   const activity = useDashboardActivity(isOnline);
   const points = useDashboardPoints(isOnline);
   const routineHealth = useRoutineHealth(isOnline);
@@ -754,14 +699,14 @@ export default function AdminDashboard() {
       </h1>
 
       {!isOnline && !approvals.data && !activity.data && !points.data && (
-        <div className="mt-6 rounded-2xl bg-[var(--color-surface)] p-6 text-center shadow-card" aria-live="polite">
+        <Card className="mt-6 text-center" aria-live="polite">
           <p className="font-display text-lg font-bold text-[var(--color-text-secondary)]">
             You're offline
           </p>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             The dashboard requires an internet connection to load.
           </p>
-        </div>
+        </Card>
       )}
 
       <div className="mt-6 grid grid-cols-1 gap-5 tablet:grid-cols-2">

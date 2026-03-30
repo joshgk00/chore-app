@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useOnline } from "../../../contexts/OnlineContext.js";
 import { useRoutineHealth } from "../hooks/useRoutineHealth.js";
+import Card from "../../../components/Card.js";
 import type { TimeSlot } from "@chore-app/shared";
 
 const SLOT_LABELS: Record<TimeSlot, string> = {
@@ -69,17 +70,14 @@ export default function RoutineHealthScreen() {
       </div>
 
       {!isOnline && !routineHealth && !isLoading && (
-        <div
-          className="rounded-2xl bg-[var(--color-surface)] p-6 text-center shadow-card"
-          aria-live="polite"
-        >
+        <Card padding="p-6" className="text-center" aria-live="polite">
           <p className="font-display text-lg font-bold text-[var(--color-text-secondary)]">
             You're offline
           </p>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             Routine health data requires an internet connection.
           </p>
-        </div>
+        </Card>
       )}
 
       {isLoading && (
@@ -96,7 +94,7 @@ export default function RoutineHealthScreen() {
       )}
 
       {error && (
-        <div className="rounded-2xl bg-[var(--color-surface)] p-6 text-center shadow-card">
+        <Card padding="p-6" className="text-center">
           <p className="text-sm text-[var(--color-text-muted)]">
             Could not load routine health data.
           </p>
@@ -107,15 +105,12 @@ export default function RoutineHealthScreen() {
           >
             Try Again
           </button>
-        </div>
+        </Card>
       )}
 
       {routineHealth && (
         <div className="space-y-5">
-          <section
-            aria-label="Streak"
-            className="rounded-2xl bg-[var(--color-surface)] p-5 shadow-card"
-          >
+          <Card as="section" aria-label="Streak">
             <div className="flex items-center gap-3">
               <span className="font-display text-3xl font-bold text-[var(--color-sky-700)]">
                 {routineHealth.streakDays}
@@ -129,7 +124,7 @@ export default function RoutineHealthScreen() {
                 </p>
               </div>
             </div>
-          </section>
+          </Card>
 
           {neglectedRoutines.length > 0 && (
             <section
@@ -155,10 +150,7 @@ export default function RoutineHealthScreen() {
             </section>
           )}
 
-          <section
-            aria-label="Completion rates"
-            className="rounded-2xl bg-[var(--color-surface)] p-5 shadow-card"
-          >
+          <Card as="section" aria-label="Completion rates">
             <h2 className="font-display text-lg font-semibold text-[var(--color-text)]">
               Completion Rates
             </h2>
@@ -191,13 +183,10 @@ export default function RoutineHealthScreen() {
                 ))}
               </div>
             )}
-          </section>
+          </Card>
 
           {routineHealth.timeSlotBreakdown.length > 0 && (
-            <section
-              aria-label="Time slot breakdown"
-              className="rounded-2xl bg-[var(--color-surface)] p-5 shadow-card"
-            >
+            <Card as="section" aria-label="Time slot breakdown">
               <h2 className="font-display text-lg font-semibold text-[var(--color-text)]">
                 By Time Slot
               </h2>
@@ -223,7 +212,7 @@ export default function RoutineHealthScreen() {
                   </div>
                 ))}
               </div>
-            </section>
+            </Card>
           )}
         </div>
       )}

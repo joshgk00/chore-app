@@ -4,8 +4,11 @@ import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
 import { queryKeys } from "../../../lib/query-keys.js";
 import HelpTip from "../../../components/HelpTip.js";
+import Card from "../../../components/Card.js";
 import { useAdminTimezone } from "../hooks/useAdminTimezone.js";
 import { formatTimestamp } from "../../../lib/format-timestamp.js";
+import { DATETIME_OPTIONS } from "../utils/date-format-options.js";
+import type { LedgerResponse } from "../types.js";
 import type { PointsBalance, LedgerEntry, EntryType } from "@chore-app/shared";
 
 const PAGE_SIZE = 50;
@@ -19,11 +22,6 @@ const FILTER_OPTIONS: { value: FilterType; label: string }[] = [
   { value: "reward", label: "Reward" },
   { value: "manual", label: "Manual" },
 ];
-
-interface LedgerResponse {
-  entries: LedgerEntry[];
-  balance: PointsBalance;
-}
 
 interface AdjustResponse {
   entry: LedgerEntry;
@@ -143,9 +141,10 @@ function BalanceHeader({ balance }: { balance: PointsBalance }) {
   return (
     <div className="flex gap-3" role="group" aria-label="Points balance">
       {cards.map((card) => (
-        <div
+        <Card
           key={card.label}
-          className="flex-1 rounded-2xl bg-[var(--color-surface)] p-4 shadow-card"
+          padding="p-4"
+          className="flex-1"
         >
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
@@ -156,7 +155,7 @@ function BalanceHeader({ balance }: { balance: PointsBalance }) {
           <p className="mt-1 font-display text-2xl font-bold text-[var(--color-amber-700)]">
             {card.value}
           </p>
-        </div>
+        </Card>
       ))}
     </div>
   );
@@ -303,13 +302,6 @@ function TypeBadge({ type }: { type: EntryType }) {
   );
 }
 
-const DATE_TIME_OPTIONS: Intl.DateTimeFormatOptions = {
-  month: "short",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-};
-
 interface LedgerTableProps {
   entries: LedgerEntry[];
   timezone: string;
@@ -317,7 +309,7 @@ interface LedgerTableProps {
 
 function LedgerTable({ entries, timezone }: LedgerTableProps) {
   return (
-    <div className="overflow-x-auto rounded-2xl bg-[var(--color-surface)] shadow-card">
+    <Card padding="p-0" className="overflow-x-auto">
       <table className="w-full text-sm" aria-label="Points ledger entries">
         <thead>
           <tr className="border-b border-[var(--color-border)]">
@@ -343,7 +335,7 @@ function LedgerTable({ entries, timezone }: LedgerTableProps) {
               className="border-b border-[var(--color-border)] last:border-b-0"
             >
               <td className="whitespace-nowrap px-4 py-3 text-[var(--color-text-muted)]">
-                {formatTimestamp(entry.createdAt, DATE_TIME_OPTIONS, timezone)}
+                {formatTimestamp(entry.createdAt, DATETIME_OPTIONS, timezone)}
               </td>
               <td className="px-4 py-3">
                 <TypeBadge type={entry.entryType} />
@@ -364,7 +356,7 @@ function LedgerTable({ entries, timezone }: LedgerTableProps) {
           ))}
         </tbody>
       </table>
-    </div>
+    </Card>
   );
 }
 
@@ -394,22 +386,19 @@ export default function LedgerScreen() {
 
         <div aria-live="polite">
           {!isOnline && !ledger.balance && !ledger.isLoading && (
-            <div className="rounded-2xl bg-[var(--color-surface)] p-6 text-center shadow-card">
+            <Card padding="p-6" className="text-center">
               <p className="font-display text-lg font-bold text-[var(--color-text-secondary)]">
                 You're offline
               </p>
               <p className="mt-1 text-sm text-[var(--color-text-muted)]">
                 The ledger requires an internet connection to load.
               </p>
-            </div>
+            </Card>
           )}
         </div>
 
         {isOnline && ledger.error && (
-          <div
-            className="rounded-2xl bg-[var(--color-surface)] p-6 text-center shadow-card"
-            aria-live="assertive"
-          >
+          <Card padding="p-6" className="text-center" aria-live="assertive">
             <p className="font-display text-lg font-bold text-[var(--color-text-secondary)]">
               Could not load the ledger.
             </p>
@@ -423,7 +412,7 @@ export default function LedgerScreen() {
             >
               Try Again
             </button>
-          </div>
+          </Card>
         )}
 
         {!ledger.isLoading && !ledger.error && (
@@ -453,10 +442,7 @@ export default function LedgerScreen() {
             {hasEntries && <LedgerTable entries={ledger.entries} timezone={timezone} />}
 
             {isEmpty && (
-              <div
-                className="rounded-2xl bg-[var(--color-surface)] p-8 text-center shadow-card"
-                aria-live="polite"
-              >
+              <Card padding="p-8" className="text-center" aria-live="polite">
                 <p className="text-4xl" data-emoji>
                   &#128209;
                 </p>
@@ -466,7 +452,7 @@ export default function LedgerScreen() {
                 <p className="mt-1 text-sm text-[var(--color-text-muted)]">
                   Points earned from routines, chores, and rewards will appear here.
                 </p>
-              </div>
+              </Card>
             )}
 
             {hasEntries && (

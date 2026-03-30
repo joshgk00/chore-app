@@ -5,39 +5,18 @@ import { useOnline } from "../../../contexts/OnlineContext.js";
 import { queryKeys } from "../../../lib/query-keys.js";
 import { useAdminTimezone } from "../hooks/useAdminTimezone.js";
 import { formatTimestamp } from "../../../lib/format-timestamp.js";
+import Card from "../../../components/Card.js";
+import { DATETIME_OPTIONS } from "../utils/date-format-options.js";
+import { eventTypeBadgeColor } from "../utils/event-type-colors.js";
+import type { ActivityLogResponse } from "../types.js";
 import { ACTIVITY_EVENT_TYPES } from "@chore-app/shared";
-import type { ActivityLogEntry } from "@chore-app/shared";
 
 const PAGE_SIZE = 50;
 
 type FilterEventType = "all" | (typeof ACTIVITY_EVENT_TYPES)[number];
 
-interface ActivityLogResponse {
-  events: ActivityLogEntry[];
-  total: number;
-  page: number;
-  limit: number;
-}
-
 function formatEventTypeLabel(eventType: string): string {
   return eventType.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
-}
-
-const DATE_TIME_OPTIONS: Intl.DateTimeFormatOptions = {
-  month: "short",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-};
-
-function eventTypeBadgeColor(eventType: string): string {
-  if (eventType.startsWith("routine_")) {
-    return "bg-[var(--color-sky-50)] text-[var(--color-sky-700)]";
-  }
-  if (eventType.startsWith("chore_") || eventType.startsWith("reward_")) {
-    return "bg-[var(--color-amber-50)] text-[var(--color-amber-700)]";
-  }
-  return "bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]";
 }
 
 function EventTypeBadge({ eventType }: { eventType: string }) {
@@ -137,22 +116,19 @@ export default function ActivityLogScreen() {
 
         <div aria-live="polite">
           {!isOnline && !query.data && !query.isLoading && (
-            <div className="rounded-2xl bg-[var(--color-surface)] p-6 text-center shadow-card">
+            <Card padding="p-6" className="text-center">
               <p className="font-display text-lg font-bold text-[var(--color-text-secondary)]">
                 You're offline
               </p>
               <p className="mt-1 text-sm text-[var(--color-text-muted)]">
                 The activity log requires an internet connection to load.
               </p>
-            </div>
+            </Card>
           )}
         </div>
 
         {isOnline && query.error && (
-          <div
-            className="rounded-2xl bg-[var(--color-surface)] p-6 text-center shadow-card"
-            aria-live="assertive"
-          >
+          <Card padding="p-6" className="text-center" aria-live="assertive">
             <p className="font-display text-lg font-bold text-[var(--color-text-secondary)]">
               Could not load the activity log.
             </p>
@@ -166,7 +142,7 @@ export default function ActivityLogScreen() {
             >
               Try Again
             </button>
-          </div>
+          </Card>
         )}
 
         {!query.isLoading && !query.error && (
@@ -226,7 +202,7 @@ export default function ActivityLogScreen() {
             </div>
 
             {hasEvents && (
-              <div className="overflow-x-auto rounded-2xl bg-[var(--color-surface)] shadow-card">
+              <Card padding="p-0" className="overflow-x-auto">
                 <table className="w-full text-sm" aria-label="Activity log entries">
                   <thead>
                     <tr className="border-b border-[var(--color-border)]">
@@ -257,7 +233,7 @@ export default function ActivityLogScreen() {
                         className="border-b border-[var(--color-border)] last:border-b-0"
                       >
                         <td className="whitespace-nowrap px-4 py-3 text-[var(--color-text-muted)]">
-                          {formatTimestamp(event.createdAt, DATE_TIME_OPTIONS, timezone)}
+                          {formatTimestamp(event.createdAt, DATETIME_OPTIONS, timezone)}
                         </td>
                         <td className="px-4 py-3">
                           <EventTypeBadge eventType={event.eventType} />
@@ -269,14 +245,11 @@ export default function ActivityLogScreen() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </Card>
             )}
 
             {isEmpty && (
-              <div
-                className="rounded-2xl bg-[var(--color-surface)] p-8 text-center shadow-card"
-                aria-live="polite"
-              >
+              <Card padding="p-8" className="text-center" aria-live="polite">
                 <p className="text-4xl" data-emoji>
                   &#128203;
                 </p>
@@ -286,7 +259,7 @@ export default function ActivityLogScreen() {
                 <p className="mt-1 text-sm text-[var(--color-text-muted)]">
                   Activity from routines, chores, and rewards will appear here.
                 </p>
-              </div>
+              </Card>
             )}
 
             {hasEvents && (
