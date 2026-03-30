@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
@@ -362,6 +362,48 @@ describe("assets routes", () => {
         .send({ prompt: "a cute cat" });
 
       expect(res.status).toBe(401);
+    });
+
+    it("returns 422 for an unknown model", async () => {
+      const testDb = createTestDb();
+      await seedTestData(testDb);
+      const appWithKey = createApp(
+        testDb,
+        createTestConfig({ dataDir: tmpDataDir, imageGenApiKey: "sk-test" }),
+      );
+      const adminCookies = await loginAdmin(appWithKey);
+
+      const res = await request(appWithKey)
+        .post("/api/admin/assets/generate")
+        .set("Cookie", adminCookies)
+        .send({ prompt: "a cute cat", model: "expensive-model-9000" });
+
+      expect(res.status).toBe(422);
+      expect(res.body.error.message).toContain("Unknown model");
+      testDb.close();
+    });
+
+    it("accepts a valid model without model validation error", async () => {
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({ data: [{ b64_json: "" }] }), { status: 200 }),
+      );
+
+      const testDb = createTestDb();
+      await seedTestData(testDb);
+      const appWithKey = createApp(
+        testDb,
+        createTestConfig({ dataDir: tmpDataDir, imageGenApiKey: "sk-test" }),
+      );
+      const adminCookies = await loginAdmin(appWithKey);
+
+      const res = await request(appWithKey)
+        .post("/api/admin/assets/generate")
+        .set("Cookie", adminCookies)
+        .send({ prompt: "a cute cat", model: "flux-2-flex" });
+
+      expect(res.status).not.toBe(422);
+      fetchSpy.mockRestore();
+      testDb.close();
     });
   });
 });
