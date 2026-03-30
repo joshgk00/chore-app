@@ -5,6 +5,9 @@ import multer from "multer";
 import type { AssetService } from "../services/assetService.js";
 import { AppError, ValidationError } from "../lib/errors.js";
 import { parseIdParam } from "../lib/parse-id-param.js";
+import { IMAGE_MODELS } from "@chore-app/shared";
+
+const ALLOWED_MODEL_IDS: ReadonlySet<string> = new Set(IMAGE_MODELS.map((m) => m.id));
 
 export function createAdminAssetsRoutes(
   assetService: AssetService,
@@ -118,6 +121,9 @@ export function createAdminAssetsRoutes(
       }
       if (model !== undefined && typeof model !== "string") {
         throw new ValidationError("model must be a string");
+      }
+      if (model !== undefined && !ALLOWED_MODEL_IDS.has(model)) {
+        throw new ValidationError(`Unknown model: ${model}. Allowed: ${[...ALLOWED_MODEL_IDS].join(", ")}`);
       }
 
       if (!imageGenApiKey) {
