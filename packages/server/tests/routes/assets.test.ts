@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
@@ -384,6 +384,10 @@ describe("assets routes", () => {
     });
 
     it("accepts a valid model without model validation error", async () => {
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({ data: [{ b64_json: "" }] }), { status: 200 }),
+      );
+
       const testDb = createTestDb();
       await seedTestData(testDb);
       const appWithKey = createApp(
@@ -397,8 +401,8 @@ describe("assets routes", () => {
         .set("Cookie", adminCookies)
         .send({ prompt: "a cute cat", model: "flux-2-flex" });
 
-      // Passes model validation — fails downstream at the PPQ API call (no real key)
       expect(res.status).not.toBe(422);
+      fetchSpy.mockRestore();
       testDb.close();
     });
   });
