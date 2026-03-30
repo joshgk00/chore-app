@@ -36,21 +36,25 @@ export function createChoreAnalyticsService(
   );
 
   const selectSubmissionCountsStmt = db.prepare(
-    `SELECT chore_id,
+    `SELECT cl.chore_id,
             COUNT(*) AS submission_count,
-            SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) AS approved_count,
-            SUM(CASE WHEN status = 'approved' THEN points_snapshot ELSE 0 END) AS total_points
-     FROM chore_logs
-     WHERE local_date >= ? AND local_date <= ?
-     GROUP BY chore_id`,
+            SUM(CASE WHEN cl.status = 'approved' THEN 1 ELSE 0 END) AS approved_count,
+            SUM(CASE WHEN cl.status = 'approved' THEN cl.points_snapshot ELSE 0 END) AS total_points
+     FROM chore_logs AS cl
+     JOIN chores AS c ON c.id = cl.chore_id
+     WHERE c.active = 1 AND c.archived_at IS NULL
+       AND cl.local_date >= ? AND cl.local_date <= ?
+     GROUP BY cl.chore_id`,
   );
 
   const selectDailyTrendsStmt = db.prepare(
-    `SELECT local_date, COUNT(*) AS submissions
-     FROM chore_logs
-     WHERE local_date >= ? AND local_date <= ?
-     GROUP BY local_date
-     ORDER BY local_date`,
+    `SELECT cl.local_date, COUNT(*) AS submissions
+     FROM chore_logs AS cl
+     JOIN chores AS c ON c.id = cl.chore_id
+     WHERE c.active = 1 AND c.archived_at IS NULL
+       AND cl.local_date >= ? AND cl.local_date <= ?
+     GROUP BY cl.local_date
+     ORDER BY cl.local_date`,
   );
 
   function getChoreEngagement(localToday: string): ChoreEngagementAnalytics {

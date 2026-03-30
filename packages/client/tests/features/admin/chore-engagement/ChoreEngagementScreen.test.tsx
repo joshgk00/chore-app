@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor, within, act } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
@@ -67,6 +67,10 @@ function renderScreen() {
 describe("ChoreEngagementScreen", () => {
   beforeEach(() => {
     setupHandlers();
+  });
+
+  afterEach(() => {
+    Object.defineProperty(navigator, "onLine", { value: true, writable: true });
   });
 
   it("renders heading and breadcrumb", () => {
@@ -244,7 +248,5 @@ describe("ChoreEngagementScreen", () => {
     );
 
     expect(screen.getByText("You're offline")).toBeInTheDocument();
-
-    Object.defineProperty(navigator, "onLine", { value: true, writable: true });
   });
 });
