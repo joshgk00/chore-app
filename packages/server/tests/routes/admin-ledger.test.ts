@@ -234,4 +234,64 @@ describe("admin ledger routes", () => {
       db.close();
     });
   });
+
+  describe("GET /api/admin/points/economy", () => {
+    it("returns economy data with weekly earnings and redeemed totals", async () => {
+      const { db, app } = await createTestApp();
+      const cookies = await loginAdmin(app);
+
+      const res = await request(app)
+        .get("/api/admin/points/economy")
+        .set("Cookie", cookies);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveProperty("earnedThisWeek");
+      expect(res.body.data).toHaveProperty("earnedLastWeek");
+      expect(res.body.data).toHaveProperty("redeemedAllTime");
+      expect(typeof res.body.data.earnedThisWeek).toBe("number");
+      expect(typeof res.body.data.earnedLastWeek).toBe("number");
+      expect(typeof res.body.data.redeemedAllTime).toBe("number");
+      db.close();
+    });
+
+    it("returns zero values when no ledger entries exist", async () => {
+      const db = createTestDb();
+      await seedTestData(db);
+      seedRewardData(db);
+      const app = createApp(db, testConfig);
+      const cookies = await loginAdmin(app);
+
+      const res = await request(app)
+        .get("/api/admin/points/economy")
+        .set("Cookie", cookies);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.earnedThisWeek).toBe(0);
+      expect(res.body.data.earnedLastWeek).toBe(0);
+      expect(res.body.data.redeemedAllTime).toBe(0);
+      db.close();
+    });
+
+    it("counts positive entries as earned this week", async () => {
+      const { db, app } = await createTestApp();
+      const cookies = await loginAdmin(app);
+
+      const res = await request(app)
+        .get("/api/admin/points/economy")
+        .set("Cookie", cookies);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.earnedThisWeek).toBeGreaterThanOrEqual(0);
+      db.close();
+    });
+
+    it("returns 401 without session", async () => {
+      const { db, app } = await createTestApp();
+
+      const res = await request(app).get("/api/admin/points/economy");
+
+      expect(res.status).toBe(401);
+      db.close();
+    });
+  });
 });

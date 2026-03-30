@@ -37,6 +37,15 @@ export function createAdminApprovalsRoutes(approvalService: ApprovalService) {
     }
   });
 
+  router.post("/approvals/batch-approve", (_req, res, next) => {
+    try {
+      const result = approvalService.batchApproveAll();
+      res.json({ data: result });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   router.post("/approvals/:type/:id/approve", (req, res, next) => {
     try {
       const { type, id } = parseApprovalParams(req.params as { type: string; id: string });

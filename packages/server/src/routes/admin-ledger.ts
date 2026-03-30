@@ -2,6 +2,7 @@ import { Router } from "express";
 import { ENTRY_TYPES } from "@chore-app/shared";
 import type { EntryType } from "@chore-app/shared";
 import type { PointsService } from "../services/pointsService.js";
+import type { SettingsService } from "../services/settingsService.js";
 import { ValidationError } from "../lib/errors.js";
 
 function parseIntParam(value: unknown, defaultVal: number): number {
@@ -11,7 +12,7 @@ function parseIntParam(value: unknown, defaultVal: number): number {
   return parsed;
 }
 
-export function createAdminLedgerRoutes(pointsService: PointsService) {
+export function createAdminLedgerRoutes(pointsService: PointsService, settingsService?: SettingsService) {
   const router = Router();
 
   router.get("/points/ledger", (req, res, next) => {
@@ -47,6 +48,17 @@ export function createAdminLedgerRoutes(pointsService: PointsService) {
       const balance = pointsService.getBalance();
 
       res.status(201).json({ data: { entry, balance } });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.get("/points/economy", (_req, res, next) => {
+    try {
+      const timezone =
+        settingsService?.getSetting("timezone") ?? "America/New_York";
+      const economy = pointsService.getPointsEconomy(timezone);
+      res.json({ data: economy });
     } catch (err) {
       next(err);
     }

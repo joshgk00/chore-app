@@ -11,6 +11,7 @@ import { useSystemHealth } from "../hooks/useSystemHealth.js";
 import { formatTimestamp } from "../../../lib/format-timestamp.js";
 import { formatBytes } from "../utils/format-bytes.js";
 import Card from "../../../components/Card.js";
+import QuickActionsPanel from "./QuickActionsPanel.js";
 import { DATETIME_OPTIONS, DATE_OPTIONS } from "../utils/date-format-options.js";
 import { eventTypeDotColor } from "../utils/event-type-colors.js";
 import type { ActivityLogResponse, LedgerResponse } from "../types.js";
@@ -799,6 +800,10 @@ export default function AdminDashboard() {
       )}
 
       <div className="mt-6 grid grid-cols-1 gap-5 tablet:grid-cols-2">
+        <div className="tablet:col-span-2">
+          <QuickActionsPanel pendingApprovals={approvals.data} />
+        </div>
+
         <PointsBalanceCard
           data={points.data}
           isLoading={points.isLoading}

@@ -113,6 +113,19 @@ const mockRoutineHealth = {
   streakDays: 4,
 };
 
+const mockPointsEconomy = {
+  earnedThisWeek: 25,
+  earnedLastWeek: 18,
+  redeemedAllTime: 40,
+};
+
+const mockChoreEngagement = {
+  engagementRates: [],
+  inactiveChores: [],
+  submissionTrends: [],
+  windowDays: 7,
+};
+
 function setupHandlers() {
   server.use(
     http.get("/api/admin/approvals", () =>
@@ -133,6 +146,12 @@ function setupHandlers() {
     ),
     http.get("/api/admin/routine-analytics", () =>
       HttpResponse.json({ data: mockRoutineHealth }),
+    ),
+    http.get("/api/admin/chore-analytics", () =>
+      HttpResponse.json({ data: mockChoreEngagement }),
+    ),
+    http.get("/api/admin/points/economy", () =>
+      HttpResponse.json({ data: mockPointsEconomy }),
     ),
   );
 }
