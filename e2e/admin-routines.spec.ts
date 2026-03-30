@@ -16,7 +16,7 @@ async function createRoutine(page: Page, name: string, points = 5) {
         resp.url().includes("/api/admin/routines") &&
         resp.request().method() === "POST",
     ),
-    page.getByRole("button", { name: "Create Routine" }).click(),
+    page.getByRole("button", { name: "Save & Close" }).click(),
   ]);
   await page.waitForURL(/\/admin\/routines$/);
   await expect(page.getByRole("link", { name })).toBeVisible();
@@ -91,7 +91,7 @@ test.describe("Admin Routines CRUD", () => {
           resp.url().includes("/api/admin/routines/") &&
           resp.request().method() === "PUT",
       ),
-      page.getByRole("button", { name: "Save Changes" }).click(),
+      page.getByRole("button", { name: "Save & Close" }).click(),
     ]);
     await page.waitForURL(/\/admin\/routines$/);
 
@@ -166,7 +166,7 @@ test.describe("Admin Routines CRUD", () => {
     await page.goto("/admin/routines/new");
     await page.getByLabel("Checklist item 1").fill("Step one");
 
-    await page.getByRole("button", { name: "Create Routine" }).click();
+    await page.getByRole("button", { name: "Create" }).click();
 
     await expect(page.getByText(/name.*required/i)).toBeVisible({ timeout: 5000 });
   });
@@ -180,7 +180,7 @@ test.describe("Admin Routines CRUD", () => {
     await page.getByLabel("Name").fill("Offline Test");
     await page.getByLabel("Checklist item 1").fill("Step one");
 
-    const submitButton = page.getByRole("button", { name: "Create Routine" });
+    const submitButton = page.getByRole("button", { name: "Create" });
     await expect(submitButton).toBeEnabled();
 
     await page.context().setOffline(true);
@@ -220,7 +220,7 @@ test.describe("Admin Routines CRUD", () => {
     await page.getByLabel("Name").fill(name);
     await page.getByLabel("Checklist item 1").fill("Step one");
 
-    const submitButton = page.getByRole("button", { name: "Create Routine" });
+    const submitButton = page.getByRole("button", { name: "Save & Close" });
     await Promise.all([
       page.waitForURL(/\/admin\/routines$/),
       submitButton.click({ clickCount: 2 }),
