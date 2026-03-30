@@ -1,11 +1,12 @@
 import type Database from "better-sqlite3";
-import type { PointsBalance, LedgerEntry, EntryType, TodayPointActivity } from "@chore-app/shared";
+import type { PointsBalance, PointsEconomy, LedgerEntry, EntryType, TodayPointActivity } from "@chore-app/shared";
 import { ValidationError } from "../lib/errors.js";
 import { getTimeInTimezone } from "../lib/timeSlots.js";
 import type { ActivityService } from "./activityService.js";
 
 export interface PointsService {
   getBalance(): PointsBalance;
+  getPointsEconomy(timezone: string): PointsEconomy;
   getLedgerFiltered(options: { limit: number; offset: number; entryType?: EntryType }): LedgerEntry[];
   createAdjustment(amount: number, note: string): LedgerEntry;
   getTodayActivity(timezone: string): TodayPointActivity[];
@@ -74,6 +75,18 @@ export function createPointsService(db: Database.Database, activityService: Acti
      FROM points_ledger
      WHERE created_at >= ?
      ORDER BY created_at ASC, id ASC`,
+  );
+
+  const selectEarnedInRangeStmt = db.prepare(
+    `SELECT COALESCE(SUM(amount), 0) as total
+     FROM points_ledger
+     WHERE amount > 0 AND created_at >= ? AND created_at < ?`,
+  );
+
+  const selectRedeemedAllTimeStmt = db.prepare(
+    `SELECT COALESCE(SUM(ABS(amount)), 0) as total
+     FROM points_ledger
+     WHERE amount < 0 AND entry_type = 'reward'`,
   );
 
   function getBalance(): PointsBalance {
@@ -159,5 +172,30 @@ export function createPointsService(db: Database.Database, activityService: Acti
     return activities;
   }
 
-  return { getBalance, getLedgerFiltered, createAdjustment, getTodayActivity };
+  function getPointsEconomy(timezone: string): PointsEconomy {
+    const now = new Date();
+    const { hours, minutes } = getTimeInTimezone(now, timezone);
+    const localMsElapsed = (hours * 3600 + minutes * 60) * 1000;
+    const localMidnightUtc = new Date(now.getTime() - localMsElapsed);
+
+    const dayOfWeek = localMidnightUtc.getUTCDay();
+    const daysSinceMonday = (dayOfWeek + 6) % 7;
+
+    const thisWeekStart = new Date(localMidnightUtc.getTime() - daysSinceMonday * 86_400_000);
+    const lastWeekStart = new Date(thisWeekStart.getTime() - 7 * 86_400_000);
+
+    const format = (d: Date) => d.toISOString().replace("T", " ").replace("Z", "");
+
+    const thisWeekRow = selectEarnedInRangeStmt.get(format(thisWeekStart), format(now)) as { total: number };
+    const lastWeekRow = selectEarnedInRangeStmt.get(format(lastWeekStart), format(thisWeekStart)) as { total: number };
+    const redeemedRow = selectRedeemedAllTimeStmt.get() as { total: number };
+
+    return {
+      earnedThisWeek: thisWeekRow.total,
+      earnedLastWeek: lastWeekRow.total,
+      redeemedAllTime: redeemedRow.total,
+    };
+  }
+
+  return { getBalance, getPointsEconomy, getLedgerFiltered, createAdjustment, getTodayActivity };
 }

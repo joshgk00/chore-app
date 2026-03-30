@@ -5,6 +5,7 @@ import type {
   ChoreLog,
   RewardRequest,
   PendingApprovals,
+  BatchApproveResult,
   Status,
 } from "@chore-app/shared";
 import { ConflictError, NotFoundError } from "../lib/errors.js";
@@ -14,6 +15,7 @@ import type { PushService } from "./pushService.js";
 
 export interface ApprovalService {
   getPendingApprovals(): PendingApprovals;
+  batchApproveAll(): BatchApproveResult;
   approveRoutineCompletion(id: number, reviewNote?: string): RoutineCompletion;
   rejectRoutineCompletion(id: number, reviewNote?: string): RoutineCompletion;
   approveChoreLog(id: number, reviewNote?: string): ChoreLog;
@@ -423,8 +425,60 @@ export function createApprovalService(
     return result;
   }
 
+  function batchApproveAll(): BatchApproveResult {
+    const pending = getPendingApprovals();
+    let approvedCount = 0;
+    const errors: BatchApproveResult["errors"] = [];
+
+    for (const item of pending.routineCompletions) {
+      try {
+        approveRoutineCompletion(item.id);
+        approvedCount++;
+      } catch (err) {
+        errors.push({
+          type: "routine-completion",
+          id: item.id,
+          message: err instanceof Error ? err.message : "Unknown error",
+        });
+      }
+    }
+
+    for (const item of pending.choreLogs) {
+      try {
+        approveChoreLog(item.id);
+        approvedCount++;
+      } catch (err) {
+        errors.push({
+          type: "chore-log",
+          id: item.id,
+          message: err instanceof Error ? err.message : "Unknown error",
+        });
+      }
+    }
+
+    for (const item of pending.rewardRequests) {
+      try {
+        approveRewardRequest(item.id);
+        approvedCount++;
+      } catch (err) {
+        errors.push({
+          type: "reward-request",
+          id: item.id,
+          message: err instanceof Error ? err.message : "Unknown error",
+        });
+      }
+    }
+
+    return {
+      approvedCount,
+      failedCount: errors.length,
+      errors,
+    };
+  }
+
   return {
     getPendingApprovals,
+    batchApproveAll,
     approveRoutineCompletion,
     rejectRoutineCompletion,
     approveChoreLog,

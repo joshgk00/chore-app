@@ -304,6 +304,18 @@ export interface SystemHealthStats {
   pushSubscriptions: PushSubscriptionStats;
 }
 
+export interface BatchApproveResult {
+  approvedCount: number;
+  failedCount: number;
+  errors: Array<{ type: ApprovalType; id: number; message: string }>;
+}
+
+export interface PointsEconomy {
+  earnedThisWeek: number;
+  earnedLastWeek: number;
+  redeemedAllTime: number;
+}
+
 export interface BootstrapData {
   routines?: Routine[];
   pendingRoutineCount?: number;

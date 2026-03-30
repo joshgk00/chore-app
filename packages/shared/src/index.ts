@@ -42,6 +42,8 @@ export type {
   ChoreEngagementAnalytics,
   PushSubscriptionStats,
   SystemHealthStats,
+  BatchApproveResult,
+  PointsEconomy,
 } from "./types.js";
 
 export type { ImageModelId } from "./constants.js";

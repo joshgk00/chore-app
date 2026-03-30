@@ -405,4 +405,90 @@ describe("admin approval routes", () => {
       db.close();
     });
   });
+
+  describe("POST /api/admin/approvals/batch-approve", () => {
+    it("approves all pending items", async () => {
+      const { db, app } = await createTestApp();
+      const cookies = await loginAdmin(app);
+
+      const res = await request(app)
+        .post("/api/admin/approvals/batch-approve")
+        .set("Cookie", cookies)
+        .send();
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.approvedCount).toBeGreaterThanOrEqual(3);
+      expect(res.body.data.failedCount).toBe(0);
+      expect(res.body.data.errors).toEqual([]);
+      db.close();
+    });
+
+    it("returns zero counts when nothing is pending", async () => {
+      const db = createTestDb();
+      await seedTestData(db);
+      seedRoutineData(db);
+      seedChoreData(db);
+      seedRewardData(db);
+      const app = createApp(db, testConfig);
+      const cookies = await loginAdmin(app);
+
+      const res = await request(app)
+        .post("/api/admin/approvals/batch-approve")
+        .set("Cookie", cookies)
+        .send();
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.approvedCount).toBe(0);
+      expect(res.body.data.failedCount).toBe(0);
+      db.close();
+    });
+
+    it("creates ledger entries for all approved items", async () => {
+      const { db, app } = await createTestApp();
+      const cookies = await loginAdmin(app);
+
+      await request(app)
+        .post("/api/admin/approvals/batch-approve")
+        .set("Cookie", cookies)
+        .send();
+
+      const ledgerEntries = db
+        .prepare("SELECT * FROM points_ledger WHERE entry_type != 'manual'")
+        .all();
+      expect(ledgerEntries.length).toBeGreaterThanOrEqual(3);
+      db.close();
+    });
+
+    it("leaves no pending items after batch approve", async () => {
+      const { db, app } = await createTestApp();
+      const cookies = await loginAdmin(app);
+
+      await request(app)
+        .post("/api/admin/approvals/batch-approve")
+        .set("Cookie", cookies)
+        .send();
+
+      const pendingRes = await request(app)
+        .get("/api/admin/approvals")
+        .set("Cookie", cookies);
+
+      const total =
+        pendingRes.body.data.routineCompletions.length +
+        pendingRes.body.data.choreLogs.length +
+        pendingRes.body.data.rewardRequests.length;
+      expect(total).toBe(0);
+      db.close();
+    });
+
+    it("returns 401 without session", async () => {
+      const { db, app } = await createTestApp();
+
+      const res = await request(app)
+        .post("/api/admin/approvals/batch-approve")
+        .send();
+
+      expect(res.status).toBe(401);
+      db.close();
+    });
+  });
 });

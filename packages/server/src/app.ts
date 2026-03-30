@@ -93,7 +93,7 @@ export function createApp(db: Database.Database, config: AppConfig) {
   app.use("/api/admin", createAdminChoresRoutes(choreService));
   app.use("/api/admin", createAdminRewardsRoutes(rewardService));
   app.use("/api/admin", createAdminApprovalsRoutes(approvalService));
-  app.use("/api/admin", createAdminLedgerRoutes(pointsService));
+  app.use("/api/admin", createAdminLedgerRoutes(pointsService, settingsService));
   app.use("/api/admin", createAdminAssetsRoutes(assetService, config.dataDir, config.imageGenApiKey));
   app.use("/api/admin", createAdminRoutineAnalyticsRoutes(routineAnalyticsService, settingsService));
   app.use("/api/admin", createAdminChoreAnalyticsRoutes(choreAnalyticsService, settingsService));
