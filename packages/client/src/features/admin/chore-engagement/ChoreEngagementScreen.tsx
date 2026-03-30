@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
 import { useOnline } from "../../../contexts/OnlineContext.js";
 import { useChoreEngagement } from "../hooks/useChoreEngagement.js";
+import { formatCalendarDate } from "../../../lib/format-timestamp.js";
 import Card from "../../../components/Card.js";
+import { DATE_OPTIONS } from "../utils/date-format-options.js";
 
 function TrendBar({ value, max }: { value: number; max: number }) {
   const pct = max > 0 ? (value / max) * 100 : 0;
@@ -18,12 +20,6 @@ function TrendBar({ value, max }: { value: number; max: number }) {
       </span>
     </div>
   );
-}
-
-function formatTrendDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const dt = new Date(y, m - 1, d);
-  return dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 export default function ChoreEngagementScreen() {
@@ -198,7 +194,7 @@ export default function ChoreEngagementScreen() {
                     className="flex items-center justify-between gap-3"
                   >
                     <span className="w-16 shrink-0 text-xs text-[var(--color-text-muted)]">
-                      {formatTrendDate(trend.date)}
+                      {formatCalendarDate(trend.date, DATE_OPTIONS)}
                     </span>
                     <TrendBar value={trend.submissions} max={maxTrendValue} />
                   </div>
