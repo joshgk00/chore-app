@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatTimestamp } from "../../src/lib/format-timestamp.js";
+import { formatTimestamp, formatCalendarDate } from "../../src/lib/format-timestamp.js";
 
 const DATE_OPTIONS: Intl.DateTimeFormatOptions = {
   year: "numeric",
@@ -45,6 +45,39 @@ describe("formatTimestamp", () => {
   it("formats without a timezone using the browser default when timezone is omitted", () => {
     // Should not throw and should return a non-empty string
     const result = formatTimestamp("2026-03-20T10:00:00", DATE_OPTIONS);
+    expect(result).toBeTruthy();
+    expect(typeof result).toBe("string");
+  });
+});
+
+describe("formatCalendarDate", () => {
+  it("formats a YYYY-MM-DD date string without UTC normalization", () => {
+    const result = formatCalendarDate("2026-03-15", { month: "short", day: "numeric" });
+    expect(result).toContain("Mar");
+    expect(result).toContain("15");
+  });
+
+  it("does not shift the day across timezone boundaries", () => {
+    // A late-night UTC timestamp would shift to the previous day if treated
+    // as UTC, but formatCalendarDate should always show the literal date.
+    const result = formatCalendarDate("2026-01-01", { month: "short", day: "numeric" });
+    expect(result).toContain("Jan");
+    expect(result).toContain("1");
+  });
+
+  it("accepts full DateTimeFormatOptions", () => {
+    const result = formatCalendarDate("2026-12-25", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
+    expect(result).toContain("Dec");
+    expect(result).toContain("25");
+    expect(result).toContain("Fri");
+  });
+
+  it("returns a non-empty string for valid input", () => {
+    const result = formatCalendarDate("2026-06-15", { month: "long", day: "numeric" });
     expect(result).toBeTruthy();
     expect(typeof result).toBe("string");
   });

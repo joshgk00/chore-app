@@ -1,4 +1,20 @@
 /**
+ * Formats a YYYY-MM-DD calendar date (local_date) without UTC normalization.
+ *
+ * Calendar dates represent a day in the user's timezone, not a UTC point in
+ * time. Unlike formatTimestamp, this constructs a local-time Date from the
+ * numeric components so the displayed day is never shifted by timezone offset.
+ */
+export function formatCalendarDate(
+  dateStr: string,
+  options: Intl.DateTimeFormatOptions,
+): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  return dt.toLocaleDateString(undefined, options);
+}
+
+/**
  * Parses a SQLite UTC timestamp and formats it in the given timezone.
  *
  * SQLite's datetime('now') produces "YYYY-MM-DD HH:MM:SS" with no timezone
