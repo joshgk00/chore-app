@@ -3,60 +3,19 @@ import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useOnline } from "../../../contexts/OnlineContext.js";
 import { notifyAdminAuthError } from "../../../api/client.js";
+import { useBackupExport } from "../hooks/useBackupExport.js";
 
 export default function BackupSettings() {
   const isOnline = useOnline();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
-  const [exportSuccess, setExportSuccess] = useState(false);
+  const { isExporting, exportError, isExportSuccess, handleExport } = useBackupExport();
 
   const [isRestoring, setIsRestoring] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [isRestoreConfirmVisible, setIsRestoreConfirmVisible] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-
-  async function handleExport() {
-    setIsExporting(true);
-    setExportError(null);
-    setExportSuccess(false);
-
-    const exportUrl = "/api/admin/export";
-    try {
-      const response = await fetch(exportUrl, {
-        method: "POST",
-        credentials: "same-origin",
-      });
-
-      if (!response.ok) {
-        notifyAdminAuthError(exportUrl, response.status);
-        throw new Error("Export failed");
-      }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const disposition = response.headers.get("Content-Disposition");
-      const filenameMatch = disposition?.match(/filename="(.+)"/);
-      const filename = filenameMatch?.[1] ?? "chore-app-backup.zip";
-
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      setExportSuccess(true);
-    } catch {
-      setExportError("Failed to export backup. Please try again.");
-    } finally {
-      setIsExporting(false);
-    }
-  }
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -141,7 +100,7 @@ export default function BackupSettings() {
           >
             {isExporting ? "Exporting..." : "Export Backup"}
           </button>
-          {exportSuccess && (
+          {isExportSuccess && (
             <p className="text-sm text-[var(--color-emerald-600)]" role="status">
               Backup downloaded
             </p>

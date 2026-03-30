@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
 import { queryKeys, invalidatePointsRelated } from "../../../lib/query-keys.js";
+import { useBackupExport } from "../hooks/useBackupExport.js";
 import Card from "../../../components/Card.js";
 import type {
   PendingApprovals,
@@ -50,45 +51,6 @@ function usePointsEconomy(isOnline: boolean) {
     },
     enabled: isOnline,
   });
-}
-
-function useBackupExport() {
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
-
-  async function handleExport() {
-    setIsExporting(true);
-    setExportError(null);
-
-    try {
-      const response = await fetch("/api/admin/export", {
-        method: "POST",
-        credentials: "same-origin",
-      });
-
-      if (!response.ok) throw new Error("Export failed");
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const disposition = response.headers.get("Content-Disposition");
-      const filenameMatch = disposition?.match(/filename="(.+)"/);
-      const filename = filenameMatch?.[1] ?? "chore-app-backup.zip";
-
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch {
-      setExportError("Failed to export backup. Please try again.");
-    } finally {
-      setIsExporting(false);
-    }
-  }
-
-  return { isExporting, exportError, handleExport };
 }
 
 function TrendIndicator({ thisWeek, lastWeek }: { thisWeek: number; lastWeek: number }) {
