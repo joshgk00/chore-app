@@ -1,6 +1,7 @@
 import type Database from "better-sqlite3";
 import type { Badge } from "@chore-app/shared";
 import { BADGE_KEYS } from "@chore-app/shared";
+import { dayNumber } from "../lib/date-utils.js";
 
 export interface BadgeService {
   getEarnedBadges(): Badge[];
@@ -20,11 +21,6 @@ function mapBadgeRow(row: BadgeRow): Badge {
     badgeKey: row.badge_key,
     earnedAt: row.earned_at,
   };
-}
-
-function dayNumber(dateStr: string): number {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  return Math.floor(Date.UTC(y, m - 1, d) / 86400000);
 }
 
 export function createBadgeService(db: Database.Database): BadgeService {

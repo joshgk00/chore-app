@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 import type { RoutineHealthAnalytics, TimeSlot } from "@chore-app/shared";
-import { subtractDays } from "../lib/date-utils.js";
+import { dayNumber, subtractDays } from "../lib/date-utils.js";
 
 export interface RoutineAnalyticsService {
   getRoutineHealth(localToday: string): RoutineHealthAnalytics;
@@ -20,11 +20,6 @@ interface CompletionCountRow {
 interface SlotCountRow {
   time_slot_snapshot: string;
   completed_count: number;
-}
-
-function dayNumber(dateStr: string): number {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  return Math.floor(Date.UTC(y, m - 1, d) / 86400000);
 }
 
 export function createRoutineAnalyticsService(
