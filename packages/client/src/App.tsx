@@ -26,6 +26,7 @@ import SettingsScreen from "./features/admin/settings/SettingsScreen.js";
 import AdminDashboard from "./features/admin/dashboard/AdminDashboard.js";
 import RoutineHealthScreen from "./features/admin/routine-health/RoutineHealthScreen.js";
 import ChoreEngagementScreen from "./features/admin/chore-engagement/ChoreEngagementScreen.js";
+import SystemHealthScreen from "./features/admin/system-health/SystemHealthScreen.js";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -122,6 +123,7 @@ function AppRoutes() {
             <Route path="/admin/rewards/:id/edit" element={<AdminRewardForm />} />
             <Route path="/admin/routine-health" element={<RoutineHealthScreen />} />
             <Route path="/admin/chore-engagement" element={<ChoreEngagementScreen />} />
+            <Route path="/admin/system-health" element={<SystemHealthScreen />} />
             <Route path="/admin/approvals" element={<ApprovalsScreen />} />
             <Route path="/admin/ledger" element={<LedgerScreen />} />
             <Route path="/admin/activity" element={<ActivityLogScreen />} />

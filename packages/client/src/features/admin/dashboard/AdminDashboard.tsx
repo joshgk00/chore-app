@@ -7,7 +7,9 @@ import { useAdminTimezone } from "../hooks/useAdminTimezone.js";
 import { useRoutineHealth } from "../hooks/useRoutineHealth.js";
 import { useChoreEngagement } from "../hooks/useChoreEngagement.js";
 import { useApprovals } from "../hooks/useApprovals.js";
+import { useSystemHealth } from "../hooks/useSystemHealth.js";
 import { formatTimestamp } from "../../../lib/format-timestamp.js";
+import { formatBytes } from "../utils/format-bytes.js";
 import Card from "../../../components/Card.js";
 import { DATETIME_OPTIONS, DATE_OPTIONS } from "../utils/date-format-options.js";
 import { eventTypeDotColor } from "../utils/event-type-colors.js";
@@ -22,6 +24,7 @@ import type {
   PointsBalance,
   RoutineHealthAnalytics,
   ChoreEngagementAnalytics,
+  SystemHealthStats,
 } from "@chore-app/shared";
 
 const RECENT_ACTIVITY_LIMIT = 5;
@@ -681,6 +684,91 @@ function RoutineHealthCard({
   );
 }
 
+function SystemHealthCard({
+  data,
+  isLoading,
+  error,
+  timezone,
+}: {
+  data: SystemHealthStats | undefined;
+  isLoading: boolean;
+  error: Error | null;
+  timezone: string;
+}) {
+  return (
+    <Card as="section" aria-label="System health">
+      <h2 className="font-display text-lg font-semibold text-[var(--color-text)]">
+        System Health
+      </h2>
+
+      {isLoading && (
+        <div className="mt-4 animate-pulse space-y-2">
+          <div className="h-4 w-32 rounded bg-[var(--color-surface-muted)]" />
+          <div className="h-4 w-40 rounded bg-[var(--color-surface-muted)]" />
+          <div className="h-4 w-28 rounded bg-[var(--color-surface-muted)]" />
+          <div aria-live="polite" className="sr-only">
+            Loading system health...
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <p className="mt-3 text-sm text-[var(--color-text-muted)]">
+          Could not load system health.
+        </p>
+      )}
+
+      {data && (
+        <div className="mt-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-[var(--color-text-secondary)]">
+              Database
+            </span>
+            <span className="text-sm font-semibold text-[var(--color-text)]">
+              {formatBytes(data.databaseSizeBytes)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-[var(--color-text-secondary)]">
+              Activity events
+            </span>
+            <span className="text-sm font-semibold text-[var(--color-text)]">
+              {data.activityEventCount.toLocaleString()}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-[var(--color-text-secondary)]">
+              Push subs (active)
+            </span>
+            <span className="text-sm font-semibold text-[var(--color-text)]">
+              {data.pushSubscriptions.active}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-[var(--color-text-secondary)]">
+              Last backup
+            </span>
+            <span className="text-sm font-semibold text-[var(--color-text)]">
+              {data.lastBackupAt
+                ? formatTimestamp(data.lastBackupAt, DATE_OPTIONS, timezone)
+                : "Never"}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {data && (
+        <Link
+          to="/admin/system-health"
+          className="mt-4 block text-center text-sm font-semibold text-[var(--color-amber-700)] hover:underline"
+        >
+          View details
+        </Link>
+      )}
+    </Card>
+  );
+}
+
 export default function AdminDashboard() {
   const isOnline = useOnline();
   const timezone = useAdminTimezone();
@@ -690,6 +778,7 @@ export default function AdminDashboard() {
   const points = useDashboardPoints(isOnline);
   const routineHealth = useRoutineHealth(isOnline);
   const choreEngagement = useChoreEngagement(isOnline);
+  const systemHealth = useSystemHealth(isOnline);
   const approveMutation = useDashboardApprove();
 
   return (
@@ -747,6 +836,15 @@ export default function AdminDashboard() {
             isOnline={isOnline}
             timezone={timezone}
             approveMutation={approveMutation}
+          />
+        </div>
+
+        <div className="tablet:col-span-2">
+          <SystemHealthCard
+            data={systemHealth.data}
+            isLoading={systemHealth.isLoading}
+            error={systemHealth.error}
+            timezone={timezone}
           />
         </div>
       </div>
