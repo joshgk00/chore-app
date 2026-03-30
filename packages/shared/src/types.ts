@@ -291,6 +291,19 @@ export interface ChoreEngagementAnalytics {
   windowDays: number;
 }
 
+export interface PushSubscriptionStats {
+  active: number;
+  expired: number;
+  failed: number;
+}
+
+export interface SystemHealthStats {
+  databaseSizeBytes: number;
+  activityEventCount: number;
+  lastBackupAt: string | null;
+  pushSubscriptions: PushSubscriptionStats;
+}
+
 export interface BootstrapData {
   routines?: Routine[];
   pendingRoutineCount?: number;

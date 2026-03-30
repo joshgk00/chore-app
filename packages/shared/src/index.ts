@@ -40,6 +40,8 @@ export type {
   ChoreEngagementRate,
   SubmissionTrend,
   ChoreEngagementAnalytics,
+  PushSubscriptionStats,
+  SystemHealthStats,
 } from "./types.js";
 
 export type { ImageModelId } from "./constants.js";
