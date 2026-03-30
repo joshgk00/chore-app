@@ -5,6 +5,7 @@ import { useOnline } from "../../../contexts/OnlineContext.js";
 import { queryKeys, invalidatePointsRelated } from "../../../lib/query-keys.js";
 import { useAdminTimezone } from "../hooks/useAdminTimezone.js";
 import { useRoutineHealth } from "../hooks/useRoutineHealth.js";
+import { useChoreEngagement } from "../hooks/useChoreEngagement.js";
 import { formatTimestamp } from "../../../lib/format-timestamp.js";
 import type {
   PendingApprovals,
@@ -17,6 +18,7 @@ import type {
   PointsBalance,
   LedgerEntry,
   RoutineHealthAnalytics,
+  ChoreEngagementAnalytics,
 } from "@chore-app/shared";
 
 interface ActivityLogResponse {
@@ -512,6 +514,108 @@ function PointsBalanceCard({
   );
 }
 
+const MAX_DISPLAYED_CHORES = 4;
+
+function ChoreEngagementCard({
+  data,
+  isLoading,
+  error,
+}: {
+  data: ChoreEngagementAnalytics | undefined;
+  isLoading: boolean;
+  error: Error | null;
+}) {
+  const topChores = data
+    ? data.engagementRates.slice(0, MAX_DISPLAYED_CHORES)
+    : [];
+  const inactiveCount = data ? data.inactiveChores.length : 0;
+
+  return (
+    <section
+      aria-label="Chore engagement"
+      className="rounded-2xl bg-[var(--color-surface)] p-5 shadow-card"
+    >
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-lg font-semibold text-[var(--color-text)]">
+          Chore Engagement
+        </h2>
+        {data && inactiveCount > 0 && (
+          <span className="rounded-full bg-[var(--color-amber-50)] px-2.5 py-0.5 font-display text-sm font-bold text-[var(--color-amber-700)]">
+            {inactiveCount} inactive
+          </span>
+        )}
+      </div>
+
+      {isLoading && (
+        <div className="mt-4 animate-pulse space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="h-4 rounded bg-[var(--color-surface-muted)]"
+            />
+          ))}
+          <div aria-live="polite" className="sr-only">
+            Loading chore engagement...
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <p className="mt-3 text-sm text-[var(--color-text-muted)]">
+          Could not load chore engagement.
+        </p>
+      )}
+
+      {data && data.engagementRates.length === 0 && (
+        <p className="mt-3 text-sm text-[var(--color-text-muted)]">
+          No active chores
+        </p>
+      )}
+
+      {data && data.engagementRates.length > 0 && (
+        <div className="mt-3 space-y-2">
+          {inactiveCount > 0 && (
+            <div className="rounded-lg bg-[var(--color-amber-50)] px-3 py-2">
+              <p className="text-xs font-semibold text-[var(--color-amber-700)]">
+                {inactiveCount} chore{inactiveCount > 1 ? "s" : ""} with no
+                submissions in {data.windowDays} days
+              </p>
+            </div>
+          )}
+
+          {topChores.map((chore) => (
+            <div
+              key={chore.choreId}
+              className="flex items-center justify-between gap-3"
+            >
+              <p className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--color-text)]">
+                {chore.choreName}
+              </p>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-semibold tabular-nums text-[var(--color-text-secondary)]">
+                  {chore.submissionCount} log{chore.submissionCount !== 1 ? "s" : ""}
+                </span>
+                <span className="text-xs tabular-nums text-[var(--color-text-muted)]">
+                  {chore.totalPoints} pts
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {data && data.engagementRates.length > 0 && (
+        <Link
+          to="/admin/chore-engagement"
+          className="mt-4 block text-center text-sm font-semibold text-[var(--color-amber-700)] hover:underline"
+        >
+          View details
+        </Link>
+      )}
+    </section>
+  );
+}
+
 const MAX_DISPLAYED_ROUTINES = 4;
 
 function RoutineHealthCard({
@@ -640,6 +744,7 @@ export default function AdminDashboard() {
   const activity = useDashboardActivity(isOnline);
   const points = useDashboardPoints(isOnline);
   const routineHealth = useRoutineHealth(isOnline);
+  const choreEngagement = useChoreEngagement(isOnline);
   const approveMutation = useDashboardApprove();
 
   return (
@@ -678,6 +783,14 @@ export default function AdminDashboard() {
             data={routineHealth.data}
             isLoading={routineHealth.isLoading}
             error={routineHealth.error}
+          />
+        </div>
+
+        <div className="tablet:col-span-2">
+          <ChoreEngagementCard
+            data={choreEngagement.data}
+            isLoading={choreEngagement.isLoading}
+            error={choreEngagement.error}
           />
         </div>
 

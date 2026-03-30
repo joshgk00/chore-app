@@ -271,6 +271,26 @@ export interface RoutineHealthAnalytics {
   streakDays: number;
 }
 
+export interface ChoreEngagementRate {
+  choreId: number;
+  choreName: string;
+  submissionCount: number;
+  approvedCount: number;
+  totalPoints: number;
+}
+
+export interface SubmissionTrend {
+  date: string;
+  submissions: number;
+}
+
+export interface ChoreEngagementAnalytics {
+  engagementRates: ChoreEngagementRate[];
+  inactiveChores: Array<Pick<ChoreEngagementRate, 'choreId' | 'choreName'>>;
+  submissionTrends: SubmissionTrend[];
+  windowDays: number;
+}
+
 export interface BootstrapData {
   routines?: Routine[];
   pendingRoutineCount?: number;

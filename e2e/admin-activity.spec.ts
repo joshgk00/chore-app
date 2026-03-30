@@ -76,7 +76,7 @@ test.describe("Admin Activity Log", () => {
       table.or(page.getByText("No activity found")),
     ).toBeVisible({ timeout: 10000 });
 
-    await expect(table.locator("tbody").getByText("Routine submitted")).toBeVisible({
+    await expect(table.locator("tbody").getByText("Routine submitted").first()).toBeVisible({
       timeout: 10000,
     });
   });
@@ -93,13 +93,13 @@ test.describe("Admin Activity Log", () => {
     ]);
 
     await expect(
-      page.locator("table tbody").getByText("Manual adjustment")
+      page.locator("table tbody").getByText("Manual adjustment").first()
         .or(page.getByText("No activity found")),
     ).toBeVisible({ timeout: 10000 });
 
     await filterSelect.selectOption("all");
     await expect(
-      page.locator("table tbody").getByText("Routine submitted")
+      page.locator("table tbody").getByText("Routine submitted").first()
         .or(page.getByText("No activity found")),
     ).toBeVisible({ timeout: 10000 });
   });
