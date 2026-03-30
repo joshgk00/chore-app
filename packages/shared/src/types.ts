@@ -316,6 +316,23 @@ export interface PointsEconomy {
   redeemedAllTime: number;
 }
 
+export interface RewardRequestRanking {
+  rewardId: number;
+  rewardName: string;
+  requestCount: number;
+  approvedCount: number;
+  totalCost: number;
+}
+
+export interface RewardDemandAnalytics {
+  pendingCount: number;
+  pendingTotalCost: number;
+  rankings: RewardRequestRanking[];
+  neverRequested: Array<Pick<RewardRequestRanking, 'rewardId' | 'rewardName'>>;
+  pointsEarned: number;
+  pointsRedeemed: number;
+}
+
 export interface BootstrapData {
   routines?: Routine[];
   pendingRoutineCount?: number;

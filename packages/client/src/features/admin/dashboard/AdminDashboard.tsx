@@ -6,6 +6,7 @@ import { queryKeys, invalidatePointsRelated } from "../../../lib/query-keys.js";
 import { useAdminTimezone } from "../hooks/useAdminTimezone.js";
 import { useRoutineHealth } from "../hooks/useRoutineHealth.js";
 import { useChoreEngagement } from "../hooks/useChoreEngagement.js";
+import { useRewardDemand } from "../hooks/useRewardDemand.js";
 import { useApprovals } from "../hooks/useApprovals.js";
 import { useSystemHealth } from "../hooks/useSystemHealth.js";
 import { formatTimestamp } from "../../../lib/format-timestamp.js";
@@ -26,6 +27,7 @@ import type {
   RoutineHealthAnalytics,
   ChoreEngagementAnalytics,
   SystemHealthStats,
+  RewardDemandAnalytics,
 } from "@chore-app/shared";
 
 const RECENT_ACTIVITY_LIMIT = 5;
@@ -568,6 +570,105 @@ function ChoreEngagementCard({
   );
 }
 
+const MAX_DISPLAYED_REWARDS = 4;
+
+function RewardDemandCard({
+  data,
+  isLoading,
+  error,
+}: {
+  data: RewardDemandAnalytics | undefined;
+  isLoading: boolean;
+  error: Error | null;
+}) {
+  const topRewards = data
+    ? data.rankings.slice(0, MAX_DISPLAYED_REWARDS)
+    : [];
+  const neverRequestedCount = data ? data.neverRequested.length : 0;
+
+  return (
+    <Card as="section" aria-label="Reward demand">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-lg font-semibold text-[var(--color-text)]">
+          Reward Demand
+        </h2>
+        {data && data.pendingCount > 0 && (
+          <span className="rounded-full bg-[var(--color-amber-50)] px-2.5 py-0.5 font-display text-sm font-bold text-[var(--color-amber-700)]">
+            {data.pendingCount} pending
+          </span>
+        )}
+      </div>
+
+      {isLoading && (
+        <div className="mt-4 animate-pulse space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="h-4 rounded bg-[var(--color-surface-muted)]"
+            />
+          ))}
+          <div aria-live="polite" className="sr-only">
+            Loading reward demand...
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <p className="mt-3 text-sm text-[var(--color-text-muted)]">
+          Could not load reward demand.
+        </p>
+      )}
+
+      {data && data.rankings.length === 0 && (
+        <p className="mt-3 text-sm text-[var(--color-text-muted)]">
+          No reward requests yet
+        </p>
+      )}
+
+      {data && data.rankings.length > 0 && (
+        <div className="mt-3 space-y-2">
+          {neverRequestedCount > 0 && (
+            <div className="rounded-lg bg-[var(--color-amber-50)] px-3 py-2">
+              <p className="text-xs font-semibold text-[var(--color-amber-700)]">
+                {neverRequestedCount} reward{neverRequestedCount > 1 ? "s" : ""} never
+                requested
+              </p>
+            </div>
+          )}
+
+          {topRewards.map((ranking) => (
+            <div
+              key={ranking.rewardId}
+              className="flex items-center justify-between gap-3"
+            >
+              <p className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--color-text)]">
+                {ranking.rewardName}
+              </p>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-semibold tabular-nums text-[var(--color-text-secondary)]">
+                  {ranking.requestCount} request{ranking.requestCount !== 1 ? "s" : ""}
+                </span>
+                <span className="text-xs tabular-nums text-[var(--color-text-muted)]">
+                  {ranking.totalCost} pts
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {data && data.rankings.length > 0 && (
+        <Link
+          to="/admin/reward-demand"
+          className="mt-4 block text-center text-sm font-semibold text-[var(--color-amber-700)] hover:underline"
+        >
+          View details
+        </Link>
+      )}
+    </Card>
+  );
+}
+
 const MAX_DISPLAYED_ROUTINES = 4;
 
 function RoutineHealthCard({
@@ -780,6 +881,7 @@ export default function AdminDashboard() {
   const routineHealth = useRoutineHealth(isOnline);
   const choreEngagement = useChoreEngagement(isOnline);
   const systemHealth = useSystemHealth(isOnline);
+  const rewardDemand = useRewardDemand(isOnline);
   const approveMutation = useDashboardApprove();
 
   return (
@@ -830,6 +932,14 @@ export default function AdminDashboard() {
             data={choreEngagement.data}
             isLoading={choreEngagement.isLoading}
             error={choreEngagement.error}
+          />
+        </div>
+
+        <div className="tablet:col-span-2">
+          <RewardDemandCard
+            data={rewardDemand.data}
+            isLoading={rewardDemand.isLoading}
+            error={rewardDemand.error}
           />
         </div>
 

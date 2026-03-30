@@ -35,6 +35,7 @@ export const queryKeys = {
     choreAnalytics: () => ["admin", "chore-analytics"] as const,
     systemHealth: () => ["admin", "system-health"] as const,
     pointsEconomy: () => ["admin", "points-economy"] as const,
+    rewardAnalytics: () => ["admin", "reward-analytics"] as const,
     activityLog: (
       eventType: string,
       startDate: string,
