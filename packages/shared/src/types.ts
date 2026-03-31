@@ -251,6 +251,46 @@ export interface TodayPointActivity {
   createdAt: string;
 }
 
+export interface RoutineCompletionRate {
+  routineId: number;
+  routineName: string;
+  timeSlot: TimeSlot;
+  daysCompleted: number;
+  totalDays: number;
+}
+
+export interface TimeSlotBreakdown {
+  timeSlot: TimeSlot;
+  completedCount: number;
+  routineCount: number;
+}
+
+export interface RoutineHealthAnalytics {
+  completionRates: RoutineCompletionRate[];
+  timeSlotBreakdown: TimeSlotBreakdown[];
+  streakDays: number;
+}
+
+export interface ChoreEngagementRate {
+  choreId: number;
+  choreName: string;
+  submissionCount: number;
+  approvedCount: number;
+  totalPoints: number;
+}
+
+export interface SubmissionTrend {
+  date: string;
+  submissions: number;
+}
+
+export interface ChoreEngagementAnalytics {
+  engagementRates: ChoreEngagementRate[];
+  inactiveChores: Array<Pick<ChoreEngagementRate, 'choreId' | 'choreName'>>;
+  submissionTrends: SubmissionTrend[];
+  windowDays: number;
+}
+
 export interface BootstrapData {
   routines?: Routine[];
   pendingRoutineCount?: number;

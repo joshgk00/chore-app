@@ -16,7 +16,7 @@ async function createRoutineWithApproval(page: Page, name: string) {
     page.waitForResponse((resp) =>
       resp.url().includes("/api/admin/routines") && resp.request().method() === "POST",
     ),
-    page.getByRole("button", { name: "Create Routine" }).click(),
+    page.getByRole("button", { name: "Save & Close" }).click(),
   ]);
   await page.waitForURL(/\/admin\/routines$/);
 }
