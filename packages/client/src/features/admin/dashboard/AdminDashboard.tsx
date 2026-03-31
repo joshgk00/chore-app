@@ -4,6 +4,7 @@ import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
 import { queryKeys, invalidatePointsRelated } from "../../../lib/query-keys.js";
 import { useAdminTimezone } from "../hooks/useAdminTimezone.js";
+import { useAdminSettings } from "../hooks/useAdminSettings.js";
 import { useRoutineHealth } from "../hooks/useRoutineHealth.js";
 import { useChoreEngagement } from "../hooks/useChoreEngagement.js";
 import { formatTimestamp } from "../../../lib/format-timestamp.js";
@@ -99,12 +100,17 @@ function useDashboardApprove() {
     mutationFn: async ({
       type,
       id,
+      bonusPoints,
     }: {
       type: ApprovalType;
       id: number;
+      bonusPoints?: number;
     }) => {
+      const body =
+        bonusPoints && bonusPoints > 0 ? { bonusPoints } : undefined;
       const result = await api.post<void>(
         `/api/admin/approvals/${type}/${id}/approve`,
+        body,
       );
       if (!result.ok) throw result.error;
     },
@@ -127,6 +133,7 @@ interface ApprovalItemProps {
   approveMutation: ReturnType<typeof useDashboardApprove>;
   isOnline: boolean;
   timezone: string;
+  bonusAmount: number;
 }
 
 function ApprovalItem({
@@ -139,11 +146,14 @@ function ApprovalItem({
   approveMutation,
   isOnline,
   timezone,
+  bonusAmount,
 }: ApprovalItemProps) {
   const isThisPending =
     approveMutation.isPending &&
     approveMutation.variables?.type === type &&
     approveMutation.variables?.id === id;
+
+  const isBonusEligible = type !== "reward-request" && bonusAmount > 0;
 
   return (
     <div className="flex items-center justify-between gap-3 border-b border-[var(--color-border-light)] py-2.5 last:border-b-0">
@@ -157,15 +167,34 @@ function ApprovalItem({
           {formatTimestamp(submittedAt, DATE_OPTIONS, timezone)}
         </p>
       </div>
-      <button
-        type="button"
-        onClick={() => approveMutation.mutate({ type, id })}
-        disabled={!isOnline || isThisPending}
-        title={!isOnline ? "You're offline" : undefined}
-        className="shrink-0 rounded-lg bg-[var(--color-emerald-500)] px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-[var(--color-emerald-600)] disabled:opacity-50"
-      >
-        {isThisPending ? "..." : "Approve"}
-      </button>
+      <div className="flex shrink-0 gap-2">
+        <button
+          type="button"
+          onClick={() => approveMutation.mutate({ type, id })}
+          disabled={!isOnline || isThisPending}
+          title={!isOnline ? "You're offline" : undefined}
+          className="shrink-0 rounded-lg bg-[var(--color-emerald-500)] px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-[var(--color-emerald-600)] disabled:opacity-50"
+        >
+          {isThisPending && !approveMutation.variables?.bonusPoints
+            ? "..."
+            : "Approve"}
+        </button>
+        {isBonusEligible && (
+          <button
+            type="button"
+            onClick={() =>
+              approveMutation.mutate({ type, id, bonusPoints: bonusAmount })
+            }
+            disabled={!isOnline || isThisPending}
+            title={!isOnline ? "You're offline" : undefined}
+            className="shrink-0 rounded-lg border-2 border-[var(--color-amber-500)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-bold text-[var(--color-amber-700)] transition-colors hover:bg-[var(--color-amber-50)] disabled:opacity-50"
+          >
+            {isThisPending && approveMutation.variables?.bonusPoints
+              ? "..."
+              : `+Bonus (+${bonusAmount})`}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -184,6 +213,7 @@ interface ApprovalTypeSectionProps {
   approveMutation: ReturnType<typeof useDashboardApprove>;
   isOnline: boolean;
   timezone: string;
+  bonusAmount: number;
 }
 
 function ApprovalTypeSection({
@@ -193,6 +223,7 @@ function ApprovalTypeSection({
   approveMutation,
   isOnline,
   timezone,
+  bonusAmount,
 }: ApprovalTypeSectionProps) {
   if (items.length === 0) return null;
 
@@ -214,6 +245,7 @@ function ApprovalTypeSection({
           approveMutation={approveMutation}
           isOnline={isOnline}
           timezone={timezone}
+          bonusAmount={bonusAmount}
         />
       ))}
       {overflowCount > 0 && (
@@ -235,6 +267,7 @@ function PendingApprovalsCard({
   isOnline,
   timezone,
   approveMutation,
+  bonusAmount,
 }: {
   data: PendingApprovals | undefined;
   isLoading: boolean;
@@ -242,6 +275,7 @@ function PendingApprovalsCard({
   isOnline: boolean;
   timezone: string;
   approveMutation: ReturnType<typeof useDashboardApprove>;
+  bonusAmount: number;
 }) {
   const routineItems = (data?.routineCompletions ?? []).map(
     (item: RoutineCompletion) => ({
@@ -331,6 +365,7 @@ function PendingApprovalsCard({
             approveMutation={approveMutation}
             isOnline={isOnline}
             timezone={timezone}
+            bonusAmount={bonusAmount}
           />
           <ApprovalTypeSection
             label="Chores"
@@ -339,6 +374,7 @@ function PendingApprovalsCard({
             approveMutation={approveMutation}
             isOnline={isOnline}
             timezone={timezone}
+            bonusAmount={bonusAmount}
           />
           <ApprovalTypeSection
             label="Rewards"
@@ -347,6 +383,7 @@ function PendingApprovalsCard({
             approveMutation={approveMutation}
             isOnline={isOnline}
             timezone={timezone}
+            bonusAmount={bonusAmount}
           />
         </div>
       )}
@@ -739,6 +776,8 @@ function RoutineHealthCard({
 export default function AdminDashboard() {
   const isOnline = useOnline();
   const timezone = useAdminTimezone();
+  const settingsQuery = useAdminSettings();
+  const bonusAmount = Number(settingsQuery.data?.bonus_approval_points) || 0;
 
   const approvals = useDashboardApprovals(isOnline);
   const activity = useDashboardActivity(isOnline);
@@ -802,6 +841,7 @@ export default function AdminDashboard() {
             isOnline={isOnline}
             timezone={timezone}
             approveMutation={approveMutation}
+            bonusAmount={bonusAmount}
           />
         </div>
       </div>

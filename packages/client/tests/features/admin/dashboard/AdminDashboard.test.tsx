@@ -376,6 +376,129 @@ describe("AdminDashboard", () => {
     expect(link.closest("a")).toHaveAttribute("href", "/admin/routine-health");
   });
 
+  describe("bonus approval button", () => {
+    function setupWithBonus(bonusPoints: string) {
+      server.use(
+        http.get("/api/admin/settings", () =>
+          HttpResponse.json({
+            data: { timezone: "America/Chicago", bonus_approval_points: bonusPoints },
+          }),
+        ),
+      );
+    }
+
+    it("shows bonus button for routines and chores when bonus_approval_points > 0", async () => {
+      setupWithBonus("5");
+      renderDashboard();
+
+      const approvalsSection = screen.getByRole("region", { name: "Pending approvals" });
+
+      await waitFor(() => {
+        expect(within(approvalsSection).getByText("Morning Routine")).toBeInTheDocument();
+      });
+
+      const bonusButtons = within(approvalsSection).getAllByRole("button", { name: /\+Bonus/ });
+      expect(bonusButtons).toHaveLength(2);
+      expect(bonusButtons[0]).toHaveTextContent("+Bonus (+5)");
+    });
+
+    it("hides bonus button for reward requests", async () => {
+      setupWithBonus("5");
+
+      server.use(
+        http.get("/api/admin/approvals", () =>
+          HttpResponse.json({
+            data: {
+              routineCompletions: [],
+              choreLogs: [],
+              rewardRequests: mockPendingApprovals.rewardRequests,
+            },
+          }),
+        ),
+      );
+
+      renderDashboard();
+
+      const approvalsSection = screen.getByRole("region", { name: "Pending approvals" });
+
+      await waitFor(() => {
+        expect(within(approvalsSection).getByText("Extra Screen Time")).toBeInTheDocument();
+      });
+
+      expect(within(approvalsSection).queryByRole("button", { name: /\+Bonus/ })).not.toBeInTheDocument();
+    });
+
+    it("hides bonus button when bonus_approval_points is 0", async () => {
+      setupWithBonus("0");
+      renderDashboard();
+
+      const approvalsSection = screen.getByRole("region", { name: "Pending approvals" });
+
+      await waitFor(() => {
+        expect(within(approvalsSection).getByText("Morning Routine")).toBeInTheDocument();
+      });
+
+      expect(within(approvalsSection).queryByRole("button", { name: /\+Bonus/ })).not.toBeInTheDocument();
+    });
+
+    it("sends bonusPoints in the request body when bonus button is clicked", async () => {
+      setupWithBonus("5");
+
+      let capturedBody: Record<string, unknown> | undefined;
+      server.use(
+        http.post("/api/admin/approvals/:type/:id/approve", async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json({ data: null });
+        }),
+      );
+
+      const user = userEvent.setup();
+      renderDashboard();
+
+      const approvalsSection = screen.getByRole("region", { name: "Pending approvals" });
+
+      await waitFor(() => {
+        expect(within(approvalsSection).getByText("Morning Routine")).toBeInTheDocument();
+      });
+
+      const bonusButtons = within(approvalsSection).getAllByRole("button", { name: /\+Bonus/ });
+      await user.click(bonusButtons[0]);
+
+      await waitFor(() => {
+        expect(capturedBody).toEqual({ bonusPoints: 5 });
+      });
+    });
+
+    it("sends no body when regular approve button is clicked", async () => {
+      setupWithBonus("5");
+
+      let capturedBody: unknown = "NOT_CALLED";
+      server.use(
+        http.post("/api/admin/approvals/:type/:id/approve", async ({ request }) => {
+          const text = await request.text();
+          capturedBody = text === "" ? undefined : JSON.parse(text);
+          return HttpResponse.json({ data: null });
+        }),
+      );
+
+      const user = userEvent.setup();
+      renderDashboard();
+
+      const approvalsSection = screen.getByRole("region", { name: "Pending approvals" });
+
+      await waitFor(() => {
+        expect(within(approvalsSection).getByText("Morning Routine")).toBeInTheDocument();
+      });
+
+      const approveButtons = within(approvalsSection).getAllByRole("button", { name: "Approve" });
+      await user.click(approveButtons[0]);
+
+      await waitFor(() => {
+        expect(capturedBody).toBeUndefined();
+      });
+    });
+  });
+
   it("shows overflow link when more than 5 items in a type", async () => {
     const manyRoutines = Array.from({ length: 7 }, (_, i) => ({
       id: i + 100,
