@@ -66,6 +66,7 @@ export default function SettingsScreen() {
 
   const [timezone, setTimezone] = useState("");
   const [retentionDays, setRetentionDays] = useState("");
+  const [bonusPoints, setBonusPoints] = useState("");
   const [generalErrors, setGeneralErrors] = useState<Record<string, string>>({});
   const [generalSuccess, setGeneralSuccess] = useState(false);
 
@@ -85,6 +86,7 @@ export default function SettingsScreen() {
       setBedtimeEnd(query.data.bedtime_end ?? "");
       setTimezone(query.data.timezone ?? "");
       setRetentionDays(query.data.activity_retention_days ?? "");
+      setBonusPoints(query.data.bonus_approval_points ?? "0");
       setIsInitialized(true);
     }
   }, [query.data, isInitialized]);
@@ -160,6 +162,10 @@ export default function SettingsScreen() {
     if (!retentionDays || isNaN(days) || days < 1 || !Number.isInteger(days)) {
       errors.retentionDays = "Enter a positive whole number";
     }
+    const bonus = Number(bonusPoints);
+    if (bonusPoints !== "" && (isNaN(bonus) || bonus < 0 || !Number.isInteger(bonus))) {
+      errors.bonusPoints = "Enter a non-negative whole number";
+    }
     setGeneralErrors(errors);
     return Object.keys(errors).length === 0;
   }
@@ -172,6 +178,7 @@ export default function SettingsScreen() {
       {
         timezone,
         activity_retention_days: retentionDays,
+        bonus_approval_points: bonusPoints || "0",
       },
       {
         onSuccess: () => setGeneralSuccess(true),
@@ -418,6 +425,40 @@ export default function SettingsScreen() {
                   {generalErrors.retentionDays && (
                     <p id="retention-error" className="mt-1 text-xs text-[var(--color-red-600)]">
                       {generalErrors.retentionDays}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <span className="flex items-center gap-1.5">
+                    <label
+                      htmlFor="settings-bonus"
+                      className="text-xs font-semibold text-[var(--color-text-muted)]"
+                    >
+                      Bonus points
+                    </label>
+                    <HelpTip
+                      id="help-bonus"
+                      text="Extra points awarded when using Approve + Bonus on the approval queue. Set to 0 to hide the bonus button."
+                    />
+                  </span>
+                  <input
+                    id="settings-bonus"
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    value={bonusPoints}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      setBonusPoints(e.target.value);
+                      if (generalErrors.bonusPoints) setGeneralErrors((prev) => ({ ...prev, bonusPoints: "" }));
+                    }}
+                    aria-describedby={generalErrors.bonusPoints ? "bonus-error" : undefined}
+                    aria-invalid={!!generalErrors.bonusPoints}
+                    className="mt-1 w-full max-w-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text)] focus:border-[var(--color-amber-500)] focus:outline-none focus:ring-1 focus:ring-[var(--color-amber-500)]"
+                  />
+                  {generalErrors.bonusPoints && (
+                    <p id="bonus-error" className="mt-1 text-xs text-[var(--color-red-600)]">
+                      {generalErrors.bonusPoints}
                     </p>
                   )}
                 </div>

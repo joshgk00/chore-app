@@ -378,4 +378,102 @@ describe("approvalService", () => {
       db.close();
     });
   });
+
+  describe("bonus points", () => {
+    it("creates a separate bonus ledger entry when approving a routine with bonus", async () => {
+      const db = await setupDb();
+      const { approvalService } = createTestServices(db);
+
+      approvalService.approveRoutineCompletion(1, undefined, 5);
+
+      const entries = db.prepare(
+        `SELECT * FROM points_ledger WHERE reference_table = 'routine_completions' AND reference_id = 1 ORDER BY id`,
+      ).all() as { amount: number; entry_type: string; note: string }[];
+
+      expect(entries).toHaveLength(2);
+      expect(entries[0].entry_type).toBe("routine");
+      expect(entries[0].amount).toBe(3);
+      expect(entries[1].entry_type).toBe("bonus");
+      expect(entries[1].amount).toBe(5);
+      expect(entries[1].note).toContain("Bonus:");
+      db.close();
+    });
+
+    it("creates a separate bonus ledger entry when approving a chore with bonus", async () => {
+      const db = await setupDb();
+      const { approvalService } = createTestServices(db);
+
+      approvalService.approveChoreLog(1, undefined, 3);
+
+      const entries = db.prepare(
+        `SELECT * FROM points_ledger WHERE reference_table = 'chore_logs' AND reference_id = 1 ORDER BY id`,
+      ).all() as { amount: number; entry_type: string; note: string }[];
+
+      expect(entries).toHaveLength(2);
+      expect(entries[0].entry_type).toBe("chore");
+      expect(entries[1].entry_type).toBe("bonus");
+      expect(entries[1].amount).toBe(3);
+      db.close();
+    });
+
+    it("does not create bonus entry when bonusPoints is 0", async () => {
+      const db = await setupDb();
+      const { approvalService } = createTestServices(db);
+
+      approvalService.approveRoutineCompletion(1, undefined, 0);
+
+      const entries = db.prepare(
+        `SELECT * FROM points_ledger WHERE reference_table = 'routine_completions' AND reference_id = 1`,
+      ).all();
+
+      expect(entries).toHaveLength(1);
+      db.close();
+    });
+
+    it("does not create bonus entry when bonusPoints is undefined", async () => {
+      const db = await setupDb();
+      const { approvalService } = createTestServices(db);
+
+      approvalService.approveRoutineCompletion(1);
+
+      const entries = db.prepare(
+        `SELECT * FROM points_ledger WHERE reference_table = 'routine_completions' AND reference_id = 1`,
+      ).all();
+
+      expect(entries).toHaveLength(1);
+      db.close();
+    });
+
+    it("includes bonus in activity summary", async () => {
+      const db = await setupDb();
+      const { approvalService, activityService } = createTestServices(db);
+
+      approvalService.approveChoreLog(1, undefined, 7);
+
+      const events = activityService.getRecentActivity(10);
+      const approvalEvent = events.find((e) => e.eventType === "chore_approved");
+      expect(approvalEvent).toBeTruthy();
+      expect(approvalEvent!.summary).toContain("(+7 bonus)");
+      db.close();
+    });
+
+    it("rolls back bonus entry if activity logging fails", async () => {
+      const db = await setupDb();
+      const badActivityService = {
+        recordActivity: () => {},
+        recordActivityOrThrow: () => { throw new Error("Activity logging failed"); },
+        getRecentActivity: () => [],
+      };
+      const badgeService = createBadgeService(db);
+      const approvalService = createApprovalService(db, badActivityService, badgeService);
+
+      expect(() => approvalService.approveRoutineCompletion(1, undefined, 5)).toThrow("Activity logging failed");
+
+      const entries = db.prepare(
+        `SELECT * FROM points_ledger WHERE reference_table = 'routine_completions' AND reference_id = 1`,
+      ).all();
+      expect(entries).toHaveLength(0);
+      db.close();
+    });
+  });
 });

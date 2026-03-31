@@ -1,10 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
-import { api } from "../../../api/client.js";
-import { queryKeys } from "../../../lib/query-keys.js";
-
-interface SettingsResponse {
-  [key: string]: string;
-}
+import { useAdminSettings } from "./useAdminSettings.js";
 
 /**
  * Returns the configured IANA timezone from admin settings, falling back to
@@ -12,17 +6,9 @@ interface SettingsResponse {
  * resolved yet.
  */
 export function useAdminTimezone(): string {
-  const query = useQuery({
-    queryKey: queryKeys.admin.settings(),
-    queryFn: async () => {
-      const result = await api.get<SettingsResponse>("/api/admin/settings");
-      if (!result.ok) throw result.error;
-      return result.data;
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data } = useAdminSettings();
 
   return (
-    query.data?.timezone?.trim() || Intl.DateTimeFormat().resolvedOptions().timeZone
+    data?.timezone?.trim() || Intl.DateTimeFormat().resolvedOptions().timeZone
   );
 }

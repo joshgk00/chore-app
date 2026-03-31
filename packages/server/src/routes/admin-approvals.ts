@@ -25,6 +25,15 @@ function parseReviewNote(body: Record<string, unknown>): string | undefined {
   return trimmed || undefined;
 }
 
+function parseBonusPoints(body: Record<string, unknown>): number | undefined {
+  const raw = body.bonusPoints;
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw !== "number" || !Number.isInteger(raw) || raw < 0) {
+    throw new ValidationError("bonusPoints must be a non-negative integer");
+  }
+  return raw > 0 ? raw : undefined;
+}
+
 export function createAdminApprovalsRoutes(approvalService: ApprovalService) {
   const router = Router();
 
@@ -41,12 +50,13 @@ export function createAdminApprovalsRoutes(approvalService: ApprovalService) {
     try {
       const { type, id } = parseApprovalParams(req.params as { type: string; id: string });
       const reviewNote = parseReviewNote(req.body);
+      const bonusPoints = parseBonusPoints(req.body);
 
       let data;
       if (type === "routine-completion") {
-        data = approvalService.approveRoutineCompletion(id, reviewNote);
+        data = approvalService.approveRoutineCompletion(id, reviewNote, bonusPoints);
       } else if (type === "chore-log") {
-        data = approvalService.approveChoreLog(id, reviewNote);
+        data = approvalService.approveChoreLog(id, reviewNote, bonusPoints);
       } else {
         data = approvalService.approveRewardRequest(id, reviewNote);
       }

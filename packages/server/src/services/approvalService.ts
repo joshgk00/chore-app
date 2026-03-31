@@ -1,4 +1,5 @@
 import type Database from "better-sqlite3";
+import type { Statement } from "better-sqlite3";
 import type {
   RoutineCompletion,
   ChoreLog,
@@ -10,13 +11,12 @@ import { ConflictError, NotFoundError } from "../lib/errors.js";
 import type { ActivityService } from "./activityService.js";
 import type { BadgeService } from "./badgeService.js";
 import type { PushService } from "./pushService.js";
-import { getLogger } from "../lib/logger.js";
 
 export interface ApprovalService {
   getPendingApprovals(): PendingApprovals;
-  approveRoutineCompletion(id: number, reviewNote?: string): RoutineCompletion;
+  approveRoutineCompletion(id: number, reviewNote?: string, bonusPoints?: number): RoutineCompletion;
   rejectRoutineCompletion(id: number, reviewNote?: string): RoutineCompletion;
-  approveChoreLog(id: number, reviewNote?: string): ChoreLog;
+  approveChoreLog(id: number, reviewNote?: string, bonusPoints?: number): ChoreLog;
   rejectChoreLog(id: number, reviewNote?: string): ChoreLog;
   approveRewardRequest(id: number, reviewNote?: string): RewardRequest;
   rejectRewardRequest(id: number, reviewNote?: string): RewardRequest;
@@ -214,6 +214,44 @@ export function createApprovalService(
      VALUES ('reward', 'reward_requests', ?, ?, ?)`,
   );
 
+  const insertBonusLedgerStmt = db.prepare(
+    `INSERT INTO points_ledger (entry_type, reference_table, reference_id, amount, note)
+     VALUES ('bonus', ?, ?, ?, ?)`,
+  );
+
+  function insertBonusIfPositive(
+    referenceTable: string,
+    referenceId: number,
+    bonusPoints: number | undefined,
+    entityName: string,
+  ): number {
+    if (bonusPoints === undefined || bonusPoints <= 0) return 0;
+    if (!Number.isInteger(bonusPoints)) return 0;
+    insertBonusLedgerStmt.run(referenceTable, referenceId, bonusPoints, `Bonus: ${entityName}`);
+    return bonusPoints;
+  }
+
+  function formatBonusText(bonus: number): string {
+    return bonus > 0 ? ` (+${bonus} bonus)` : "";
+  }
+
+  function formatApprovalNotificationBody(basePoints: number, bonus: number): string {
+    if (basePoints > 0) return `+${basePoints} points${formatBonusText(bonus)}`;
+    if (bonus > 0) return `+${bonus} bonus points`;
+    return "Great job!";
+  }
+
+  function loadPendingRecord<T extends { status: string }>(
+    stmt: Statement,
+    id: number,
+    notFoundMessage: string,
+  ): T {
+    const row = stmt.get(id) as T | undefined;
+    if (!row) throw new NotFoundError(notFoundMessage);
+    if (row.status !== "pending") throw new ConflictError("Already processed");
+    return row;
+  }
+
   function getPendingApprovals(): PendingApprovals {
     const completionRows = selectPendingCompletionsStmt.all() as CompletionRow[];
     const choreLogRows = selectPendingChoreLogsStmt.all() as ChoreLogRow[];
@@ -227,15 +265,8 @@ export function createApprovalService(
   }
 
   const approveRoutineCompletionTx = db.transaction(
-    (id: number, reviewNote?: string): RoutineCompletion => {
-      const row = selectCompletionByIdStmt.get(id) as CompletionRow | undefined;
-      if (!row) {
-        throw new NotFoundError("Routine completion not found");
-      }
-      if (row.status !== "pending") {
-        throw new ConflictError("Already processed");
-      }
-
+    (id: number, reviewNote?: string, bonusPoints?: number): RoutineCompletion => {
+      const row = loadPendingRecord<CompletionRow>(selectCompletionByIdStmt, id, "Routine completion not found");
       updateCompletionStatusStmt.run("approved", reviewNote ?? null, id);
 
       insertRoutineLedgerStmt.run(
@@ -244,13 +275,15 @@ export function createApprovalService(
         `Completed: ${row.routine_name_snapshot}`,
       );
 
+      const bonus = insertBonusIfPositive("routine_completions", id, bonusPoints, row.routine_name_snapshot);
+
       badgeService?.evaluateBadges();
 
       activityService.recordActivityOrThrow({
         eventType: "routine_approved",
         entityType: "routine_completion",
         entityId: id,
-        summary: `Approved ${row.routine_name_snapshot} for ${row.points_snapshot} points`,
+        summary: `Approved ${row.routine_name_snapshot} for ${row.points_snapshot} points${formatBonusText(bonus)}`,
       });
 
       const updated = selectCompletionByIdStmt.get(id) as CompletionRow;
@@ -258,30 +291,21 @@ export function createApprovalService(
     },
   );
 
-  function approveRoutineCompletion(id: number, reviewNote?: string): RoutineCompletion {
-    const result = approveRoutineCompletionTx(id, reviewNote);
-    try {
-      pushService?.sendNotification("child", {
-        title: `${result.routineNameSnapshot} approved!`,
-        body: result.pointsSnapshot > 0 ? `+${result.pointsSnapshot} points` : "Great job!",
-        data: { type: "routine_completion", id: result.id, action: "approved" },
-      });
-    } catch (err) {
-      getLogger().error({ err, entityType: "approval", id: result.id }, "failed to send push notification");
-    }
+  function approveRoutineCompletion(id: number, reviewNote?: string, bonusPoints?: number): RoutineCompletion {
+    const result = approveRoutineCompletionTx(id, reviewNote, bonusPoints);
+    const bonus = bonusPoints && bonusPoints > 0 ? bonusPoints : 0;
+    const body = formatApprovalNotificationBody(result.pointsSnapshot, bonus);
+    pushService?.sendNotificationSafe("child", {
+      title: `${result.routineNameSnapshot} approved!`,
+      body,
+      data: { type: "routine_completion", id: result.id, action: "approved" },
+    }, { entityType: "approval", id: result.id });
     return result;
   }
 
   const rejectRoutineCompletionTx = db.transaction(
     (id: number, reviewNote?: string): RoutineCompletion => {
-      const row = selectCompletionByIdStmt.get(id) as CompletionRow | undefined;
-      if (!row) {
-        throw new NotFoundError("Routine completion not found");
-      }
-      if (row.status !== "pending") {
-        throw new ConflictError("Already processed");
-      }
-
+      const row = loadPendingRecord<CompletionRow>(selectCompletionByIdStmt, id, "Routine completion not found");
       updateCompletionStatusStmt.run("rejected", reviewNote ?? null, id);
 
       activityService.recordActivityOrThrow({
@@ -298,28 +322,17 @@ export function createApprovalService(
 
   function rejectRoutineCompletion(id: number, reviewNote?: string): RoutineCompletion {
     const result = rejectRoutineCompletionTx(id, reviewNote);
-    try {
-      pushService?.sendNotification("child", {
-        title: `${result.routineNameSnapshot} needs revision`,
-        body: reviewNote || "Check with your parent",
-        data: { type: "routine_completion", id: result.id, action: "rejected" },
-      });
-    } catch (err) {
-      getLogger().error({ err, entityType: "approval", id: result.id }, "failed to send push notification");
-    }
+    pushService?.sendNotificationSafe("child", {
+      title: `${result.routineNameSnapshot} needs revision`,
+      body: reviewNote || "Check with your parent",
+      data: { type: "routine_completion", id: result.id, action: "rejected" },
+    }, { entityType: "approval", id: result.id });
     return result;
   }
 
   const approveChoreLogTx = db.transaction(
-    (id: number, reviewNote?: string): ChoreLog => {
-      const row = selectChoreLogByIdStmt.get(id) as ChoreLogRow | undefined;
-      if (!row) {
-        throw new NotFoundError("Chore log not found");
-      }
-      if (row.status !== "pending") {
-        throw new ConflictError("Already processed");
-      }
-
+    (id: number, reviewNote?: string, bonusPoints?: number): ChoreLog => {
+      const row = loadPendingRecord<ChoreLogRow>(selectChoreLogByIdStmt, id, "Chore log not found");
       updateChoreLogStatusStmt.run("approved", reviewNote ?? null, id);
 
       insertChoreLedgerStmt.run(
@@ -328,13 +341,15 @@ export function createApprovalService(
         `Chore: ${row.chore_name_snapshot} (${row.tier_name_snapshot})`,
       );
 
+      const bonus = insertBonusIfPositive("chore_logs", id, bonusPoints, row.chore_name_snapshot);
+
       badgeService?.evaluateBadges();
 
       activityService.recordActivityOrThrow({
         eventType: "chore_approved",
         entityType: "chore_log",
         entityId: id,
-        summary: `Approved ${row.chore_name_snapshot} (${row.tier_name_snapshot}) for ${row.points_snapshot} points`,
+        summary: `Approved ${row.chore_name_snapshot} (${row.tier_name_snapshot}) for ${row.points_snapshot} points${formatBonusText(bonus)}`,
       });
 
       const updated = selectChoreLogByIdStmt.get(id) as ChoreLogRow;
@@ -342,30 +357,21 @@ export function createApprovalService(
     },
   );
 
-  function approveChoreLog(id: number, reviewNote?: string): ChoreLog {
-    const result = approveChoreLogTx(id, reviewNote);
-    try {
-      pushService?.sendNotification("child", {
-        title: `${result.choreNameSnapshot} approved!`,
-        body: result.pointsSnapshot > 0 ? `+${result.pointsSnapshot} points` : "Great job!",
-        data: { type: "chore_log", id: result.id, action: "approved" },
-      });
-    } catch (err) {
-      getLogger().error({ err, entityType: "approval", id: result.id }, "failed to send push notification");
-    }
+  function approveChoreLog(id: number, reviewNote?: string, bonusPoints?: number): ChoreLog {
+    const result = approveChoreLogTx(id, reviewNote, bonusPoints);
+    const bonus = bonusPoints && bonusPoints > 0 ? bonusPoints : 0;
+    const body = formatApprovalNotificationBody(result.pointsSnapshot, bonus);
+    pushService?.sendNotificationSafe("child", {
+      title: `${result.choreNameSnapshot} approved!`,
+      body,
+      data: { type: "chore_log", id: result.id, action: "approved" },
+    }, { entityType: "approval", id: result.id });
     return result;
   }
 
   const rejectChoreLogTx = db.transaction(
     (id: number, reviewNote?: string): ChoreLog => {
-      const row = selectChoreLogByIdStmt.get(id) as ChoreLogRow | undefined;
-      if (!row) {
-        throw new NotFoundError("Chore log not found");
-      }
-      if (row.status !== "pending") {
-        throw new ConflictError("Already processed");
-      }
-
+      const row = loadPendingRecord<ChoreLogRow>(selectChoreLogByIdStmt, id, "Chore log not found");
       updateChoreLogStatusStmt.run("rejected", reviewNote ?? null, id);
 
       activityService.recordActivityOrThrow({
@@ -382,28 +388,17 @@ export function createApprovalService(
 
   function rejectChoreLog(id: number, reviewNote?: string): ChoreLog {
     const result = rejectChoreLogTx(id, reviewNote);
-    try {
-      pushService?.sendNotification("child", {
-        title: `${result.choreNameSnapshot} needs revision`,
-        body: reviewNote || "Check with your parent",
-        data: { type: "chore_log", id: result.id, action: "rejected" },
-      });
-    } catch (err) {
-      getLogger().error({ err, entityType: "approval", id: result.id }, "failed to send push notification");
-    }
+    pushService?.sendNotificationSafe("child", {
+      title: `${result.choreNameSnapshot} needs revision`,
+      body: reviewNote || "Check with your parent",
+      data: { type: "chore_log", id: result.id, action: "rejected" },
+    }, { entityType: "approval", id: result.id });
     return result;
   }
 
   const approveRewardRequestTx = db.transaction(
     (id: number, reviewNote?: string): RewardRequest => {
-      const row = selectRequestByIdStmt.get(id) as RequestRow | undefined;
-      if (!row) {
-        throw new NotFoundError("Reward request not found");
-      }
-      if (row.status !== "pending") {
-        throw new ConflictError("Already processed");
-      }
-
+      const row = loadPendingRecord<RequestRow>(selectRequestByIdStmt, id, "Reward request not found");
       updateRequestStatusStmt.run("approved", reviewNote ?? null, id);
 
       insertRewardLedgerStmt.run(
@@ -428,28 +423,17 @@ export function createApprovalService(
 
   function approveRewardRequest(id: number, reviewNote?: string): RewardRequest {
     const result = approveRewardRequestTx(id, reviewNote);
-    try {
-      pushService?.sendNotification("child", {
-        title: `${result.rewardNameSnapshot} approved!`,
-        body: `Enjoy your reward!`,
-        data: { type: "reward_request", id: result.id, action: "approved" },
-      });
-    } catch (err) {
-      getLogger().error({ err, entityType: "approval", id: result.id }, "failed to send push notification");
-    }
+    pushService?.sendNotificationSafe("child", {
+      title: `${result.rewardNameSnapshot} approved!`,
+      body: `Enjoy your reward!`,
+      data: { type: "reward_request", id: result.id, action: "approved" },
+    }, { entityType: "approval", id: result.id });
     return result;
   }
 
   const rejectRewardRequestTx = db.transaction(
     (id: number, reviewNote?: string): RewardRequest => {
-      const row = selectRequestByIdStmt.get(id) as RequestRow | undefined;
-      if (!row) {
-        throw new NotFoundError("Reward request not found");
-      }
-      if (row.status !== "pending") {
-        throw new ConflictError("Already processed");
-      }
-
+      const row = loadPendingRecord<RequestRow>(selectRequestByIdStmt, id, "Reward request not found");
       updateRequestStatusStmt.run("rejected", reviewNote ?? null, id);
 
       activityService.recordActivityOrThrow({
@@ -466,15 +450,11 @@ export function createApprovalService(
 
   function rejectRewardRequest(id: number, reviewNote?: string): RewardRequest {
     const result = rejectRewardRequestTx(id, reviewNote);
-    try {
-      pushService?.sendNotification("child", {
-        title: `${result.rewardNameSnapshot} not approved`,
-        body: reviewNote || "Check with your parent",
-        data: { type: "reward_request", id: result.id, action: "rejected" },
-      });
-    } catch (err) {
-      getLogger().error({ err, entityType: "approval", id: result.id }, "failed to send push notification");
-    }
+    pushService?.sendNotificationSafe("child", {
+      title: `${result.rewardNameSnapshot} not approved`,
+      body: reviewNote || "Check with your parent",
+      data: { type: "reward_request", id: result.id, action: "rejected" },
+    }, { entityType: "approval", id: result.id });
     return result;
   }
 
