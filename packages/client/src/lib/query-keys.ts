@@ -29,6 +29,10 @@ export const queryKeys = {
         : (["admin", "ledger"] as const),
     assets: (filters: Record<string, string>) =>
       ["admin", "assets", filters] as const,
+    recentActivity: (limit: number) =>
+      ["admin", "activity-log", "recent", limit] as const,
+    routineAnalytics: () => ["admin", "routine-analytics"] as const,
+    choreAnalytics: () => ["admin", "chore-analytics"] as const,
     activityLog: (
       eventType: string,
       startDate: string,
