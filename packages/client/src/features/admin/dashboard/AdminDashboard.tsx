@@ -804,6 +804,18 @@ export default function AdminDashboard() {
       )}
 
       <div className="mt-6 grid grid-cols-1 gap-5 tablet:grid-cols-2">
+        <div className="tablet:col-span-2">
+          <PendingApprovalsCard
+            data={approvals.data}
+            isLoading={approvals.isLoading}
+            error={approvals.error}
+            isOnline={isOnline}
+            timezone={timezone}
+            approveMutation={approveMutation}
+            bonusAmount={bonusAmount}
+          />
+        </div>
+
         <PointsBalanceCard
           data={points.data}
           isLoading={points.isLoading}
@@ -830,18 +842,6 @@ export default function AdminDashboard() {
             data={choreEngagement.data}
             isLoading={choreEngagement.isLoading}
             error={choreEngagement.error}
-          />
-        </div>
-
-        <div className="tablet:col-span-2">
-          <PendingApprovalsCard
-            data={approvals.data}
-            isLoading={approvals.isLoading}
-            error={approvals.error}
-            isOnline={isOnline}
-            timezone={timezone}
-            approveMutation={approveMutation}
-            bonusAmount={bonusAmount}
           />
         </div>
       </div>
