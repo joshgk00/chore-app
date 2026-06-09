@@ -101,6 +101,29 @@ describe("AdminRoutinesList", () => {
     expect(screen.getByText("Active")).toBeInTheDocument();
   });
 
+  it("shows clone links for each routine row", async () => {
+    server.use(
+      http.get("/api/admin/routines", () =>
+        HttpResponse.json({ data: mockRoutines }),
+      ),
+    );
+
+    renderList();
+
+    await waitFor(() => {
+      expect(screen.getByText("Morning Routine")).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("link", { name: "Clone Morning Routine" })).toHaveAttribute(
+      "href",
+      "/admin/routines/new?cloneFrom=1",
+    );
+    expect(screen.getByRole("link", { name: "Clone Bedtime Routine" })).toHaveAttribute(
+      "href",
+      "/admin/routines/new?cloneFrom=2",
+    );
+  });
+
   it("calls archive endpoint when Archive is clicked", async () => {
     let archiveCalled = false;
     server.use(

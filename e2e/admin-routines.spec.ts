@@ -19,7 +19,7 @@ async function createRoutine(page: Page, name: string, points = 5) {
     page.getByRole("button", { name: "Save & Close" }).click(),
   ]);
   await page.waitForURL(/\/admin\/routines$/);
-  await expect(page.getByRole("link", { name })).toBeVisible();
+  await expect(page.getByRole("link", { name, exact: true })).toBeVisible();
 }
 
 function getRoutineRow(page: Page, name: string) {
@@ -73,7 +73,7 @@ test.describe("Admin Routines CRUD", () => {
     const updatedName = `Updated Routine ${TEST_RUN_SUFFIX}`;
     await createRoutine(page, name, 5);
 
-    await page.getByRole("link", { name }).click();
+    await page.getByRole("link", { name, exact: true }).click();
     await page.waitForURL(/\/admin\/routines\/\d+\/edit/);
 
     await expect(
@@ -145,7 +145,7 @@ test.describe("Admin Routines CRUD", () => {
     const name = `No Edit After Archive ${TEST_RUN_SUFFIX}`;
     await createRoutine(page, name, 4);
 
-    const editLink = page.getByRole("link", { name });
+    const editLink = page.getByRole("link", { name, exact: true });
     const href = await editLink.getAttribute("href");
     const routineId = href?.match(/\/admin\/routines\/(\d+)\/edit/)?.[1];
     expect(routineId).toBeTruthy();
@@ -225,6 +225,6 @@ test.describe("Admin Routines CRUD", () => {
       page.waitForURL(/\/admin\/routines$/),
       submitButton.click({ clickCount: 2 }),
     ]);
-    await expect(page.getByRole("link", { name })).toHaveCount(1);
+    await expect(page.getByRole("link", { name, exact: true })).toHaveCount(1);
   });
 });

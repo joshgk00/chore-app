@@ -22,6 +22,46 @@ const mockExistingRoutine = {
   ],
 };
 
+const mockCloneSourceRoutine = {
+  id: 1,
+  name: "Leave for School",
+  timeSlot: "bedtime",
+  completionRule: "once_per_slot",
+  points: 12,
+  requiresApproval: true,
+  randomizeItems: true,
+  sortOrder: 4,
+  imageAssetId: 7,
+  imageUrl: "/assets/routine-school.png",
+  items: [
+    {
+      id: 20,
+      routineId: 1,
+      label: "Pack backpack",
+      sortOrder: 0,
+      imageAssetId: 8,
+      imageUrl: "/assets/backpack.png",
+    },
+    {
+      id: 21,
+      routineId: 1,
+      label: "Fill water bottle",
+      sortOrder: 1,
+      imageAssetId: null,
+      imageUrl: null,
+    },
+    {
+      id: 22,
+      routineId: 1,
+      label: "Archived school step",
+      sortOrder: 2,
+      archivedAt: "2026-06-01T12:00:00.000Z",
+      imageAssetId: 9,
+      imageUrl: "/assets/archived-step.png",
+    },
+  ],
+};
+
 const mockNavigate = vi.fn();
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
@@ -39,6 +79,22 @@ function renderCreateForm() {
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={["/admin/routines/new"]}>
+        <Routes>
+          <Route path="/admin/routines/new" element={<AdminRoutineForm />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+function renderCloneForm() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={["/admin/routines/new?cloneFrom=1"]}>
         <Routes>
           <Route path="/admin/routines/new" element={<AdminRoutineForm />} />
         </Routes>
@@ -101,6 +157,135 @@ describe("AdminRoutineForm", () => {
     expect(screen.getByDisplayValue("Brush teeth")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Make bed")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+  });
+
+  it("loads a clone source as an unsaved draft with copied settings and images", async () => {
+    server.use(
+      http.get("/api/admin/routines/1", () =>
+        HttpResponse.json({ data: mockCloneSourceRoutine }),
+      ),
+    );
+
+    renderCloneForm();
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Clone Routine" })).toBeInTheDocument();
+    });
+
+    expect(screen.getByLabelText("Name")).toHaveValue("Leave for School (Copy)");
+    expect(screen.getByLabelText("Time Slot")).toHaveValue("bedtime");
+    expect(screen.getByLabelText("Completion Rule")).toHaveValue("once_per_slot");
+    expect(screen.getByLabelText("Points")).toHaveValue(12);
+    expect(screen.getByLabelText("Requires approval")).toBeChecked();
+    expect(screen.getByLabelText("Randomize items")).toBeChecked();
+    expect(screen.getByDisplayValue("Pack backpack")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Fill water bottle")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Image for Routine Image" })).toHaveAttribute(
+      "src",
+      "/assets/routine-school.png",
+    );
+    expect(screen.getByRole("img", { name: "Image for Image for item 1" })).toHaveAttribute(
+      "src",
+      "/assets/backpack.png",
+    );
+    expect(screen.getByRole("button", { name: "Create" })).toBeInTheDocument();
+  });
+
+  it("submits a clone as a fresh routine with copied asset ids and no source ids", async () => {
+    let capturedBody: unknown;
+    server.use(
+      http.get("/api/admin/routines/1", () =>
+        HttpResponse.json({ data: mockCloneSourceRoutine }),
+      ),
+      http.post("/api/admin/routines", async ({ request }) => {
+        capturedBody = await request.json();
+        return HttpResponse.json(
+          { data: { ...mockCloneSourceRoutine, id: 99, name: "Leave for School (Copy)" } },
+          { status: 201 },
+        );
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderCloneForm();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Name")).toHaveValue("Leave for School (Copy)");
+    });
+
+    await user.click(screen.getByRole("button", { name: "Save & Close" }));
+
+    await waitFor(() => {
+      expect(capturedBody).toBeTruthy();
+    });
+
+    const body = capturedBody as Record<string, unknown>;
+    const items = body.items as Record<string, unknown>[];
+    expect(body).not.toHaveProperty("id");
+    expect(body).not.toHaveProperty("imageUrl");
+    expect(body.name).toBe("Leave for School (Copy)");
+    expect(body.sortOrder).toBe(0);
+    expect(body.imageAssetId).toBe(7);
+    expect(items).toEqual([
+      { label: "Pack backpack", sortOrder: 0, imageAssetId: 8 },
+      { label: "Fill water bottle", sortOrder: 1, imageAssetId: null },
+    ]);
+    expect(items.every((item) => !("id" in item))).toBe(true);
+    expect(items.every((item) => !("imageUrl" in item))).toBe(true);
+  });
+
+  it("can trim a clone draft before saving with reindexed item order", async () => {
+    let capturedBody: unknown;
+    server.use(
+      http.get("/api/admin/routines/1", () =>
+        HttpResponse.json({ data: mockCloneSourceRoutine }),
+      ),
+      http.post("/api/admin/routines", async ({ request }) => {
+        capturedBody = await request.json();
+        return HttpResponse.json(
+          { data: { ...mockCloneSourceRoutine, id: 99, name: "Leave for Camp" } },
+          { status: 201 },
+        );
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderCloneForm();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Pack backpack")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Remove item 1" }));
+    await user.clear(screen.getByLabelText("Name"));
+    await user.type(screen.getByLabelText("Name"), "Leave for Camp");
+    await user.click(screen.getByRole("button", { name: "Save & Close" }));
+
+    await waitFor(() => {
+      expect(capturedBody).toBeTruthy();
+    });
+
+    const body = capturedBody as Record<string, unknown>;
+    expect(body.items).toEqual([
+      { label: "Fill water bottle", sortOrder: 0, imageAssetId: null },
+    ]);
+  });
+
+  it("excludes archived checklist items from a clone draft", async () => {
+    server.use(
+      http.get("/api/admin/routines/1", () =>
+        HttpResponse.json({ data: mockCloneSourceRoutine }),
+      ),
+    );
+
+    renderCloneForm();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Name")).toHaveValue("Leave for School (Copy)");
+    });
+
+    expect(screen.getByDisplayValue("Pack backpack")).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Archived school step")).not.toBeInTheDocument();
   });
 
   it("submits create with correct data", async () => {
