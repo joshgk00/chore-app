@@ -57,7 +57,7 @@ test.describe("Admin Approval Queue", () => {
 
   test("setup: create a routine that requires approval", async () => {
     await createRoutineWithApproval(page, routineName);
-    await expect(page.getByRole("link", { name: routineName })).toBeVisible();
+    await expect(page.getByRole("link", { name: routineName, exact: true })).toBeVisible();
   });
 
   test("setup: submit the routine as a child", async () => {

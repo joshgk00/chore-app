@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { server } from "../../../msw/server.js";
+import { queryKeys } from "../../../../src/lib/query-keys.js";
 import AdminRoutineForm from "../../../../src/features/admin/routines/AdminRoutineForm.js";
 
 const mockExistingRoutine = {
@@ -22,19 +23,64 @@ const mockExistingRoutine = {
   ],
 };
 
+const mockCloneSourceRoutine = {
+  id: 1,
+  name: "Leave for School",
+  timeSlot: "bedtime",
+  completionRule: "once_per_slot",
+  points: 12,
+  requiresApproval: true,
+  randomizeItems: true,
+  sortOrder: 4,
+  imageAssetId: 7,
+  imageUrl: "/assets/routine-school.png",
+  items: [
+    {
+      id: 20,
+      routineId: 1,
+      label: "Pack backpack",
+      sortOrder: 0,
+      imageAssetId: 8,
+      imageUrl: "/assets/backpack.png",
+    },
+    {
+      id: 21,
+      routineId: 1,
+      label: "Fill water bottle",
+      sortOrder: 1,
+      imageAssetId: null,
+      imageUrl: null,
+    },
+    {
+      id: 22,
+      routineId: 1,
+      label: "Archived school step",
+      sortOrder: 2,
+      archivedAt: "2026-06-01T12:00:00.000Z",
+      imageAssetId: 9,
+      imageUrl: "/assets/archived-step.png",
+    },
+  ],
+};
+
 const mockNavigate = vi.fn();
+let useRealNavigate = false;
 vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual("react-router-dom");
+  const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
   return {
     ...actual,
-    useNavigate: () => mockNavigate,
+    useNavigate: () => (useRealNavigate ? actual.useNavigate() : mockNavigate),
   };
 });
 
-function renderCreateForm() {
-  const queryClient = new QueryClient({
+function createTestQueryClient() {
+  return new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
+}
+
+function renderCreateForm() {
+  const queryClient = createTestQueryClient();
 
   return render(
     <QueryClientProvider client={queryClient}>
@@ -47,11 +93,36 @@ function renderCreateForm() {
   );
 }
 
-function renderEditForm() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
+function renderCloneForm(queryClient = createTestQueryClient()) {
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={["/admin/routines/new?cloneFrom=1"]}>
+        <Routes>
+          <Route path="/admin/routines/new" element={<AdminRoutineForm />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
 
+function renderCloneFormWithEditRoute() {
+  useRealNavigate = true;
+  const queryClient = createTestQueryClient();
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={["/admin/routines/new?cloneFrom=1"]}>
+        <Routes>
+          <Route path="/admin/routines/new" element={<AdminRoutineForm />} />
+          <Route path="/admin/routines/:id/edit" element={<AdminRoutineForm />} />
+          <Route path="/admin/routines" element={<div>Routine list</div>} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+function renderEditForm(queryClient = createTestQueryClient()) {
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={["/admin/routines/1/edit"]}>
@@ -66,6 +137,7 @@ function renderEditForm() {
 describe("AdminRoutineForm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useRealNavigate = false;
   });
 
   it("renders all fields for create mode", () => {
@@ -101,6 +173,302 @@ describe("AdminRoutineForm", () => {
     expect(screen.getByDisplayValue("Brush teeth")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Make bed")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+  });
+
+  it("loads a clone source as an unsaved draft with copied settings and images", async () => {
+    server.use(
+      http.get("/api/admin/routines/1", () =>
+        HttpResponse.json({ data: mockCloneSourceRoutine }),
+      ),
+    );
+
+    renderCloneForm();
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Clone Routine" })).toBeInTheDocument();
+    });
+
+    expect(screen.getByLabelText("Name")).toHaveValue("Leave for School (Copy)");
+    expect(screen.getByLabelText("Time Slot")).toHaveValue("bedtime");
+    expect(screen.getByLabelText("Completion Rule")).toHaveValue("once_per_slot");
+    expect(screen.getByLabelText("Points")).toHaveValue(12);
+    expect(screen.getByLabelText("Requires approval")).toBeChecked();
+    expect(screen.getByLabelText("Randomize items")).toBeChecked();
+    expect(screen.getByDisplayValue("Pack backpack")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Fill water bottle")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Image for Routine Image" })).toHaveAttribute(
+      "src",
+      "/assets/routine-school.png",
+    );
+    expect(screen.getByRole("img", { name: "Image for Image for item 1" })).toHaveAttribute(
+      "src",
+      "/assets/backpack.png",
+    );
+    expect(screen.getByRole("button", { name: "Create" })).toBeInTheDocument();
+  });
+
+  it("keeps generated clone names within the server limit", async () => {
+    const sourceName = "A".repeat(200);
+    server.use(
+      http.get("/api/admin/routines/1", () =>
+        HttpResponse.json({
+          data: {
+            ...mockCloneSourceRoutine,
+            name: sourceName,
+          },
+        }),
+      ),
+    );
+
+    renderCloneForm();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Name")).toHaveValue(`${"A".repeat(193)} (Copy)`);
+    });
+
+    expect((screen.getByLabelText("Name") as HTMLInputElement).value).toHaveLength(200);
+  });
+
+  it("refreshes stale cached source data before populating a clone draft", async () => {
+    const queryClient = createTestQueryClient();
+    queryClient.setQueryData(queryKeys.admin.routine("1"), {
+      ...mockCloneSourceRoutine,
+      name: "Old School Routine",
+      items: [
+        {
+          id: 20,
+          routineId: 1,
+          label: "Old cached step",
+          sortOrder: 0,
+          imageAssetId: null,
+          imageUrl: null,
+        },
+      ],
+    });
+    server.use(
+      http.get("/api/admin/routines/1", () =>
+        HttpResponse.json({
+          data: {
+            ...mockCloneSourceRoutine,
+            name: "Updated School Routine",
+            items: [
+              {
+                id: 20,
+                routineId: 1,
+                label: "Fresh backpack step",
+                sortOrder: 0,
+                imageAssetId: 8,
+                imageUrl: "/assets/backpack.png",
+              },
+            ],
+          },
+        }),
+      ),
+    );
+
+    renderCloneForm(queryClient);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Name")).toHaveValue("Updated School Routine (Copy)");
+    });
+
+    expect(screen.getByDisplayValue("Fresh backpack step")).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Old cached step")).not.toBeInTheDocument();
+  });
+
+  it("uses cached clone source data when the refresh fails", async () => {
+    const queryClient = createTestQueryClient();
+    let requestCount = 0;
+    queryClient.setQueryData(queryKeys.admin.routine("1"), mockCloneSourceRoutine);
+    server.use(
+      http.get("/api/admin/routines/1", () => {
+        requestCount += 1;
+        return HttpResponse.json(
+          { error: { code: "NETWORK_ERROR", message: "offline" } },
+          { status: 503 },
+        );
+      }),
+    );
+
+    renderCloneForm(queryClient);
+
+    await waitFor(() => {
+      expect(requestCount).toBe(1);
+    });
+    await waitFor(() => {
+      expect(screen.getByLabelText("Name")).toHaveValue("Leave for School (Copy)");
+    });
+
+    expect(screen.queryByText("Could not load routine.")).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue("Pack backpack")).toBeInTheDocument();
+  });
+
+  it("submits a clone as a fresh routine with copied asset ids and no source ids", async () => {
+    let capturedBody: unknown;
+    server.use(
+      http.get("/api/admin/routines/1", () =>
+        HttpResponse.json({ data: mockCloneSourceRoutine }),
+      ),
+      http.post("/api/admin/routines", async ({ request }) => {
+        capturedBody = await request.json();
+        return HttpResponse.json(
+          { data: { ...mockCloneSourceRoutine, id: 99, name: "Leave for School (Copy)" } },
+          { status: 201 },
+        );
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderCloneForm();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Name")).toHaveValue("Leave for School (Copy)");
+    });
+
+    await user.click(screen.getByRole("button", { name: "Save & Close" }));
+
+    await waitFor(() => {
+      expect(capturedBody).toBeTruthy();
+    });
+
+    const body = capturedBody as Record<string, unknown>;
+    const items = body.items as Record<string, unknown>[];
+    expect(body).not.toHaveProperty("id");
+    expect(body).not.toHaveProperty("imageUrl");
+    expect(body.name).toBe("Leave for School (Copy)");
+    expect(body.sortOrder).toBe(0);
+    expect(body.imageAssetId).toBe(7);
+    expect(items).toEqual([
+      { label: "Pack backpack", sortOrder: 0, imageAssetId: 8 },
+      { label: "Fill water bottle", sortOrder: 1, imageAssetId: null },
+    ]);
+    expect(items.every((item) => !("id" in item))).toBe(true);
+    expect(items.every((item) => !("imageUrl" in item))).toBe(true);
+  });
+
+  it("reloads a created clone before saving again from edit mode", async () => {
+    const persistedCloneRoutine = {
+      ...mockCloneSourceRoutine,
+      id: 99,
+      name: "Leave for School (Copy)",
+      sortOrder: 0,
+      items: [
+        {
+          id: 30,
+          routineId: 99,
+          label: "Pack backpack",
+          sortOrder: 0,
+          imageAssetId: 8,
+          imageUrl: "/assets/backpack.png",
+        },
+        {
+          id: 31,
+          routineId: 99,
+          label: "Fill water bottle",
+          sortOrder: 1,
+          imageAssetId: null,
+          imageUrl: null,
+        },
+      ],
+    };
+    let capturedUpdateBody: unknown;
+    server.use(
+      http.get("/api/admin/routines/1", () =>
+        HttpResponse.json({ data: mockCloneSourceRoutine }),
+      ),
+      http.get("/api/admin/routines/99", () =>
+        HttpResponse.json({ data: persistedCloneRoutine }),
+      ),
+      http.post("/api/admin/routines", () =>
+        HttpResponse.json({ data: persistedCloneRoutine }, { status: 201 }),
+      ),
+      http.put("/api/admin/routines/99", async ({ request }) => {
+        capturedUpdateBody = await request.json();
+        return HttpResponse.json({ data: persistedCloneRoutine });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderCloneFormWithEditRoute();
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Clone Routine" })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Create" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Edit Routine" })).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Save & Close" }));
+
+    await waitFor(() => {
+      expect(capturedUpdateBody).toBeTruthy();
+    });
+
+    const body = capturedUpdateBody as Record<string, unknown>;
+    expect(body.items).toEqual([
+      { id: 30, label: "Pack backpack", sortOrder: 0, imageAssetId: 8 },
+      { id: 31, label: "Fill water bottle", sortOrder: 1, imageAssetId: null },
+    ]);
+  });
+
+  it("can trim a clone draft before saving with reindexed item order", async () => {
+    let capturedBody: unknown;
+    server.use(
+      http.get("/api/admin/routines/1", () =>
+        HttpResponse.json({ data: mockCloneSourceRoutine }),
+      ),
+      http.post("/api/admin/routines", async ({ request }) => {
+        capturedBody = await request.json();
+        return HttpResponse.json(
+          { data: { ...mockCloneSourceRoutine, id: 99, name: "Leave for Camp" } },
+          { status: 201 },
+        );
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderCloneForm();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Pack backpack")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Remove item 1" }));
+    await user.clear(screen.getByLabelText("Name"));
+    await user.type(screen.getByLabelText("Name"), "Leave for Camp");
+    await user.click(screen.getByRole("button", { name: "Save & Close" }));
+
+    await waitFor(() => {
+      expect(capturedBody).toBeTruthy();
+    });
+
+    const body = capturedBody as Record<string, unknown>;
+    expect(body.items).toEqual([
+      { label: "Fill water bottle", sortOrder: 0, imageAssetId: null },
+    ]);
+  });
+
+  it("excludes archived checklist items from a clone draft", async () => {
+    server.use(
+      http.get("/api/admin/routines/1", () =>
+        HttpResponse.json({ data: mockCloneSourceRoutine }),
+      ),
+    );
+
+    renderCloneForm();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Name")).toHaveValue("Leave for School (Copy)");
+    });
+
+    expect(screen.getByDisplayValue("Pack backpack")).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Archived school step")).not.toBeInTheDocument();
   });
 
   it("submits create with correct data", async () => {
@@ -285,6 +653,31 @@ describe("AdminRoutineForm", () => {
     await user.click(screen.getByRole("button", { name: "Remove item 4" }));
     await user.click(screen.getByRole("button", { name: "Remove item 3" }));
     expect(addButtons()).toHaveLength(1);
+  });
+
+  it("uses cached edit data when a refetch fails", async () => {
+    const queryClient = createTestQueryClient();
+    let requestCount = 0;
+    queryClient.setQueryData(queryKeys.admin.routine("1"), mockExistingRoutine);
+    server.use(
+      http.get("/api/admin/routines/1", () => {
+        requestCount += 1;
+        return HttpResponse.json(
+          { error: { code: "NETWORK_ERROR", message: "offline" } },
+          { status: 503 },
+        );
+      }),
+    );
+
+    renderEditForm(queryClient);
+
+    await waitFor(() => {
+      expect(requestCount).toBe(1);
+    });
+
+    expect(screen.getByRole("heading", { name: "Edit Routine" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Name")).toHaveValue("Morning Routine");
+    expect(screen.queryByText("Could not load routine.")).not.toBeInTheDocument();
   });
 
   it("shows error state when loading existing routine fails", async () => {

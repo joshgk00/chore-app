@@ -187,19 +187,28 @@ export default function AdminRoutinesList() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          archiveToggle.mutate({
-                            id: routine.id,
-                            archived: !!routine.archivedAt,
-                          })
-                        }
-                        disabled={archiveToggle.isPending || !isOnline}
-                        className="min-h-touch rounded-lg px-3 py-2 text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text-secondary)] disabled:opacity-50"
-                      >
-                        {routine.archivedAt ? "Unarchive" : "Archive"}
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link
+                          to={`/admin/routines/new?cloneFrom=${routine.id}`}
+                          aria-label={`Clone ${routine.name}`}
+                          className="inline-flex min-h-touch items-center rounded-lg px-3 py-2 text-xs font-medium text-[var(--color-sky-700)] transition-colors hover:bg-[var(--color-surface-muted)]"
+                        >
+                          Clone
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            archiveToggle.mutate({
+                              id: routine.id,
+                              archived: !!routine.archivedAt,
+                            })
+                          }
+                          disabled={archiveToggle.isPending || !isOnline}
+                          className="min-h-touch rounded-lg px-3 py-2 text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text-secondary)] disabled:opacity-50"
+                        >
+                          {routine.archivedAt ? "Unarchive" : "Archive"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
