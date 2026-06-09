@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../api/client.js";
 import { useOnline } from "../../../contexts/OnlineContext.js";
@@ -61,6 +61,16 @@ const COMPLETION_RULE_OPTIONS: { value: CompletionRule; label: string }[] = [
   { value: "unlimited", label: "Unlimited" },
 ];
 
+const ROUTINE_NAME_MAX_LENGTH = 200;
+const CLONE_NAME_SUFFIX = " (Copy)";
+
+function getCloneRoutineName(name: string) {
+  const copyName = `${name}${CLONE_NAME_SUFFIX}`;
+  if (copyName.length <= ROUTINE_NAME_MAX_LENGTH) return copyName;
+
+  return `${name.slice(0, ROUTINE_NAME_MAX_LENGTH - CLONE_NAME_SUFFIX.length).trimEnd()}${CLONE_NAME_SUFFIX}`;
+}
+
 function useExistingRoutine(id: string | undefined) {
   return useQuery({
     queryKey: queryKeys.admin.routine(id),
@@ -70,6 +80,7 @@ function useExistingRoutine(id: string | undefined) {
       return result.data;
     },
     enabled: !!id,
+    refetchOnMount: "always",
   });
 }
 
@@ -77,6 +88,8 @@ function validate(form: FormState): FormErrors {
   const errors: FormErrors = {};
   if (!form.name.trim()) {
     errors.name = "Name is required";
+  } else if (form.name.trim().length > ROUTINE_NAME_MAX_LENGTH) {
+    errors.name = `Name must be ${ROUTINE_NAME_MAX_LENGTH} characters or fewer`;
   }
   const activeItems = form.items.filter((item) => item.label.trim());
   if (activeItems.length === 0) {
@@ -88,15 +101,28 @@ function validate(form: FormState): FormErrors {
 export default function AdminRoutineForm() {
   const { id } = useParams<{ id: string }>();
   const isEditing = !!id;
+  const [searchParams] = useSearchParams();
+  const cloneFromId = searchParams.get("cloneFrom") ?? undefined;
+  const isCloning = !id && !!cloneFromId;
+  const sourceId = id ?? cloneFromId;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const isOnline = useOnline();
-  const { data: existing, isLoading: isLoadingExisting, error: loadError } = useExistingRoutine(id);
+  const {
+    data: existing,
+    isFetchedAfterMount: isExistingFetchedAfterMount,
+    isLoading: isLoadingExisting,
+    error: loadError,
+  } = useExistingRoutine(sourceId);
+  const canPopulateFromExisting = !isCloning || isExistingFetchedAfterMount || !!loadError;
+  const isLoadingSource =
+    (isEditing && isLoadingExisting) ||
+    (isCloning && !canPopulateFromExisting && !loadError);
 
   const [form, setForm] = useState<FormState>(INITIAL_STATE);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [hasPopulated, setHasPopulated] = useState(false);
+  const [populatedSourceId, setPopulatedSourceId] = useState<string | undefined>();
   const [isSaveSuccess, setSaveSuccess] = useState(false);
   const [saveIntent, setSaveIntent] = useState<"save" | "close" | null>(null);
   const successTimerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -109,31 +135,31 @@ export default function AdminRoutineForm() {
   }, []);
 
   useEffect(() => {
-    if (existing && !hasPopulated) {
+    if (existing && sourceId && canPopulateFromExisting && populatedSourceId !== sourceId) {
       setForm({
-        name: existing.name,
+        name: isCloning ? getCloneRoutineName(existing.name) : existing.name,
         timeSlot: existing.timeSlot,
         completionRule: existing.completionRule,
         points: existing.points,
         requiresApproval: existing.requiresApproval,
         randomizeItems: existing.randomizeItems,
-        sortOrder: existing.sortOrder,
+        sortOrder: isCloning ? 0 : existing.sortOrder,
         imageAssetId: existing.imageAssetId ?? null,
         imageUrl: existing.imageUrl ?? null,
         items: existing.items
           .filter((item) => !item.archivedAt)
           .map((item) => ({
-            key: String(item.id),
-            serverId: item.id,
+            key: isCloning ? crypto.randomUUID() : String(item.id),
+            serverId: isCloning ? undefined : item.id,
             label: item.label,
             sortOrder: item.sortOrder,
             imageAssetId: item.imageAssetId ?? null,
             imageUrl: item.imageUrl ?? null,
           })),
       });
-      setHasPopulated(true);
+      setPopulatedSourceId(sourceId);
     }
-  }, [existing, hasPopulated]);
+  }, [canPopulateFromExisting, existing, isCloning, populatedSourceId, sourceId]);
 
   const createMutation = useMutation({
     mutationFn: async (data: FormState) => {
@@ -157,7 +183,8 @@ export default function AdminRoutineForm() {
       if (!result.ok) throw result.error;
       return result.data;
     },
-    onSuccess: () => {
+    onSuccess: (routine) => {
+      queryClient.setQueryData(queryKeys.admin.routine(String(routine.id)), routine);
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.routines() });
     },
   });
@@ -196,7 +223,8 @@ export default function AdminRoutineForm() {
       if (!result.ok) throw result.error;
       return result.data;
     },
-    onSuccess: () => {
+    onSuccess: (routine) => {
+      queryClient.setQueryData(queryKeys.admin.routine(String(routine.id)), routine);
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.routines() });
     },
   });
@@ -295,7 +323,7 @@ export default function AdminRoutineForm() {
     });
   }
 
-  if (isEditing && isLoadingExisting) {
+  if (isLoadingSource) {
     return (
       <div>
         <div aria-live="polite" className="sr-only">Loading routine...</div>
@@ -307,7 +335,7 @@ export default function AdminRoutineForm() {
     );
   }
 
-  if (isEditing && loadError) {
+  if ((isEditing || isCloning) && loadError && !existing) {
     return (
       <div className="rounded-2xl bg-[var(--color-surface)] p-6 text-center shadow-card" aria-live="assertive">
         <p className="font-display text-lg font-bold text-[var(--color-text-secondary)]">
@@ -330,7 +358,7 @@ export default function AdminRoutineForm() {
   return (
     <div>
       <h1 className="font-display text-2xl font-bold text-[var(--color-text)]">
-        {isEditing ? "Edit Routine" : "New Routine"}
+        {isCloning ? "Clone Routine" : isEditing ? "Edit Routine" : "New Routine"}
       </h1>
 
       <form onSubmit={handleSubmit} noValidate className="mt-6 space-y-6">
