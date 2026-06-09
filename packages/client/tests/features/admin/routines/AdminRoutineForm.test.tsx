@@ -63,11 +63,12 @@ const mockCloneSourceRoutine = {
 };
 
 const mockNavigate = vi.fn();
+let useRealNavigate = false;
 vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual("react-router-dom");
+  const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
   return {
     ...actual,
-    useNavigate: () => mockNavigate,
+    useNavigate: () => (useRealNavigate ? actual.useNavigate() : mockNavigate),
   };
 });
 
@@ -103,6 +104,25 @@ function renderCloneForm() {
   );
 }
 
+function renderCloneFormWithEditRoute() {
+  useRealNavigate = true;
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={["/admin/routines/new?cloneFrom=1"]}>
+        <Routes>
+          <Route path="/admin/routines/new" element={<AdminRoutineForm />} />
+          <Route path="/admin/routines/:id/edit" element={<AdminRoutineForm />} />
+          <Route path="/admin/routines" element={<div>Routine list</div>} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
 function renderEditForm() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -122,6 +142,7 @@ function renderEditForm() {
 describe("AdminRoutineForm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useRealNavigate = false;
   });
 
   it("renders all fields for create mode", () => {
@@ -232,6 +253,77 @@ describe("AdminRoutineForm", () => {
     ]);
     expect(items.every((item) => !("id" in item))).toBe(true);
     expect(items.every((item) => !("imageUrl" in item))).toBe(true);
+  });
+
+  it("reloads a created clone before saving again from edit mode", async () => {
+    const persistedCloneRoutine = {
+      ...mockCloneSourceRoutine,
+      id: 99,
+      name: "Leave for School (Copy)",
+      sortOrder: 0,
+      items: [
+        {
+          id: 30,
+          routineId: 99,
+          label: "Pack backpack",
+          sortOrder: 0,
+          imageAssetId: 8,
+          imageUrl: "/assets/backpack.png",
+        },
+        {
+          id: 31,
+          routineId: 99,
+          label: "Fill water bottle",
+          sortOrder: 1,
+          imageAssetId: null,
+          imageUrl: null,
+        },
+      ],
+    };
+    let capturedUpdateBody: unknown;
+    server.use(
+      http.get("/api/admin/routines/1", () =>
+        HttpResponse.json({ data: mockCloneSourceRoutine }),
+      ),
+      http.get("/api/admin/routines/99", () =>
+        HttpResponse.json({ data: persistedCloneRoutine }),
+      ),
+      http.post("/api/admin/routines", () =>
+        HttpResponse.json({ data: persistedCloneRoutine }, { status: 201 }),
+      ),
+      http.put("/api/admin/routines/99", async ({ request }) => {
+        capturedUpdateBody = await request.json();
+        return HttpResponse.json({ data: persistedCloneRoutine });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderCloneFormWithEditRoute();
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Clone Routine" })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Create" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Edit Routine" })).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Save & Close" }));
+
+    await waitFor(() => {
+      expect(capturedUpdateBody).toBeTruthy();
+    });
+
+    const body = capturedUpdateBody as Record<string, unknown>;
+    expect(body.items).toEqual([
+      { id: 30, label: "Pack backpack", sortOrder: 0, imageAssetId: 8 },
+      { id: 31, label: "Fill water bottle", sortOrder: 1, imageAssetId: null },
+    ]);
   });
 
   it("can trim a clone draft before saving with reindexed item order", async () => {

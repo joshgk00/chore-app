@@ -100,7 +100,7 @@ export default function AdminRoutineForm() {
 
   const [form, setForm] = useState<FormState>(INITIAL_STATE);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [hasPopulated, setHasPopulated] = useState(false);
+  const [populatedSourceId, setPopulatedSourceId] = useState<string | undefined>();
   const [isSaveSuccess, setSaveSuccess] = useState(false);
   const [saveIntent, setSaveIntent] = useState<"save" | "close" | null>(null);
   const successTimerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -113,7 +113,7 @@ export default function AdminRoutineForm() {
   }, []);
 
   useEffect(() => {
-    if (existing && !hasPopulated) {
+    if (existing && sourceId && populatedSourceId !== sourceId) {
       setForm({
         name: isCloning ? `${existing.name} (Copy)` : existing.name,
         timeSlot: existing.timeSlot,
@@ -135,9 +135,9 @@ export default function AdminRoutineForm() {
             imageUrl: item.imageUrl ?? null,
           })),
       });
-      setHasPopulated(true);
+      setPopulatedSourceId(sourceId);
     }
-  }, [existing, hasPopulated, isCloning]);
+  }, [existing, isCloning, populatedSourceId, sourceId]);
 
   const createMutation = useMutation({
     mutationFn: async (data: FormState) => {
