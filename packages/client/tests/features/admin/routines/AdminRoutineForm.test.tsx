@@ -122,9 +122,7 @@ function renderCloneFormWithEditRoute() {
   );
 }
 
-function renderEditForm() {
-  const queryClient = createTestQueryClient();
-
+function renderEditForm(queryClient = createTestQueryClient()) {
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={["/admin/routines/1/edit"]}>
@@ -209,6 +207,28 @@ describe("AdminRoutineForm", () => {
     expect(screen.getByRole("button", { name: "Create" })).toBeInTheDocument();
   });
 
+  it("keeps generated clone names within the server limit", async () => {
+    const sourceName = "A".repeat(200);
+    server.use(
+      http.get("/api/admin/routines/1", () =>
+        HttpResponse.json({
+          data: {
+            ...mockCloneSourceRoutine,
+            name: sourceName,
+          },
+        }),
+      ),
+    );
+
+    renderCloneForm();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Name")).toHaveValue(`${"A".repeat(193)} (Copy)`);
+    });
+
+    expect((screen.getByLabelText("Name") as HTMLInputElement).value).toHaveLength(200);
+  });
+
   it("refreshes stale cached source data before populating a clone draft", async () => {
     const queryClient = createTestQueryClient();
     queryClient.setQueryData(queryKeys.admin.routine("1"), {
@@ -254,6 +274,33 @@ describe("AdminRoutineForm", () => {
 
     expect(screen.getByDisplayValue("Fresh backpack step")).toBeInTheDocument();
     expect(screen.queryByDisplayValue("Old cached step")).not.toBeInTheDocument();
+  });
+
+  it("uses cached clone source data when the refresh fails", async () => {
+    const queryClient = createTestQueryClient();
+    let requestCount = 0;
+    queryClient.setQueryData(queryKeys.admin.routine("1"), mockCloneSourceRoutine);
+    server.use(
+      http.get("/api/admin/routines/1", () => {
+        requestCount += 1;
+        return HttpResponse.json(
+          { error: { code: "NETWORK_ERROR", message: "offline" } },
+          { status: 503 },
+        );
+      }),
+    );
+
+    renderCloneForm(queryClient);
+
+    await waitFor(() => {
+      expect(requestCount).toBe(1);
+    });
+    await waitFor(() => {
+      expect(screen.getByLabelText("Name")).toHaveValue("Leave for School (Copy)");
+    });
+
+    expect(screen.queryByText("Could not load routine.")).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue("Pack backpack")).toBeInTheDocument();
   });
 
   it("submits a clone as a fresh routine with copied asset ids and no source ids", async () => {
@@ -606,6 +653,31 @@ describe("AdminRoutineForm", () => {
     await user.click(screen.getByRole("button", { name: "Remove item 4" }));
     await user.click(screen.getByRole("button", { name: "Remove item 3" }));
     expect(addButtons()).toHaveLength(1);
+  });
+
+  it("uses cached edit data when a refetch fails", async () => {
+    const queryClient = createTestQueryClient();
+    let requestCount = 0;
+    queryClient.setQueryData(queryKeys.admin.routine("1"), mockExistingRoutine);
+    server.use(
+      http.get("/api/admin/routines/1", () => {
+        requestCount += 1;
+        return HttpResponse.json(
+          { error: { code: "NETWORK_ERROR", message: "offline" } },
+          { status: 503 },
+        );
+      }),
+    );
+
+    renderEditForm(queryClient);
+
+    await waitFor(() => {
+      expect(requestCount).toBe(1);
+    });
+
+    expect(screen.getByRole("heading", { name: "Edit Routine" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Name")).toHaveValue("Morning Routine");
+    expect(screen.queryByText("Could not load routine.")).not.toBeInTheDocument();
   });
 
   it("shows error state when loading existing routine fails", async () => {

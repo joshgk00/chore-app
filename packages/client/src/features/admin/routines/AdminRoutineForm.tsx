@@ -61,6 +61,16 @@ const COMPLETION_RULE_OPTIONS: { value: CompletionRule; label: string }[] = [
   { value: "unlimited", label: "Unlimited" },
 ];
 
+const ROUTINE_NAME_MAX_LENGTH = 200;
+const CLONE_NAME_SUFFIX = " (Copy)";
+
+function getCloneRoutineName(name: string) {
+  const copyName = `${name}${CLONE_NAME_SUFFIX}`;
+  if (copyName.length <= ROUTINE_NAME_MAX_LENGTH) return copyName;
+
+  return `${name.slice(0, ROUTINE_NAME_MAX_LENGTH - CLONE_NAME_SUFFIX.length).trimEnd()}${CLONE_NAME_SUFFIX}`;
+}
+
 function useExistingRoutine(id: string | undefined) {
   return useQuery({
     queryKey: queryKeys.admin.routine(id),
@@ -78,6 +88,8 @@ function validate(form: FormState): FormErrors {
   const errors: FormErrors = {};
   if (!form.name.trim()) {
     errors.name = "Name is required";
+  } else if (form.name.trim().length > ROUTINE_NAME_MAX_LENGTH) {
+    errors.name = `Name must be ${ROUTINE_NAME_MAX_LENGTH} characters or fewer`;
   }
   const activeItems = form.items.filter((item) => item.label.trim());
   if (activeItems.length === 0) {
@@ -103,7 +115,7 @@ export default function AdminRoutineForm() {
     isLoading: isLoadingExisting,
     error: loadError,
   } = useExistingRoutine(sourceId);
-  const canPopulateFromExisting = !isCloning || isExistingFetchedAfterMount;
+  const canPopulateFromExisting = !isCloning || isExistingFetchedAfterMount || !!loadError;
   const isLoadingSource =
     (isEditing && isLoadingExisting) ||
     (isCloning && !canPopulateFromExisting && !loadError);
@@ -125,7 +137,7 @@ export default function AdminRoutineForm() {
   useEffect(() => {
     if (existing && sourceId && canPopulateFromExisting && populatedSourceId !== sourceId) {
       setForm({
-        name: isCloning ? `${existing.name} (Copy)` : existing.name,
+        name: isCloning ? getCloneRoutineName(existing.name) : existing.name,
         timeSlot: existing.timeSlot,
         completionRule: existing.completionRule,
         points: existing.points,
@@ -323,7 +335,7 @@ export default function AdminRoutineForm() {
     );
   }
 
-  if ((isEditing || isCloning) && loadError) {
+  if ((isEditing || isCloning) && loadError && !existing) {
     return (
       <div className="rounded-2xl bg-[var(--color-surface)] p-6 text-center shadow-card" aria-live="assertive">
         <p className="font-display text-lg font-bold text-[var(--color-text-secondary)]">
