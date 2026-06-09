@@ -70,6 +70,7 @@ function useExistingRoutine(id: string | undefined) {
       return result.data;
     },
     enabled: !!id,
+    refetchOnMount: "always",
   });
 }
 
@@ -96,7 +97,16 @@ export default function AdminRoutineForm() {
   const queryClient = useQueryClient();
 
   const isOnline = useOnline();
-  const { data: existing, isLoading: isLoadingExisting, error: loadError } = useExistingRoutine(sourceId);
+  const {
+    data: existing,
+    isFetchedAfterMount: isExistingFetchedAfterMount,
+    isLoading: isLoadingExisting,
+    error: loadError,
+  } = useExistingRoutine(sourceId);
+  const canPopulateFromExisting = !isCloning || isExistingFetchedAfterMount;
+  const isLoadingSource =
+    (isEditing && isLoadingExisting) ||
+    (isCloning && !canPopulateFromExisting && !loadError);
 
   const [form, setForm] = useState<FormState>(INITIAL_STATE);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -113,7 +123,7 @@ export default function AdminRoutineForm() {
   }, []);
 
   useEffect(() => {
-    if (existing && sourceId && populatedSourceId !== sourceId) {
+    if (existing && sourceId && canPopulateFromExisting && populatedSourceId !== sourceId) {
       setForm({
         name: isCloning ? `${existing.name} (Copy)` : existing.name,
         timeSlot: existing.timeSlot,
@@ -137,7 +147,7 @@ export default function AdminRoutineForm() {
       });
       setPopulatedSourceId(sourceId);
     }
-  }, [existing, isCloning, populatedSourceId, sourceId]);
+  }, [canPopulateFromExisting, existing, isCloning, populatedSourceId, sourceId]);
 
   const createMutation = useMutation({
     mutationFn: async (data: FormState) => {
@@ -161,7 +171,8 @@ export default function AdminRoutineForm() {
       if (!result.ok) throw result.error;
       return result.data;
     },
-    onSuccess: () => {
+    onSuccess: (routine) => {
+      queryClient.setQueryData(queryKeys.admin.routine(String(routine.id)), routine);
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.routines() });
     },
   });
@@ -200,7 +211,8 @@ export default function AdminRoutineForm() {
       if (!result.ok) throw result.error;
       return result.data;
     },
-    onSuccess: () => {
+    onSuccess: (routine) => {
+      queryClient.setQueryData(queryKeys.admin.routine(String(routine.id)), routine);
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.routines() });
     },
   });
@@ -299,7 +311,7 @@ export default function AdminRoutineForm() {
     });
   }
 
-  if ((isEditing || isCloning) && isLoadingExisting) {
+  if (isLoadingSource) {
     return (
       <div>
         <div aria-live="polite" className="sr-only">Loading routine...</div>

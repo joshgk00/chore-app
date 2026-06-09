@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { server } from "../../../msw/server.js";
+import { queryKeys } from "../../../../src/lib/query-keys.js";
 import AdminRoutineForm from "../../../../src/features/admin/routines/AdminRoutineForm.js";
 
 const mockExistingRoutine = {
@@ -72,10 +73,14 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
-function renderCreateForm() {
-  const queryClient = new QueryClient({
+function createTestQueryClient() {
+  return new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
+}
+
+function renderCreateForm() {
+  const queryClient = createTestQueryClient();
 
   return render(
     <QueryClientProvider client={queryClient}>
@@ -88,11 +93,7 @@ function renderCreateForm() {
   );
 }
 
-function renderCloneForm() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
-
+function renderCloneForm(queryClient = createTestQueryClient()) {
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={["/admin/routines/new?cloneFrom=1"]}>
@@ -106,9 +107,7 @@ function renderCloneForm() {
 
 function renderCloneFormWithEditRoute() {
   useRealNavigate = true;
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
+  const queryClient = createTestQueryClient();
 
   return render(
     <QueryClientProvider client={queryClient}>
@@ -124,9 +123,7 @@ function renderCloneFormWithEditRoute() {
 }
 
 function renderEditForm() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
+  const queryClient = createTestQueryClient();
 
   return render(
     <QueryClientProvider client={queryClient}>
@@ -210,6 +207,53 @@ describe("AdminRoutineForm", () => {
       "/assets/backpack.png",
     );
     expect(screen.getByRole("button", { name: "Create" })).toBeInTheDocument();
+  });
+
+  it("refreshes stale cached source data before populating a clone draft", async () => {
+    const queryClient = createTestQueryClient();
+    queryClient.setQueryData(queryKeys.admin.routine("1"), {
+      ...mockCloneSourceRoutine,
+      name: "Old School Routine",
+      items: [
+        {
+          id: 20,
+          routineId: 1,
+          label: "Old cached step",
+          sortOrder: 0,
+          imageAssetId: null,
+          imageUrl: null,
+        },
+      ],
+    });
+    server.use(
+      http.get("/api/admin/routines/1", () =>
+        HttpResponse.json({
+          data: {
+            ...mockCloneSourceRoutine,
+            name: "Updated School Routine",
+            items: [
+              {
+                id: 20,
+                routineId: 1,
+                label: "Fresh backpack step",
+                sortOrder: 0,
+                imageAssetId: 8,
+                imageUrl: "/assets/backpack.png",
+              },
+            ],
+          },
+        }),
+      ),
+    );
+
+    renderCloneForm(queryClient);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Name")).toHaveValue("Updated School Routine (Copy)");
+    });
+
+    expect(screen.getByDisplayValue("Fresh backpack step")).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Old cached step")).not.toBeInTheDocument();
   });
 
   it("submits a clone as a fresh routine with copied asset ids and no source ids", async () => {
